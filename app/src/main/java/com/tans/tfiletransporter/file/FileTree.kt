@@ -2,14 +2,18 @@ package com.tans.tfiletransporter.file
 
 data class FileTree(
     val leafs: List<FileLeaf>,
+    val dirLeafs: List<DirectoryFileLeaf>,
+    val fileLeafs: List<CommonFileLeaf>,
     val notNeedRefresh: Boolean,
     val path: String,
     val parentTree: FileTree?
 )
 
 
-fun newRootFileTree(path: String = ""): FileTree = FileTree(
+fun newRootFileTree(path: String = "/"): FileTree = FileTree(
     leafs = emptyList(),
+    dirLeafs = emptyList(),
+    fileLeafs = emptyList(),
     notNeedRefresh = false,
     path = path,
     parentTree = null)
@@ -20,6 +24,8 @@ fun DirectoryFileLeaf.newSubTree(): FileTree {
     val parent = this.belongTree
     return FileTree(
         leafs = emptyList(),
+        dirLeafs = emptyList(),
+        fileLeafs = emptyList(),
         notNeedRefresh = false,
         path = path,
         parentTree = parent
@@ -49,7 +55,7 @@ fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String =
                 DirectoryFileLeaf(
                     name = youngLeaf.name,
                     belongTree = parentTree,
-                    path = "${parentTree.path}$dirSeparator${youngLeaf.name}",
+                    path = "${parentTree.path}${if (parentTree.path.endsWith(dirSeparator)) "" else dirSeparator}${youngLeaf.name}",
                     childrenCount = youngLeaf.childrenCount,
                     lastModified = youngLeaf.lastModified
                 )
@@ -58,7 +64,7 @@ fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String =
                 CommonFileLeaf(
                     name = youngLeaf.name,
                     belongTree = parentTree,
-                    path = "${parentTree.path}$dirSeparator${youngLeaf.name}",
+                    path = "${parentTree.path}${if (parentTree.path.endsWith(dirSeparator)) "" else dirSeparator}${youngLeaf.name}",
                     size = youngLeaf.size,
                     lastModified = youngLeaf.lastModified
                 )
@@ -70,19 +76,23 @@ fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String =
 
 fun FileTree.refreshFileTree(leafs: List<FileLeaf>): FileTree {
     if (leafs.any { it.belongTree != this }) error("Wrong leafs for $this")
-    return this.copy(leafs = leafs, notNeedRefresh = true)
+    val sortedLeafs = leafs.sortedByDescending { it.lastModified }
+    return this.copy(leafs = sortedLeafs, dirLeafs = sortedLeafs.filterIsInstance<DirectoryFileLeaf>(), fileLeafs = sortedLeafs.filterIsInstance<CommonFileLeaf>(),notNeedRefresh = true)
 }
 
-fun FileTree.cleanFileTree(): FileTree = this.copy(leafs = emptyList(), notNeedRefresh = false)
+fun FileTree.cleanFileTree(): FileTree = this.copy(leafs = emptyList(), dirLeafs = emptyList(), fileLeafs = emptyList(), notNeedRefresh = false)
 
-fun String.generateTreeFromPath(dirSeparator: String = "/"): FileTree {
-    val rootThree = newRootFileTree(path = dirSeparator)
-    return this.split(dirSeparator)
+fun String.generateTreeFromPath(dirSeparator: String = "/", realRootDir: String = ""): FileTree {
+    val rootThree = newRootFileTree(dirSeparator)
+    val fixedPath = this.removePrefix(realRootDir).removePrefix(dirSeparator).removeSuffix(dirSeparator)
+    return fixedPath.split(dirSeparator)
         .fold(rootThree) { parentTree, name ->
             FileTree(
                 leafs = emptyList(),
+                dirLeafs = emptyList(),
+                fileLeafs = emptyList(),
                 notNeedRefresh = false,
-                path = "${rootThree.path}$dirSeparator$name",
+                path = "${parentTree.path}${if (parentTree.path.endsWith(dirSeparator)) "" else dirSeparator}$name",
                 parentTree = parentTree
             )
         }

@@ -9,7 +9,7 @@ import org.threeten.bp.format.DateTimeFormatter
 object DataBindingAdapter {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
-    private val timeFormatter = DateTimeFormatter.ofPattern("hh:mm:ss")
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
     @JvmStatic
     @BindingAdapter("app:dateText")

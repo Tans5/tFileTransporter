@@ -18,26 +18,14 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <FrameLayout
-                android:id="@+id/back_layout"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="15dp"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:layout_gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:src="@drawable/chevron_left"/>
-
-            </FrameLayout>
-
             <TextView
+                android:id="@+id/path_tv"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textSize="16sp"
+                android:singleLine="true"
+                android:ellipsize="start"
                 android:textColor="@color/black_1"
                 android:layout_marginStart="15dp"
                 android:layout_marginEnd="15dp"
@@ -51,7 +39,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:paddingBottom="20dp"
-            android:clipToPadding="true"
+            android:clipToPadding="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/header_layout"

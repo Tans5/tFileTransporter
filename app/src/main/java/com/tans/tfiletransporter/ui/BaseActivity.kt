@@ -24,6 +24,15 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
         binding
     }
 
+    override fun onBackPressed() {
+        for (f in supportFragmentManager.fragments) {
+            if (!f.isHidden && f is BaseFragment<*, *> && f.onBackPressed()) {
+                return
+            }
+        }
+        super.onBackPressed()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cancel("Activity ${this::class.java.name} Closed.")
