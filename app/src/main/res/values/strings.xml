@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">tFileTransporter</string>
+
+    <!-- File Transport Activity Start -->
+    <string name="file_transport_activity_tab_my_dir">MY DIR</string>
+    <string name="file_transport_activity_tab_remote_dir">REMOTE DIR</string>
+    <!-- File Transport Activity End -->
+
 </resources>
