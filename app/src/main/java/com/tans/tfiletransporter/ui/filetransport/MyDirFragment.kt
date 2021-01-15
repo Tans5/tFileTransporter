@@ -1,10 +1,6 @@
 package com.tans.tfiletransporter.ui.filetransport
 
-import android.os.Bundle
 import android.os.Environment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
@@ -17,11 +13,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, FileTree>(R.layout.my_d
 
     val pathPrefix = Environment.getExternalStorageDirectory().let { it.path }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
+    override fun onInit() {
         bindState()
             .distinctUntilChanged()
             .observeOn(Schedulers.io())
@@ -49,7 +41,9 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, FileTree>(R.layout.my_d
                 }
             }
             .bindLife()
-        return super.onCreateView(inflater, container, savedInstanceState)
+
+
+
     }
 
     companion object {

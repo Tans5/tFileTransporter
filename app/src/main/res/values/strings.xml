@@ -4,6 +4,11 @@
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_dir">MY DIR</string>
     <string name="file_transport_activity_tab_remote_dir">REMOTE DIR</string>
+    <string name="file_size_B">%d B</string>
+    <string name="file_size_KB">%.1f KB</string>
+    <string name="file_size_MB">%.1f MB</string>
+    <string name="file_size_GB">%.1f GB</string>
+    <string name="file_count">%d files</string>
     <!-- File Transport Activity End -->
 
 </resources>

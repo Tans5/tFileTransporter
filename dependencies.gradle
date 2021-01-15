@@ -36,6 +36,7 @@ versions.zxing = '3.4.0'
 versions.tadapter = '0.7.1'
 versions.rxutils = "0.1.0"
 versions.kotlincroutines = "1.3.5"
+versions.date = "1.3.0"
 
 def view = [:]
 // androidx view
@@ -230,3 +231,7 @@ coroutines.runtime = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$versions.ko
 coroutines.android = "org.jetbrains.kotlinx:kotlinx-coroutines-android:$versions.kotlincroutines"
 coroutines.rx = "org.jetbrains.kotlinx:kotlinx-coroutines-rx2:$versions.kotlincroutines"
 ext.deps.coroutines = coroutines
+
+def date = [:]
+date.runtime = "com.jakewharton.threetenabp:threetenabp:$versions.date"
+ext.deps.date = date

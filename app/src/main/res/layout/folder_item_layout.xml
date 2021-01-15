@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="data"
+            type="com.tans.tfiletransporter.file.DirectoryFileLeaf" />
+    </data>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?attr/selectableItemBackgroundBorderless">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="75dp"
+            android:background="@color/white">
+
+            <ImageView
+                android:id="@+id/folder_iv"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/folder_outline"
+                android:layout_marginStart="30dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+            <TextView
+                android:id="@+id/title_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="30dp"
+                android:layout_marginEnd="20dp"
+                android:textColor="@color/black_1"
+                android:textSize="18sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@{data.name}"
+                app:layout_constraintStart_toEndOf="@id/folder_iv"
+                app:layout_constraintEnd_toStartOf="@id/arrow_iv"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/modified_date_tv"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Title"/>
+
+            <TextView
+                android:id="@+id/modified_date_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="30dp"
+                android:textSize="14sp"
+                android:textColor="@color/gray_1"
+                android:layout_marginTop="5dp"
+                app:dateText="@{data.lastModified}"
+                app:layout_constraintStart_toEndOf="@id/folder_iv"
+                app:layout_constraintEnd_toStartOf="@id/files_count_tv"
+                app:layout_constraintTop_toBottomOf="@id/title_tv"
+                app:layout_constraintBottom_toBottomOf="parent"
+                tools:text="2021/01/01"/>
+
+            <TextView
+                android:id="@+id/files_count_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                android:layout_marginStart="5dp"
+                android:text="@{@string/file_count(data.childrenCount)}"
+                app:layout_constraintBottom_toBottomOf="@id/modified_date_tv"
+                app:layout_constraintStart_toEndOf="@id/modified_date_tv"
+                app:layout_constraintEnd_toStartOf="@id/arrow_iv"
+                app:layout_constraintWidth_default="wrap"
+                tools:text="5 files"/>
+
+            <ImageView
+                android:id="@+id/arrow_iv"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/chevron_right"
+                android:layout_marginEnd="15dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </FrameLayout>
+
+</layout>

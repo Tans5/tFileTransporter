@@ -28,7 +28,12 @@ abstract class BaseFragment<Binding: ViewDataBinding, State>(
         savedInstanceState: Bundle?
     ): View? {
         binding = DataBindingUtil.inflate(inflater, layoutId, container, false)
+        onInit()
         return binding.root
+    }
+
+    open fun onInit() {
+
     }
 
     override fun onDestroy() {

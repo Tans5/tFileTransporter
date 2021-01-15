@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="data"
+            type="com.tans.tfiletransporter.file.CommonFileLeaf" />
+
+    </data>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?attr/selectableItemBackgroundBorderless">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="75dp"
+            android:background="@color/white">
+
+            <ImageView
+                android:id="@+id/file_iv"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="30dp"
+                android:src="@drawable/file_outline"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/title_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="30dp"
+                android:layout_marginEnd="20dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/black_1"
+                android:textSize="18sp"
+                android:text="@{data.name}"
+                app:layout_constraintBottom_toTopOf="@id/modified_date_tv"
+                app:layout_constraintEnd_toStartOf="@id/file_cb"
+                app:layout_constraintStart_toEndOf="@id/file_iv"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Title" />
+
+            <TextView
+                android:id="@+id/modified_date_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="30dp"
+                android:layout_marginTop="5dp"
+                android:textColor="@color/gray_1"
+                android:textSize="14sp"
+                app:dateText="@{data.lastModified}"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/files_size_tv"
+                app:layout_constraintStart_toEndOf="@id/file_iv"
+                app:layout_constraintTop_toBottomOf="@id/title_tv"
+                tools:text="2021/01/01" />
+
+            <TextView
+                android:id="@+id/files_size_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="20dp"
+                app:fileSizeText="@{data.size}"
+                app:layout_constraintBottom_toBottomOf="@id/modified_date_tv"
+                app:layout_constraintEnd_toStartOf="@id/file_cb"
+                app:layout_constraintStart_toEndOf="@id/modified_date_tv"
+                app:layout_constraintWidth_default="wrap"
+                tools:text="5.0 MB" />
+
+            <CheckBox
+                android:id="@+id/file_cb"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="15dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </FrameLayout>
+
+</layout>
