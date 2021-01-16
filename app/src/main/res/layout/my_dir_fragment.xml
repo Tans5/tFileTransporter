@@ -11,26 +11,26 @@
             android:id="@+id/header_layout"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:orientation="horizontal"
             android:background="@color/white"
             android:elevation="2dp"
-            app:layout_constraintStart_toStartOf="parent"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
             <TextView
                 android:id="@+id/path_tv"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="16sp"
-                android:singleLine="true"
-                android:ellipsize="start"
-                android:textColor="@color/black_1"
+                android:layout_gravity="center_vertical"
                 android:layout_marginStart="15dp"
                 android:layout_marginEnd="15dp"
-                android:layout_gravity="center_vertical"
-                tools:text="/a/b/c"/>
+                android:layout_weight="1"
+                android:ellipsize="start"
+                android:singleLine="true"
+                android:textColor="@color/black_1"
+                android:textSize="16sp"
+                tools:text="/a/b/c" />
 
         </LinearLayout>
 
@@ -38,14 +38,14 @@
             android:id="@+id/file_folder_rv"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:paddingBottom="20dp"
             android:clipToPadding="false"
+            android:paddingBottom="35dp"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header_layout"
             app:layout_constraintBottom_toBottomOf="parent"
-            tools:listitem="@layout/folder_item_layout"/>
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/header_layout"
+            tools:listitem="@layout/folder_item_layout" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

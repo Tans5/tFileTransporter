@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import com.google.android.material.tabs.TabLayout
+import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.ui.BaseActivity
@@ -39,7 +40,15 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
                 })
 
-                render({ it.selectedTabType }) { changeDirFragment(it) }.bindLife()
+                render({ it.selectedTabType }) {
+                    binding.floatingActionBt.setImageResource(
+                        when (it) {
+                            DirTabType.MyDir -> R.drawable.share_variant_outline
+                            DirTabType.RemoteDir -> R.drawable.download_outline
+                        }
+                    )
+                    changeDirFragment(it)
+                }.bindLife()
             } else {
                 finish()
             }

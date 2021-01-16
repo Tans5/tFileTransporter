@@ -10,4 +10,6 @@
 
     <color name="black_1">#333333</color>
     <color name="gray_1">#777777</color>
+
+    <color name="line_color">#F2F2F2</color>
 </resources>
