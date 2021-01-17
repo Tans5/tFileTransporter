@@ -1,18 +1,31 @@
-package com.tans.tfiletransporter.ui.filetransport
+package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.Manifest
+import android.app.Activity
 import android.os.Build
 import android.os.Bundle
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
-import com.tans.tfiletransporter.ui.BaseActivity
+import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tbruyelle.rxpermissions2.RxPermissions
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
+import org.kodein.di.*
+import org.kodein.di.android.di
+import org.kodein.di.android.retainedSubDI
+import org.kodein.di.android.x.AndroidLifecycleScope
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
+
+    override val di: DI by retainedSubDI(di()) {
+        // bind<FileTransportScopeData>() with scoped(AndroidLifecycleScope).singleton { FileTransportScopeData() }
+        bind<FileTransportScopeData>() with singleton { FileTransportScopeData() }
+    }
+    private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +52,21 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     override fun onTabReselected(tab: TabLayout.Tab?) {
                     }
                 })
+
+                binding.floatingActionBt.clicks()
+                        .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
+                        .bindLife()
+
+
+//                fileTransportScopeData.snackMessage
+//                        .observeOn(AndroidSchedulers.mainThread())
+//                        .doOnNext { msg ->
+//                            Snackbar.make(binding.coordinatorLayout, msg, Snackbar.LENGTH_SHORT)
+//                                    // .setAnchorView(binding.fragmentContainerLayout)
+//                                    .setAnimationMode(Snackbar.ANIMATION_MODE_FADE)
+//                                    .show()
+//                        }
+//                        .bindLife()
 
                 render({ it.selectedTabType }) {
                     binding.floatingActionBt.setImageResource(
