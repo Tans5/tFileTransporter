@@ -37,18 +37,12 @@ sealed class YoungLeaf
 data class DirectoryYoungLeaf(val name: String, val childrenCount: Long, val lastModified: Long) : YoungLeaf()
 data class FileYoungLeaf(val name: String, val size: Long, val lastModified: Long) : YoungLeaf()
 
-/**
- * @receiver First: FileName, Second: isDirectory
- */
-fun List<YoungLeaf>.generateNewFileTree(parentDir: DirectoryFileLeaf): FileTree {
+fun List<YoungLeaf>.generateNewFileTree(parentDir: DirectoryFileLeaf, dirSeparator: String = FileConstants.FILE_SEPARATOR): FileTree {
     val newTree = parentDir.newSubTree()
-    return this.refreshFileTree(newTree)
+    return this.refreshFileTree(newTree, dirSeparator)
 }
 
-/**
- * @receiver Leafs, First: FileName, Second: isDirectory
- */
-fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String = "/"): FileTree {
+fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String = FileConstants.FILE_SEPARATOR): FileTree {
     val leafs = this.map { youngLeaf ->
         when (youngLeaf) {
             is DirectoryYoungLeaf -> {
@@ -82,7 +76,7 @@ fun FileTree.refreshFileTree(leafs: List<FileLeaf>): FileTree {
 
 fun FileTree.cleanFileTree(): FileTree = this.copy(leafs = emptyList(), dirLeafs = emptyList(), fileLeafs = emptyList(), notNeedRefresh = false)
 
-fun String.generateTreeFromPath(dirSeparator: String = "/", realRootDir: String = ""): FileTree {
+fun String.generateTreeFromPath(dirSeparator: String = FileConstants.FILE_SEPARATOR, realRootDir: String = ""): FileTree {
     val rootThree = newRootFileTree(dirSeparator)
     val fixedPath = this.removePrefix(realRootDir).removePrefix(dirSeparator).removeSuffix(dirSeparator)
     return fixedPath.split(dirSeparator)
