@@ -17,35 +17,43 @@ import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import org.kodein.di.instance
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import kotlin.streams.toList
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, FileTree>(R.layout.my_dir_fragment, newRootFileTree()) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
 
-    private val pathPrefix = Environment.getExternalStorageDirectory().let { it.path }
+    private val homePathString = Environment.getExternalStorageDirectory().let { it.path }
+    private val homePath = Paths.get(homePathString)
+
     override fun onInit() {
         bindState()
             .distinctUntilChanged()
             .observeOn(Schedulers.io())
             .flatMapSingle { oldTree ->
                 if (!oldTree.notNeedRefresh) {
-                    val file = File(pathPrefix + oldTree.path)
-                    val children = file.listFiles()?.map {
-                        if (it.isDirectory) {
+                    val path = if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
+                    val children = Files.list(path).map { p ->
+                        if (Files.isDirectory(p)) {
                             DirectoryYoungLeaf(
-                                name = it.name,
-                                childrenCount = it.listFiles()?.size?.toLong() ?: 0L,
-                                lastModified = it.lastModified()
+                                name = p.fileName.toString(),
+                                childrenCount = Files.list(p).let { s ->
+                                    val size = s.count()
+                                    s.close()
+                                    size
+                                },
+                                lastModified = Files.getLastModifiedTime(p).toMillis()
                             )
                         } else {
                             FileYoungLeaf(
-                                name = it.name,
-                                size = it.length(),
-                                lastModified = it.lastModified()
+                                name = p.fileName.toString(),
+                                size = Files.size(p),
+                                lastModified = Files.getLastModifiedTime(p).toMillis()
                             )
                         }
-                    } ?: emptyList()
+                    }.toList()
                     updateState { children.refreshFileTree(oldTree) }
                 } else {
                     Single.just(oldTree)
