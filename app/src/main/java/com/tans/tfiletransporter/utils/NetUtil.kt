@@ -65,3 +65,13 @@ suspend fun AsynchronousSocketChannel.writeSuspend(src: ByteBuffer) = suspendCan
     })
     cont.invokeOnCancellation { if (isOpen) close() }
 }
+
+suspend fun openAsynchronousServerSocketChannelSuspend(): AsynchronousServerSocketChannel = blockToSuspend { AsynchronousServerSocketChannel.open() }
+
+suspend fun AsynchronousServerSocketChannel.bindSuspend(address: InetSocketAddress, backlog: Int): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
+    bind(address, backlog)
+}
+
+suspend fun <V> AsynchronousServerSocketChannel.setOptionSuspend(option: SocketOption<V>, value: V): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
+    setOption(option, value)
+}

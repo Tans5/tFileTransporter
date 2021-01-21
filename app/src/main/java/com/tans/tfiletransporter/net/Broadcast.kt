@@ -75,11 +75,12 @@ internal class BroadcastSender(
      * 1 bytes: 1. 0x00: accept 2. 0x01: deny
      *
      */
-    suspend fun startBroadcastListener(acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): Result<Unit> = runCatching {
-        val ssc = AsynchronousServerSocketChannel.open()
+    @Throws(IOException::class)
+    suspend fun startBroadcastListener(acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean) {
+        val ssc = openAsynchronousServerSocketChannelSuspend()
         ssc.use {
-            ssc.setOption(StandardSocketOptions.SO_REUSEADDR, true)
-            ssc.bind(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
+            ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+            ssc.bindSuspend(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
             while (true) {
                 val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
                 byteBuffer.position(NET_BUFFER_SIZE - 4)
