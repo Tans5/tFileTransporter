@@ -1,7 +1,9 @@
 package com.tans.tfiletransporter.utils
 
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.SocketOption
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
@@ -75,3 +77,36 @@ suspend fun AsynchronousServerSocketChannel.bindSuspend(address: InetSocketAddre
 suspend fun <V> AsynchronousServerSocketChannel.setOptionSuspend(option: SocketOption<V>, value: V): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
     setOption(option, value)
 }
+
+
+fun Int.toAddressBytes(isRevert: Boolean = false): ByteArray {
+    val result = ByteArray(4) { index ->
+        (this and (0x000000FF shl (index * 8)) ushr (index * 8)).toByte()
+    }
+    return if (isRevert) {
+        result
+    } else {
+        result.reverse()
+        result
+    }
+}
+
+fun findLocalAddressV4(): InetAddress? {
+    val interfaces = NetworkInterface.getNetworkInterfaces()
+    var result: InetAddress? = null
+    while (interfaces.hasMoreElements()) {
+        val inetAddresses = interfaces.nextElement().inetAddresses
+        while (inetAddresses.hasMoreElements()) {
+            val address = inetAddresses.nextElement()
+            if (address.address.size == 4 && !address.isLinkLocalAddress && !address.isLoopbackAddress) {
+                result = address
+            }
+        }
+    }
+    return result
+}
+
+fun InetAddress.getBroadcastAddress()
+        : InetAddress = NetworkInterface.getByInetAddress(this).interfaceAddresses
+        .mapNotNull { it.broadcast }
+        .lastOrNull() ?: InetAddress.getByAddress((-1).toAddressBytes())

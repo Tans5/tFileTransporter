@@ -6,7 +6,6 @@ import kotlinx.coroutines.*
 import java.io.IOException
 import java.net.*
 import java.nio.ByteBuffer
-import java.nio.channels.AsynchronousServerSocketChannel
 import kotlin.jvm.Throws
 import kotlin.math.max
 
@@ -42,9 +41,7 @@ internal class BroadcastSender(
         val broadMessage: String = "${Build.BRAND} ${Build.MODEL}",
         val localAddress: InetAddress) {
 
-    private val broadcastAddress = NetworkInterface.getByInetAddress(localAddress).interfaceAddresses
-            .mapNotNull { it.broadcast }
-            .last()
+    private val broadcastAddress = localAddress.getBroadcastAddress()
 
     @Throws(IOException::class)
     suspend fun startBroadcastSender() {
