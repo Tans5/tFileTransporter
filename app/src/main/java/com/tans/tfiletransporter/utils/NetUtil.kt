@@ -9,6 +9,7 @@ import java.nio.channels.CompletionHandler
 import java.nio.channels.DatagramChannel
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.max
 
 
 suspend fun openDatagramChannel(): DatagramChannel = blockToSuspend { DatagramChannel.open() }
@@ -127,3 +128,10 @@ fun InetAddress.getBroadcastAddress()
         : InetAddress = NetworkInterface.getByInetAddress(this).interfaceAddresses
         .mapNotNull { it.broadcast }
         .lastOrNull() ?: InetAddress.getByAddress((-1).toBytes())
+
+fun ByteBuffer.copyAvailableBytes(): ByteArray {
+    val position = position()
+    val limit = limit()
+    val array = array()
+    return ByteArray(limit - position) { i -> array[position + i] }
+}

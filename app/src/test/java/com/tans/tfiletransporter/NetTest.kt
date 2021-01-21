@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter
 
 import com.tans.tfiletransporter.net.launchBroadcastSender
+import com.tans.tfiletransporter.utils.copyAvailableBytes
 import com.tans.tfiletransporter.utils.findLocalAddressV4
 import com.tans.tfiletransporter.utils.getBroadcastAddress
 import com.tans.tfiletransporter.utils.toBytes
@@ -39,7 +40,7 @@ class NetTest {
                 byteBuffer.clear()
                 dc.receive(byteBuffer)
                 byteBuffer.flip()
-                val msg = String(byteBuffer.array(), Charsets.UTF_8)
+                val msg = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
                 println("Broadcast message: $msg")
             }
         }

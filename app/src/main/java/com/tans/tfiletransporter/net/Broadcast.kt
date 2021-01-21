@@ -107,7 +107,7 @@ class BroadcastSender(
                     byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
 
                     // 2. Get remote device info.
-                    val remoteInfo = String(byteBuffer.compact().array(), Charsets.UTF_8)
+                    val remoteInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
 
                     // 3. Accept or deny.
                     if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
@@ -179,7 +179,7 @@ class BroadcastReceiver(
             byteBuffer.clear()
             val remoteAddress = dc.receiveSuspend(byteBuffer)
             byteBuffer.flip()
-            val remoteDeviceInfo = String(byteBuffer.compact().array(), Charsets.UTF_8)
+            val remoteDeviceInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
             newRemoteDeviceComing(remoteAddress to remoteDeviceInfo)
         }
     }
