@@ -79,7 +79,7 @@ suspend fun <V> AsynchronousServerSocketChannel.setOptionSuspend(option: SocketO
 }
 
 
-fun Int.toAddressBytes(isRevert: Boolean = false): ByteArray {
+fun Int.toBytes(isRevert: Boolean = false): ByteArray {
     val result = ByteArray(4) { index ->
         (this and (0x000000FF shl (index * 8)) ushr (index * 8)).toByte()
     }
@@ -109,4 +109,4 @@ fun findLocalAddressV4(): InetAddress? {
 fun InetAddress.getBroadcastAddress()
         : InetAddress = NetworkInterface.getByInetAddress(this).interfaceAddresses
         .mapNotNull { it.broadcast }
-        .lastOrNull() ?: InetAddress.getByAddress((-1).toAddressBytes())
+        .lastOrNull() ?: InetAddress.getByAddress((-1).toBytes())

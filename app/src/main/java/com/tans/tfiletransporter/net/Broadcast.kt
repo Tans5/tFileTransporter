@@ -8,6 +8,7 @@ import java.net.*
 import java.nio.ByteBuffer
 import kotlin.jvm.Throws
 import kotlin.math.max
+import kotlin.math.min
 
 const val BROADCAST_RECEIVER_PORT = 6666
 const val BROADCAST_LISTENER_PORT = 6667
@@ -85,11 +86,11 @@ internal class BroadcastSender(
                 val isAccept = ssc.acceptSuspend().use { clientSsc ->
                     clientSsc.readSuspend(byteBuffer)
                     byteBuffer.position(NET_BUFFER_SIZE - 4)
-                    val remoteDeviceInfoSize = byteBuffer.asIntBuffer().get()
-                    byteBuffer.position(max(NET_BUFFER_SIZE - remoteDeviceInfoSize, 0))
+                    val remoteDeviceInfoSize = min(max(byteBuffer.asIntBuffer().get(), 0), NET_BUFFER_SIZE)
+                    byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
                     clientSsc.readSuspend(byteBuffer)
-                    byteBuffer.position(max(NET_BUFFER_SIZE - remoteDeviceInfoSize, 0))
-                    val remoteInfo = String(byteBuffer.array(), Charsets.UTF_8)
+                    byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
+                    val remoteInfo = String(byteBuffer.array().takeLast(remoteDeviceInfoSize).toByteArray(), Charsets.UTF_8)
                     if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
                         byteBuffer.clear()
                         byteBuffer.put(0x00)
