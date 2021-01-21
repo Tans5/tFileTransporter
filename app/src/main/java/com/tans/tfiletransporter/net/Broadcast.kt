@@ -8,9 +8,11 @@ import io.reactivex.Observable
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx2.await
 import java.io.IOException
-import java.net.*
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.SocketAddress
+import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
-import kotlin.jvm.Throws
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -38,15 +40,15 @@ suspend fun launchBroadcastSender(
         broadcastDelay: Long = 300,
         broadMessage: String = "${Build.BRAND} ${Build.MODEL}",
         localAddress: InetAddress,
-        acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice {
-    val broadcastSender = BroadcastSender(
-            broadcastDelay = broadcastDelay,
-            broadMessage = broadMessage,
-            localAddress = localAddress)
-    val broadcastJob = coroutineScope { launch(context = Dispatchers.IO) { broadcastSender.startBroadcastSender() } }
-    val result = coroutineScope { async(context = Dispatchers.IO) { broadcastSender.startBroadcastListener(acceptRequest) } }.await()
-    broadcastJob.cancel()
-    return result
+        acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice = coroutineScope {
+        val broadcastSender = BroadcastSender(
+                broadcastDelay = broadcastDelay,
+                broadMessage = broadMessage,
+                localAddress = localAddress)
+        val broadcastJob = launch(context = Dispatchers.IO) { broadcastSender.startBroadcastSender() }
+        val result = withContext(context = Dispatchers.IO) { broadcastSender.startBroadcastListener(acceptRequest) }
+        broadcastJob.cancel()
+        result
 }
 
 class BroadcastSender(
@@ -133,9 +135,9 @@ class BroadcastSender(
 }
 
 suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long, checkDuration: Long,
-                                    handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) {
+                                    handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
     val broadcastReceiver = BroadcastReceiver(localAddress, timeoutRemove,checkDuration)
-    val receiverJob: Job = coroutineScope { launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver() } }
+    val receiverJob: Job = launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver() }
     handle(broadcastReceiver, receiverJob)
 }
 

@@ -25,10 +25,10 @@ class NetTest {
         val local = findLocalAddressV4()
         val broadcast = local?.getBroadcastAddress()
         val job = launch {
-            launchBroadcastSender(broadMessage = "My_MAC-mini", localAddress = local!!, acceptRequest = { remoteAddress, remoteDevice ->
+            launchBroadcastSender(broadMessage = "My_MAC-mini", localAddress = local!!) { remoteAddress, remoteDevice ->
                 println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
                 false
-            })
+            }
         }
 
         val job2 = launch(Dispatchers.IO) {
