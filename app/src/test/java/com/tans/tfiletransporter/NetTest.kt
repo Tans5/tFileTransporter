@@ -23,10 +23,12 @@ class NetTest {
 
         val local = findLocalAddressV4()
         val broadcast = local?.getBroadcastAddress()
-        val job = launchBroadcastSender(broadMessage = "My_MAC-mini", localAddress = local!!, acceptRequest = { remoteAddress, remoteDevice ->
-            println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
-            false
-        })
+        val job = launch {
+            launchBroadcastSender(broadMessage = "My_MAC-mini", localAddress = local!!, acceptRequest = { remoteAddress, remoteDevice ->
+                println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
+                false
+            })
+        }
 
         val job2 = launch(Dispatchers.IO) {
             val dc = DatagramChannel.open()

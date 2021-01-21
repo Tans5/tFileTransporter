@@ -1,10 +1,7 @@
 package com.tans.tfiletransporter.utils
 
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.NetworkInterface
-import java.net.SocketOption
+import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
@@ -13,13 +10,16 @@ import java.nio.channels.DatagramChannel
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-suspend fun DatagramChannel.sendSuspend(src: ByteBuffer, endPoint: InetSocketAddress) {
-    blockToSuspend(cancel = { this.close() }) { send(src, endPoint) }
-}
 
 suspend fun openDatagramChannel(): DatagramChannel = blockToSuspend { DatagramChannel.open() }
 
 suspend fun <V> DatagramChannel.setOptionSuspend(option: SocketOption<V>, value: V): DatagramChannel = blockToSuspend { setOption(option, value) }
+
+suspend fun DatagramChannel.bindSuspend(address: SocketAddress): DatagramChannel = blockToSuspend { bind(address) }
+
+suspend fun DatagramChannel.sendSuspend(src: ByteBuffer, endPoint: InetSocketAddress): Int = blockToSuspend(cancel = { if(isOpen) this.close() }) { send(src, endPoint) }
+
+suspend fun DatagramChannel.receiveSuspend(src: ByteBuffer): SocketAddress = blockToSuspend(cancel = { if (isOpen) this.close() }) { receive(src) }
 
 suspend fun AsynchronousServerSocketChannel.acceptSuspend(): AsynchronousSocketChannel = suspendCancellableCoroutine { cont ->
     accept(this, object : CompletionHandler<AsynchronousSocketChannel, AsynchronousServerSocketChannel> {
@@ -35,6 +35,31 @@ suspend fun AsynchronousServerSocketChannel.acceptSuspend(): AsynchronousSocketC
 
     })
     cont.invokeOnCancellation { if (cont.isActive && this.isOpen) this.close() }
+}
+
+suspend fun openAsynchronousServerSocketChannelSuspend(): AsynchronousServerSocketChannel = blockToSuspend { AsynchronousServerSocketChannel.open() }
+
+suspend fun AsynchronousServerSocketChannel.bindSuspend(address: InetSocketAddress, backlog: Int): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
+    bind(address, backlog)
+}
+
+suspend fun <V> AsynchronousServerSocketChannel.setOptionSuspend(option: SocketOption<V>, value: V): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
+    setOption(option, value)
+}
+
+suspend fun openAsynchronousSocketChannel(): AsynchronousSocketChannel = blockToSuspend { AsynchronousSocketChannel.open() }
+
+suspend fun AsynchronousSocketChannel.connectSuspend(endPoint: SocketAddress): Unit = suspendCancellableCoroutine { cont ->
+    connect(endPoint, this, object : CompletionHandler<Void, AsynchronousSocketChannel> {
+        override fun completed(result: Void?, attachment: AsynchronousSocketChannel?) {
+            if (cont.isActive) cont.resume(Unit)
+        }
+        override fun failed(exc: Throwable, attachment: AsynchronousSocketChannel) {
+            if (attachment.isOpen) attachment.close()
+            if (cont.isActive) cont.resumeWithException(exc)
+        }
+    })
+    cont.invokeOnCancellation { if (isOpen) close() }
 }
 
 suspend fun AsynchronousSocketChannel.readSuspend(dst: ByteBuffer) = suspendCancellableCoroutine<Int> { cont ->
@@ -68,15 +93,7 @@ suspend fun AsynchronousSocketChannel.writeSuspend(src: ByteBuffer) = suspendCan
     cont.invokeOnCancellation { if (isOpen) close() }
 }
 
-suspend fun openAsynchronousServerSocketChannelSuspend(): AsynchronousServerSocketChannel = blockToSuspend { AsynchronousServerSocketChannel.open() }
-
-suspend fun AsynchronousServerSocketChannel.bindSuspend(address: InetSocketAddress, backlog: Int): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
-    bind(address, backlog)
-}
-
-suspend fun <V> AsynchronousServerSocketChannel.setOptionSuspend(option: SocketOption<V>, value: V): AsynchronousServerSocketChannel = blockToSuspend(cancel = { if (isOpen) close() }) {
-    setOption(option, value)
-}
+suspend fun <V> AsynchronousSocketChannel.setOptionSuspend(option: SocketOption<V>, value: V): AsynchronousSocketChannel = blockToSuspend { setOption(option, value) }
 
 
 fun Int.toBytes(isRevert: Boolean = false): ByteArray {
