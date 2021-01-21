@@ -9,7 +9,6 @@ import java.nio.channels.CompletionHandler
 import java.nio.channels.DatagramChannel
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.math.max
 
 
 suspend fun openDatagramChannel(): DatagramChannel = blockToSuspend { DatagramChannel.open() }
@@ -109,15 +108,15 @@ fun Int.toBytes(isRevert: Boolean = false): ByteArray {
     }
 }
 
-fun findLocalAddressV4(): InetAddress? {
+fun findLocalAddressV4(): List<InetAddress> {
     val interfaces = NetworkInterface.getNetworkInterfaces()
-    var result: InetAddress? = null
+    val result = ArrayList<InetAddress>()
     while (interfaces.hasMoreElements()) {
         val inetAddresses = interfaces.nextElement().inetAddresses
         while (inetAddresses.hasMoreElements()) {
             val address = inetAddresses.nextElement()
             if (address.address.size == 4 && !address.isLinkLocalAddress && !address.isLoopbackAddress) {
-                result = address
+                result.add(address)
             }
         }
     }

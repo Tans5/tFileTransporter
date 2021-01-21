@@ -25,12 +25,15 @@ class NetTest {
         val systemName = System.getProperty("os.name")
         val userName = System.getProperty("user.name")
 
-        val local = findLocalAddressV4()
-        val broadcast = local?.getBroadcastAddress()
+        val allAddress = findLocalAddressV4()
+        val local = allAddress[0]
+        val broadcast = local.getBroadcastAddress()
         val job = launch {
-            launchBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local!!) { remoteAddress, remoteDevice ->
-                println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
-                false
+            kotlin.runCatching {
+                launchBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local) { remoteAddress, remoteDevice ->
+                    println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
+                    false
+                }
             }
         }
 
