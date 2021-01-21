@@ -22,10 +22,13 @@ class NetTest {
     @Test
     fun broadcastSenderTest() = runBlocking {
 
+        val systemName = System.getProperty("os.name")
+        val userName = System.getProperty("user.name")
+
         val local = findLocalAddressV4()
         val broadcast = local?.getBroadcastAddress()
         val job = launch {
-            launchBroadcastSender(broadMessage = "My_MAC-mini", localAddress = local!!) { remoteAddress, remoteDevice ->
+            launchBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local!!) { remoteAddress, remoteDevice ->
                 println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
                 false
             }
@@ -34,7 +37,7 @@ class NetTest {
         val job2 = launch(Dispatchers.IO) {
             val dc = DatagramChannel.open()
             dc.setOption(StandardSocketOptions.SO_BROADCAST, true)
-            dc.bind(InetSocketAddress(broadcast, 6666))
+            dc.bind(InetSocketAddress(if (systemName?.contains("Windows") == true) local else broadcast, 6666))
             val byteBuffer = ByteBuffer.allocate(1024)
             while (true) {
                 byteBuffer.clear()

@@ -13,6 +13,7 @@ import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
+import kotlin.jvm.Throws
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -134,6 +135,7 @@ class BroadcastSender(
     }
 }
 
+@Throws(IOException::class)
 suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long, checkDuration: Long,
                                     handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
     val broadcastReceiver = BroadcastReceiver(localAddress, timeoutRemove,checkDuration)
