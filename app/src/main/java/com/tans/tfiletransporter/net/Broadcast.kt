@@ -86,11 +86,16 @@ internal class BroadcastSender(
                 val isAccept = ssc.acceptSuspend().use { clientSsc ->
                     clientSsc.readSuspend(byteBuffer)
                     byteBuffer.position(NET_BUFFER_SIZE - 4)
+                    // 1. Get message size
                     val remoteDeviceInfoSize = min(max(byteBuffer.asIntBuffer().get(), 0), NET_BUFFER_SIZE)
                     byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
                     clientSsc.readSuspend(byteBuffer)
                     byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
-                    val remoteInfo = String(byteBuffer.array().takeLast(remoteDeviceInfoSize).toByteArray(), Charsets.UTF_8)
+
+                    // 2. Get remote device info.
+                    val remoteInfo = String(byteBuffer.compact().array(), Charsets.UTF_8)
+
+                    // 3. Accept or deny.
                     if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
                         byteBuffer.clear()
                         byteBuffer.put(0x00)
