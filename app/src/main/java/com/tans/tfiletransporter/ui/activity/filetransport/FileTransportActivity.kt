@@ -27,55 +27,35 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         super.onCreate(savedInstanceState)
 
         launch {
-            val grant = RxPermissions(this@FileTransportActivity).let {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE)
-                } else {
-                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    when (tab?.position) {
+                        DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
+                        DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(DirTabType.RemoteDir) }.bindLife()
+                    }
                 }
-            }.firstOrError().await()
 
-            if (grant) {
-                binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-                    override fun onTabSelected(tab: TabLayout.Tab?) {
-                        when (tab?.position) {
-                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
-                            DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(DirTabType.RemoteDir) }.bindLife()
-                        }
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+                }
+
+                override fun onTabReselected(tab: TabLayout.Tab?) {
+                }
+            })
+
+            binding.floatingActionBt.clicks()
+                .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
+                .bindLife()
+
+
+            render({ it.selectedTabType }) {
+                binding.floatingActionBt.setImageResource(
+                    when (it) {
+                        DirTabType.MyDir -> R.drawable.share_variant_outline
+                        DirTabType.RemoteDir -> R.drawable.download_outline
                     }
-                    override fun onTabUnselected(tab: TabLayout.Tab?) {
-                    }
-                    override fun onTabReselected(tab: TabLayout.Tab?) {
-                    }
-                })
-
-                binding.floatingActionBt.clicks()
-                        .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
-                        .bindLife()
-
-
-//                fileTransportScopeData.snackMessage
-//                        .observeOn(AndroidSchedulers.mainThread())
-//                        .doOnNext { msg ->
-//                            Snackbar.make(binding.coordinatorLayout, msg, Snackbar.LENGTH_SHORT)
-//                                    // .setAnchorView(binding.fragmentContainerLayout)
-//                                    .setAnimationMode(Snackbar.ANIMATION_MODE_FADE)
-//                                    .show()
-//                        }
-//                        .bindLife()
-
-                render({ it.selectedTabType }) {
-                    binding.floatingActionBt.setImageResource(
-                        when (it) {
-                            DirTabType.MyDir -> R.drawable.share_variant_outline
-                            DirTabType.RemoteDir -> R.drawable.download_outline
-                        }
-                    )
-                    changeDirFragment(it)
-                }.bindLife()
-            } else {
-                finish()
-            }
+                )
+                changeDirFragment(it)
+            }.bindLife()
         }
 
     }
