@@ -35,7 +35,7 @@ fun Activity.showBroadcastSenderDialog(localAddress: InetAddress): Single<Option
                         launchBroadcastSender(localAddress = localAddress) { remoteAddress, remoteDevice ->
                             val result = withContext(Dispatchers.Main) {
                                 showOptionalDialog(
-                                    title = getString(R.string.broadcast_connection_title),
+                                    title = getString(R.string.broadcast_request_connect),
                                     message = getString(R.string.broadcast_remote_info, remoteDevice, (remoteAddress as InetSocketAddress).address.hostAddress),
                                     cancelable = false,
                                     positiveButtonText = getString(R.string.broadcast_request_accept),
