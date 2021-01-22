@@ -9,9 +9,14 @@ import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.launchBroadcastSender
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
 import io.reactivex.Single
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.withContext
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.util.*
 
 fun Activity.showBroadcastSenderDialog(localAddress: InetAddress): Single<Optional<RemoteDevice>> {
@@ -28,8 +33,16 @@ fun Activity.showBroadcastSenderDialog(localAddress: InetAddress): Single<Option
                 launch {
                     val result = runCatching {
                         launchBroadcastSender(localAddress = localAddress) { remoteAddress, remoteDevice ->
-                            // TODO: set option dialog.
-                            false
+                            val result = withContext(Dispatchers.Main) {
+                                showOptionalDialog(
+                                    title = getString(R.string.broadcast_connection_title),
+                                    message = getString(R.string.broadcast_remote_info, remoteDevice, (remoteAddress as InetSocketAddress).address.hostAddress),
+                                    cancelable = false,
+                                    positiveButtonText = getString(R.string.broadcast_request_accept),
+                                    negativeButtonText = getString(R.string.broadcast_request_deny)
+                                ).await()
+                            }
+                            result.orElse(false)
                         }
                     }
                     if (!emitter.isDisposed) {

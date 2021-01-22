@@ -19,6 +19,10 @@
     <string name="broadcast_connection_as_sender">As Server</string>
     <string name="broadcast_waiting_connect">Waiting connect&#8230;</string>
     <string name="broadcast_waiting_cancel">Cancel</string>
+    <string name="broadcast_request_connect">Request Connect</string>
+    <string name="broadcast_remote_info">%s: %s</string>
+    <string name="broadcast_request_accept">Accept</string>
+    <string name="broadcast_request_deny">Deny</string>
     <!-- Connection Activity End -->
 
 </resources>
