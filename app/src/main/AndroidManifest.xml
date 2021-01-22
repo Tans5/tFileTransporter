@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:allowBackup="false"
@@ -24,13 +25,16 @@
 <!--            </intent-filter>-->
 <!--        </activity>-->
 
-        <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity"
-            android:screenOrientation="portrait" >
+        <activity android:name=".ui.activity.connection.ConnectionActivity"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity"
+            android:screenOrientation="portrait" />
 
     </application>
 
