@@ -32,10 +32,10 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
         binding.ipAddressTv.text = getString(R.string.broadcast_connection_local_ip_address, localIp.hostAddress)
 
         binding.searchServerLayout.clicks()
-            .doOnNext {
-                startActivity(Intent().setClass(requireContext(), FileTransportActivity::class.java))
-            }
-            .bindLife()
+                .switchMapSingle {
+                    requireActivity().showBroadcastReceiverDialog(localIp)
+                }
+                .bindLife()
 
         binding.asServerLayout.clicks()
             .switchMapSingle {

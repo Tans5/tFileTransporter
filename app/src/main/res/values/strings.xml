@@ -17,12 +17,17 @@
     <string name="broadcast_connection_local_ip_address">Local IP Address: %s</string>
     <string name="broadcast_connection_as_receiver">Search Servers</string>
     <string name="broadcast_connection_as_sender">As Server</string>
+
     <string name="broadcast_waiting_connect">Waiting connect&#8230;</string>
     <string name="broadcast_waiting_cancel">Cancel</string>
+
     <string name="broadcast_request_connect">Request Connect</string>
     <string name="broadcast_remote_info">%s: %s</string>
     <string name="broadcast_request_accept">Accept</string>
     <string name="broadcast_request_deny">Deny</string>
+
+    <string name="broadcast_searching_server">Searching&#8230;</string>
+    <string name="broadcast_searching_cancel">Cancel</string>
     <!-- Connection Activity End -->
 
 </resources>

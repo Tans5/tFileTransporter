@@ -136,7 +136,7 @@ class BroadcastSender(
 }
 
 @Throws(IOException::class)
-suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long, checkDuration: Long,
+suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long = 5000, checkDuration: Long = 2000,
                                     handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
     val broadcastReceiver = BroadcastReceiver(localAddress, timeoutRemove,checkDuration)
     val receiverJob: Job = launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver() }
@@ -155,8 +155,8 @@ class BroadcastReceiver(
     @Throws(IOException::class)
     internal suspend fun startBroadcastReceiver() {
 
-        // Remote out of date devices.
         coroutineScope {
+            // Remote out of date devices.
             launch {
                 while (true) {
                     val oldState = bindState().firstOrError().await()
@@ -171,20 +171,22 @@ class BroadcastReceiver(
                     delay(checkDuration)
                 }
             }
-        }
 
-        // Receive broadcast
-        val dc = openDatagramChannel()
-        dc.socket().soTimeout = Int.MAX_VALUE
-        dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
-        dc.bindSuspend(InetSocketAddress(broadcast, BROADCAST_RECEIVER_PORT))
-        val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        while (true) {
-            byteBuffer.clear()
-            val remoteAddress = dc.receiveSuspend(byteBuffer)
-            byteBuffer.flip()
-            val remoteDeviceInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
-            newRemoteDeviceComing(remoteAddress to remoteDeviceInfo)
+            // Receive broadcast
+            launch {
+                val dc = openDatagramChannel()
+                dc.socket().soTimeout = Int.MAX_VALUE
+                dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
+                dc.bindSuspend(InetSocketAddress(broadcast, BROADCAST_RECEIVER_PORT))
+                val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                while (true) {
+                    byteBuffer.clear()
+                    val remoteAddress = dc.receiveSuspend(byteBuffer)
+                    byteBuffer.flip()
+                    val remoteDeviceInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
+                    newRemoteDeviceComing(remoteAddress to remoteDeviceInfo)
+                }
+            }
         }
     }
 
@@ -196,13 +198,13 @@ class BroadcastReceiver(
      * @see BroadcastSender startBroadcastListener method.
      */
     @Throws(IOException::class)
-    suspend fun connectTo(address: InetAddress, deviceInfo: String = "${Build.BRAND} ${Build.MODEL}"): Boolean {
+    suspend fun connectTo(address: InetAddress, yourDeviceInfo: String = "${Build.BRAND} ${Build.MODEL}"): Boolean {
         val sc = openAsynchronousSocketChannel()
         return sc.use {
             sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
             sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
             sc.connectSuspend(InetSocketAddress(address, BROADCAST_LISTENER_PORT))
-            val sendData = deviceInfo.toByteArray(Charsets.UTF_8).let {
+            val sendData = yourDeviceInfo.toByteArray(Charsets.UTF_8).let {
                 if (it.size > NET_BUFFER_SIZE) {
                     it.take(NET_BUFFER_SIZE).toByteArray()
                 } else {

@@ -65,7 +65,7 @@
 
             <TextView
                 android:id="@+id/files_count_tv"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="15dp"
                 android:layout_marginStart="5dp"
@@ -73,7 +73,7 @@
                 app:layout_constraintBottom_toBottomOf="@id/modified_date_tv"
                 app:layout_constraintStart_toEndOf="@id/modified_date_tv"
                 app:layout_constraintEnd_toStartOf="@id/arrow_iv"
-                app:layout_constraintWidth_default="wrap"
+                app:layout_constrainedWidth="true"
                 tools:text="5 files"/>
 
             <ImageView
