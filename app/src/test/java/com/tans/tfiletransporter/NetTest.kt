@@ -44,10 +44,10 @@ class NetTest {
             val byteBuffer = ByteBuffer.allocate(1024)
             while (true) {
                 byteBuffer.clear()
-                dc.receive(byteBuffer)
+                val remote = dc.receive(byteBuffer)
                 byteBuffer.flip()
                 val msg = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
-                println("Broadcast message: $msg")
+                println("Broadcast message: $msg, Address: ${(remote as InetSocketAddress).address.hostAddress}")
             }
         }
 
