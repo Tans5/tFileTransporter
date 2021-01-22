@@ -38,6 +38,9 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             .bindLife()
 
         binding.asServerLayout.clicks()
+            .switchMapSingle {
+                requireActivity().showBroadcastSenderDialog(localIp)
+            }
             .bindLife()
     }
 
