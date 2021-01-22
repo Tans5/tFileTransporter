@@ -21,7 +21,8 @@
             android:textColor="@color/md_dialog_title_color"
             android:layout_marginStart="?attr/dialogPreferredPadding"
             android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:text="@string/broadcast_searching_server"/>
+            android:text="@string/broadcast_searching_server"
+            android:textStyle="bold"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/servers_rv"
