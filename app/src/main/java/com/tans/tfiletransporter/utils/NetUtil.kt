@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.utils
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.*
+import java.nio.Buffer
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
@@ -133,4 +134,23 @@ fun ByteBuffer.copyAvailableBytes(): ByteArray {
     val limit = limit()
     val array = array()
     return ByteArray(limit - position) { i -> array[position + i] }
+}
+
+fun ByteBuffer.moveToEndSize(size: Int) {
+    val cap = capacity()
+    if (size > cap) error("Size: $size greater than Cap: $cap")
+    limit(cap)
+    position(cap - size)
+}
+
+suspend fun AsynchronousSocketChannel.readSuspendSize(byteBuffer: ByteBuffer, size: Int) {
+    byteBuffer.moveToEndSize(size)
+    readSuspend(byteBuffer)
+    byteBuffer.moveToEndSize(size)
+}
+
+suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, bytes: ByteArray) {
+    byteBuffer.moveToEndSize(bytes.size)
+    writeSuspend(byteBuffer)
+    byteBuffer.moveToEndSize(bytes.size)
 }

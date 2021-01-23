@@ -10,7 +10,7 @@ data class FileTree(
 )
 
 
-fun newRootFileTree(path: String = "/"): FileTree = FileTree(
+fun newRootFileTree(path: String = FileConstants.FILE_SEPARATOR): FileTree = FileTree(
     leafs = emptyList(),
     dirLeafs = emptyList(),
     fileLeafs = emptyList(),
