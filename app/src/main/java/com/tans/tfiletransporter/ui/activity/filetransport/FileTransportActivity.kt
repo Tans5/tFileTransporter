@@ -1,19 +1,23 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.Manifest
-import android.os.Build
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
+import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.ui.activity.BaseActivity
-import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
-import org.kodein.di.*
+import org.kodein.di.DI
 import org.kodein.di.android.di
 import org.kodein.di.android.retainedSubDI
+import org.kodein.di.bind
+import org.kodein.di.instance
+import org.kodein.di.singleton
+import java.net.InetAddress
+import java.net.InetSocketAddress
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -27,6 +31,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         super.onCreate(savedInstanceState)
 
         launch {
+
+            val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
+            binding.toolBar.title = remoteInfo
+            binding.toolBar.subtitle = remoteAddress.hostAddress
+
             binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     when (tab?.position) {
@@ -90,6 +99,27 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             }
         }
         transaction.commitAllowingStateLoss()
+    }
+
+    companion object {
+
+        private const val REMOTE_ADDRESS_EXTRA_KEY = "remote_address_extra_key"
+        private const val REMOTE_INFO_EXTRA_KEY = "remote_info_extra_key"
+        private const val IS_SERVER_EXTRA_KEY = "is_server_extra_key"
+
+        private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(REMOTE_ADDRESS_EXTRA_KEY) as? InetAddress ?: error("FileTransportActivity get remote address fail.")
+
+        private fun Intent.getRemoteInfo(): String = getStringExtra(REMOTE_INFO_EXTRA_KEY) ?: ""
+
+        private fun Intent.getIsServer(): Boolean = getBooleanExtra(IS_SERVER_EXTRA_KEY, false)
+
+        fun getIntent(context: Context, remoteDevice: RemoteDevice, asServer: Boolean): Intent {
+            val i = Intent(context, FileTransportActivity::class.java)
+            i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, (remoteDevice.first as InetSocketAddress).address)
+            i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDevice.second)
+            i.putExtra(IS_SERVER_EXTRA_KEY, asServer)
+            return i
+        }
     }
 
 }

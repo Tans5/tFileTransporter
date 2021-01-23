@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -26,7 +27,7 @@
                     android:layout_height="wrap_content"
                     app:titleTextColor="@color/black_1"
                     app:subtitleTextColor="@color/black_1"
-                    app:title="@string/app_name" />
+                    tools:title="@string/app_name" />
 
             </com.google.android.material.appbar.CollapsingToolbarLayout>
 

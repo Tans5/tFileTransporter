@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.ui.activity.connection
 
-import android.content.Intent
 import android.net.NetworkInfo
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
@@ -34,12 +33,22 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
         binding.searchServerLayout.clicks()
                 .switchMapSingle {
                     requireActivity().showBroadcastReceiverDialog(localIp)
+                            .doOnSuccess {
+                                if (it.isPresent) {
+                                    startActivity(FileTransportActivity.getIntent(requireContext(), it.get(), false))
+                                }
+                            }
                 }
                 .bindLife()
 
         binding.asServerLayout.clicks()
             .switchMapSingle {
                 requireActivity().showBroadcastSenderDialog(localIp)
+                        .doOnSuccess {
+                            if (it.isPresent) {
+                                startActivity(FileTransportActivity.getIntent(requireContext(), it.get(), true))
+                            }
+                        }
             }
             .bindLife()
     }
