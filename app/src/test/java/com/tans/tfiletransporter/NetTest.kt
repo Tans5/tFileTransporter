@@ -1,21 +1,26 @@
 package com.tans.tfiletransporter
 
 import com.tans.tfiletransporter.net.launchBroadcastSender
-import com.tans.tfiletransporter.utils.copyAvailableBytes
-import com.tans.tfiletransporter.utils.findLocalAddressV4
-import com.tans.tfiletransporter.utils.getBroadcastAddress
-import com.tans.tfiletransporter.utils.toBytes
+import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.io.File
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 import java.lang.Exception
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
+import java.nio.channels.Channels
 import java.nio.channels.DatagramChannel
+import java.nio.channels.FileChannel
 import java.nio.channels.SocketChannel
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.util.*
 
 class NetTest {
 
@@ -80,4 +85,53 @@ class NetTest {
 //        job3.join()
 
     }
+
+//    @Test
+//    fun testPipeStream() = runBlocking {
+//        val outputStream = PipedOutputStream()
+//        val inputStream = PipedInputStream(outputStream)
+//        launch(Dispatchers.IO) {
+//            val bytes = ByteArray(20)
+//            var totalSize = 0
+//            while (true) {
+//                val size = inputStream.read(bytes)
+//                if (size == -1) {
+//                    break
+//                } else {
+//                    totalSize += size
+//                }
+//            }
+//            inputStream.close()
+//            println("Total Size: $totalSize")
+//
+//        }
+//        launch(Dispatchers.IO) {
+//            val fc = FileChannel.open(Paths.get("a.text"), StandardOpenOption.READ)
+//            val bufferSize = 20
+//            val buffer = ByteBuffer.allocate(bufferSize)
+//            val limitSize = 1025
+//            var readSize = 0
+//            var isFinish = false
+//            while (readSize < limitSize) {
+//                if (readSize + bufferSize >= limitSize)  {
+//                    buffer.moveToEndSize(limitSize - readSize)
+//                    fc.read(buffer)
+//                    buffer.moveToEndSize(limitSize - readSize)
+//                    isFinish = true
+//                } else {
+//                    buffer.clear()
+//                    fc.read(buffer)
+//                    buffer.flip()
+//                }
+//                val data = buffer.copyAvailableBytes()
+//                outputStream.write(data)
+//                if (isFinish) {
+//                    outputStream.close()
+//                }
+//
+//                readSize += data.size
+//            }
+//        }
+//        Unit
+//    }
 }
