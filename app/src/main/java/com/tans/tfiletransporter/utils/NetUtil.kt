@@ -8,6 +8,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.InputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
+import java.lang.Exception
 import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.*
@@ -189,4 +190,20 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
             }
         }
     }
+}
+
+suspend fun ReadableByteChannel.readSuspend(dst: ByteBuffer): Int = blockToSuspend(cancel = { if (isOpen) close() }) { read(dst) }
+
+suspend fun ReadableByteChannel.readSuspendSize(byteBuffer: ByteBuffer, size: Int) {
+    byteBuffer.moveToEndSize(size)
+    readSuspend(byteBuffer)
+    byteBuffer.moveToEndSize(size)
+}
+
+suspend fun WritableByteChannel.writeSuspend(src: ByteBuffer): Int = blockToSuspend(cancel = { if (isOpen) close() }) { write(src) }
+
+suspend fun WritableByteChannel.writeSuspendSize(byteBuffer: ByteBuffer, size: Int) {
+    byteBuffer.moveToEndSize(size)
+    writeSuspend(byteBuffer)
+    byteBuffer.moveToEndSize(size)
 }
