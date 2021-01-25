@@ -87,51 +87,18 @@ class NetTest {
     }
 
 //    @Test
-//    fun testPipeStream() = runBlocking {
-//        val outputStream = PipedOutputStream()
-//        val inputStream = PipedInputStream(outputStream)
-//        launch(Dispatchers.IO) {
-//            val bytes = ByteArray(20)
-//            var totalSize = 0
-//            while (true) {
-//                val size = inputStream.read(bytes)
-//                if (size == -1) {
-//                    break
-//                } else {
-//                    totalSize += size
-//                }
-//            }
-//            inputStream.close()
-//            println("Total Size: $totalSize")
-//
-//        }
-//        launch(Dispatchers.IO) {
+//    fun readLimitTest() = runBlocking {
+//        val job = launch(Dispatchers.IO) {
 //            val fc = FileChannel.open(Paths.get("a.text"), StandardOpenOption.READ)
-//            val bufferSize = 20
-//            val buffer = ByteBuffer.allocate(bufferSize)
-//            val limitSize = 1025
-//            var readSize = 0
-//            var isFinish = false
-//            while (readSize < limitSize) {
-//                if (readSize + bufferSize >= limitSize)  {
-//                    buffer.moveToEndSize(limitSize - readSize)
-//                    fc.read(buffer)
-//                    buffer.moveToEndSize(limitSize - readSize)
-//                    isFinish = true
-//                } else {
-//                    buffer.clear()
-//                    fc.read(buffer)
-//                    buffer.flip()
+//            fc.readDataLimit(2048) {
+//                val scanner = Scanner(it)
+//                scanner.use {
+//                    while (scanner.hasNextLine()) {
+//                        println(scanner.nextLine())
+//                    }
 //                }
-//                val data = buffer.copyAvailableBytes()
-//                outputStream.write(data)
-//                if (isFinish) {
-//                    outputStream.close()
-//                }
-//
-//                readSize += data.size
 //            }
 //        }
-//        Unit
+//        job.join()
 //    }
 }

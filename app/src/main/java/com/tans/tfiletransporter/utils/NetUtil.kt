@@ -1,13 +1,16 @@
 package com.tans.tfiletransporter.utils
 
+import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.InputStream
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 import java.net.*
-import java.nio.Buffer
 import java.nio.ByteBuffer
-import java.nio.channels.AsynchronousServerSocketChannel
-import java.nio.channels.AsynchronousSocketChannel
-import java.nio.channels.CompletionHandler
-import java.nio.channels.DatagramChannel
+import java.nio.channels.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -153,4 +156,37 @@ suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, b
     byteBuffer.moveToEndSize(bytes.size)
     writeSuspend(byteBuffer)
     byteBuffer.moveToEndSize(bytes.size)
+}
+
+suspend fun AsynchronousSocketChannel.readDataLimit(
+    limit: Int,
+    bufferSize: Int = NET_BUFFER_SIZE,
+    handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
+    if (limit <= 0) error("Wrong limit size: $limit")
+    val outputStream = PipedOutputStream()
+    launch(Dispatchers.IO) { handle(PipedInputStream(outputStream)) }
+    launch(Dispatchers.IO) {
+        val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
+        var readSize = 0
+        while (true) {
+            if (readSize + bufferSize >= limit) {
+//                buffer.moveToEndSize(limit - readSize)
+//                read(buffer)
+//                buffer.moveToEndSize(limit - readSize)
+                readSuspendSize(buffer, limit - readSize)
+                outputStream.write(buffer.copyAvailableBytes())
+                outputStream.flush()
+                readSize += (limit - readSize)
+                outputStream.close()
+                break
+            } else {
+                buffer.clear()
+                readSuspend(buffer)
+                // read(buffer)
+                buffer.flip()
+                outputStream.write(buffer.copyAvailableBytes())
+                readSize += bufferSize
+            }
+        }
+    }
 }
