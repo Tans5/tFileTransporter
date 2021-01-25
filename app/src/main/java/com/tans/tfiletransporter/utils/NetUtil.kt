@@ -154,9 +154,11 @@ suspend fun AsynchronousSocketChannel.readSuspendSize(byteBuffer: ByteBuffer, si
 }
 
 suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, bytes: ByteArray) {
-    byteBuffer.moveToEndSize(bytes.size)
+    byteBuffer.limit(bytes.size)
+    byteBuffer.position(0)
+    byteBuffer.put(bytes)
+    byteBuffer.flip()
     writeSuspend(byteBuffer)
-    byteBuffer.moveToEndSize(bytes.size)
 }
 
 suspend fun AsynchronousSocketChannel.readDataLimit(
@@ -203,8 +205,10 @@ suspend fun ReadableByteChannel.readSuspendSize(byteBuffer: ByteBuffer, size: In
 
 suspend fun WritableByteChannel.writeSuspend(src: ByteBuffer): Int = blockToSuspend(cancel = { if (isOpen) close() }) { write(src) }
 
-suspend fun WritableByteChannel.writeSuspendSize(byteBuffer: ByteBuffer, size: Int) {
-    byteBuffer.moveToEndSize(size)
+suspend fun WritableByteChannel.writeSuspendSize(byteBuffer: ByteBuffer, bytes: ByteArray) {
+    byteBuffer.limit(bytes.size)
+    byteBuffer.position(0)
+    byteBuffer.put(bytes)
+    byteBuffer.flip()
     writeSuspend(byteBuffer)
-    byteBuffer.moveToEndSize(size)
 }

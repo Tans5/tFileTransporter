@@ -60,7 +60,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
                 }
                 val dialog = withContext(Dispatchers.Main) { showLoadingDialog(cancelable = false) }
-                runCatching { fileTransporter.whenConnectReady() }
+                val remoteSeparator = runCatching { fileTransporter.whenConnectReady() }
                 withContext(Dispatchers.Main) { dialog.cancel() }
             }
 
