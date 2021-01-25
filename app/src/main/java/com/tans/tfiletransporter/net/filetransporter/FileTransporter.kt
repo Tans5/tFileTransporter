@@ -7,6 +7,7 @@ import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx2.await
 import java.io.IOException
+import java.lang.Exception
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
@@ -33,12 +34,6 @@ suspend fun FileTransporter.launchFileTransport(
     launch(Dispatchers.IO) { handle.invoke(this@launchFileTransport) }
 }
 
-/**
- * @return remote device file separator.
- */
-//suspend fun FileTransporter.whenConnectReady(): String {
-//
-//}
 
 class FileTransporter(private val localAddress: InetAddress,
                       private val remoteAddress: InetAddress,
@@ -49,22 +44,27 @@ class FileTransporter(private val localAddress: InetAddress,
         val sc = openAsynchronousSocketChannel()
         delay(500)
         sc.use {
-            sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-            sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
-            sc.connectSuspend(InetSocketAddress(remoteAddress, FILE_TRANSPORT_LISTEN_PORT))
-            val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-            sc.readSuspendSize(buffer, 1)
-            if (buffer.get() == VERSION_INT) {
-                val separatorBytes = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
-                sc.writeSuspendSize(buffer, separatorBytes.size.toBytes() + separatorBytes)
-                sc.readSuspendSize(buffer, 4)
-                val separatorSize = buffer.asIntBuffer().get()
-                sc.readSuspendSize(buffer, separatorSize)
-                val remoteSeparator = String(buffer.copyAvailableBytes(), Charsets.UTF_8)
-                updateState { remoteSeparator }.await()
-                handleAction(sc, remoteSeparator)
-            } else {
-                throw VersionCheckError
+            try {
+                sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
+                sc.connectSuspend(InetSocketAddress(remoteAddress, FILE_TRANSPORT_LISTEN_PORT))
+                val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                sc.readSuspendSize(buffer, 1)
+                if (buffer.get() == VERSION_INT) {
+                    val separatorBytes = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
+                    sc.writeSuspendSize(buffer, separatorBytes.size.toBytes() + separatorBytes)
+                    sc.readSuspendSize(buffer, 4)
+                    val separatorSize = buffer.asIntBuffer().get()
+                    sc.readSuspendSize(buffer, separatorSize)
+                    val remoteSeparator = String(buffer.copyAvailableBytes(), Charsets.UTF_8)
+                    updateState { remoteSeparator }.await()
+                    handleAction(sc, remoteSeparator)
+                } else {
+                    throw VersionCheckError
+                }
+            } catch (e: Exception) {
+                stateStore.onError(e)
+                throw e
             }
         }
     }
@@ -73,23 +73,35 @@ class FileTransporter(private val localAddress: InetAddress,
     internal suspend fun startAsServer() {
         val ssc = openAsynchronousServerSocketChannelSuspend()
         ssc.use {
-            ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-            ssc.bindSuspend(InetSocketAddress(localAddress, FILE_TRANSPORT_LISTEN_PORT), 1)
-            val sc = ssc.acceptSuspend()
-            sc.use {
-                val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-                sc.writeSuspendSize(buffer, arrayOf(VERSION_INT).toByteArray())
-                sc.readSuspendSize(buffer, 4)
-                val size = buffer.asIntBuffer().get()
-                sc.readSuspendSize(buffer, size)
-                val remoteSeparator = String(buffer.copyAvailableBytes(), Charsets.UTF_8)
-                val localSeparatorData = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
-                sc.writeSuspendSize(buffer, localSeparatorData.size.toBytes() + localSeparatorData)
-                updateState { remoteSeparator }.await()
-                handleAction(sc, remoteSeparator)
+            try {
+                ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                ssc.bindSuspend(InetSocketAddress(localAddress, FILE_TRANSPORT_LISTEN_PORT), 1)
+                val sc = ssc.acceptSuspend()
+                sc.use {
+                    val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                    sc.writeSuspendSize(buffer, arrayOf(VERSION_INT).toByteArray())
+                    sc.readSuspendSize(buffer, 4)
+                    val size = buffer.asIntBuffer().get()
+                    sc.readSuspendSize(buffer, size)
+                    val remoteSeparator = String(buffer.copyAvailableBytes(), Charsets.UTF_8)
+                    val localSeparatorData = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
+                    sc.writeSuspendSize(buffer, localSeparatorData.size.toBytes() + localSeparatorData)
+                    updateState { remoteSeparator }.await()
+                    handleAction(sc, remoteSeparator)
+                }
+            } catch (e: Exception) {
+                stateStore.onError(e)
+                throw e
             }
         }
     }
+
+    /**
+     * @return remote device file separator.
+     */
+    suspend fun whenConnectReady(): String = bindState().filter { it.isNotEmpty() }
+        .firstOrError()
+        .await()
 
     private suspend fun handleAction(sc: AsynchronousSocketChannel, remoteFileSeparator: String) = coroutineScope {
         launch {
