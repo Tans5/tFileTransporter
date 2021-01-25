@@ -13,8 +13,10 @@ import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.withContext
 import org.kodein.di.DI
 import org.kodein.di.android.di
@@ -57,6 +59,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         fileTransporter.launchFileTransport(isServer) {
                             // TODO: Handle Reade.
                         }
+                    }
+                    withContext(Dispatchers.Main) {
+                        showNoOptionalDialog(
+                                title = getString(R.string.connection_error_title),
+                                message = getString(R.string.connection_error_message),
+                                cancelable = true
+                        ).await()
+                        finish()
                     }
                 }
                 val dialog = withContext(Dispatchers.Main) { showLoadingDialog(cancelable = false) }

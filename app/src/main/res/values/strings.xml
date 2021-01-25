@@ -9,6 +9,9 @@
     <string name="file_size_MB">%.1f MB</string>
     <string name="file_size_GB">%.1f GB</string>
     <string name="file_count">%d files</string>
+
+    <string name="connection_error_title">Connection Error</string>
+    <string name="connection_error_message">Connection has been broken, please reconnect.</string>
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
