@@ -1,17 +1,23 @@
 package com.tans.tfiletransporter.net.filetransporter
 
+import com.squareup.moshi.Types
+import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.utils.readDataLimit
 import com.tans.tfiletransporter.utils.readSuspend
+import com.tans.tfiletransporter.utils.readSuspendSize
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
+import java.util.*
 
 
 interface ReaderHandleChains<T> {
     var chains: List<ReaderHandleChain<T>>
 
-    suspend fun process(data: T, inputStream: InputStream, limit: Int) {
+    suspend fun process(data: T, inputStream: InputStream, limit: Long) {
         val chains = chains
         val lastIndex = chains.lastIndex
         val chain = chains[lastIndex]
@@ -30,7 +36,7 @@ interface ReaderHandleChains<T> {
     }
 }
 
-typealias ReaderHandleChain<T> = suspend (data: T, inputStream: InputStream, limit: Int, chains: ReaderHandleChains<T>?) -> Unit
+typealias ReaderHandleChain<T> = suspend (data: T, inputStream: InputStream, limit: Long, chains: ReaderHandleChains<T>?) -> Unit
 
 fun <T> ReaderHandleChains(defaultChain: ReaderHandleChain<T> = { _, inputStream, _, _ ->
     val c = Channels.newChannel(inputStream)
@@ -44,7 +50,88 @@ fun <T> ReaderHandleChains(defaultChain: ReaderHandleChain<T> = { _, inputStream
 }
 
 
-
 sealed class FileTransporterReaderHandle {
-    abstract fun handle(readChannel: AsynchronousSocketChannel)
+    abstract suspend fun handle(readChannel: AsynchronousSocketChannel)
+
+    suspend fun AsynchronousSocketChannel.simpleSizeDeal(chains: ReaderHandleChains<Unit>) {
+        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+        readSuspendSize(buffer, 4)
+        val limit = buffer.asIntBuffer().get()
+        readDataLimit(
+                limit = limit.toLong(),
+                buffer = buffer
+        ) { inputStream -> chains.process(Unit, inputStream, limit.toLong()) }
+    }
+}
+
+/**
+ * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.RequestFolderChildrenShare
+ */
+class RequestFolderChildrenShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<Unit> by ReaderHandleChains() {
+
+    override suspend fun handle(readChannel: AsynchronousSocketChannel) { readChannel.simpleSizeDeal(this) }
+}
+
+/**
+ * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.FolderChildrenShare
+ */
+class FolderChildrenShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<Unit> by ReaderHandleChains() {
+
+    override suspend fun handle(readChannel: AsynchronousSocketChannel) { readChannel.simpleSizeDeal(this) }
+}
+
+/**
+ * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.RequestFilesShare
+ */
+class RequestFilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<Unit> by ReaderHandleChains() {
+
+    override suspend fun handle(readChannel: AsynchronousSocketChannel) { readChannel.simpleSizeDeal(this) }
+}
+
+/**
+ * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.FilesShare
+ */
+class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<List<File>> by ReaderHandleChains() {
+
+    override suspend fun handle(readChannel: AsynchronousSocketChannel) {
+        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+        readChannel.readSuspendSize(buffer, 4)
+        val limit = buffer.asIntBuffer().get()
+        readChannel.readDataLimit(
+                limit = limit.toLong(),
+                buffer = buffer
+        ) { inputStream ->
+            val scanner = Scanner(inputStream)
+            val stringBuilder = StringBuilder()
+            scanner.use {
+                while (scanner.hasNextLine()) {
+                    stringBuilder.appendLine(scanner.nextLine())
+                }
+            }
+            val filesJson = stringBuilder.toString()
+            val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
+            val files: List<File>? = moshi.adapter<List<File>>(moshiType).fromJson(filesJson)
+            if (files.isNullOrEmpty()) {
+                throw error("FilesShareReaderHandle, wrong files string: $filesJson")
+            } else {
+                val filesLimit = files.sumOf { it.size }
+                readChannel.readDataLimit(
+                        limit = filesLimit,
+                        buffer = buffer
+                ) { fileInputStream ->
+                    process(files, fileInputStream, filesLimit)
+                }
+            }
+        }
+    }
+
+}
+
+/**
+ * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.SendMessage
+ */
+class SendMessageReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<Unit> by ReaderHandleChains() {
+
+    override suspend fun handle(readChannel: AsynchronousSocketChannel) { readChannel.simpleSizeDeal(this) }
+
 }

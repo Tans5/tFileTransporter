@@ -160,24 +160,25 @@ suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, b
 }
 
 suspend fun AsynchronousSocketChannel.readDataLimit(
-    limit: Int,
-    bufferSize: Int = NET_BUFFER_SIZE,
+    limit: Long,
+    buffer: ByteBuffer,
     handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     launch(Dispatchers.IO) { handle(PipedInputStream(outputStream)) }
     launch(Dispatchers.IO) {
-        val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
-        var readSize = 0
+        val bufferSize = buffer.capacity()
+        var readSize = 0L
         while (true) {
             if (readSize + bufferSize >= limit) {
 //                buffer.moveToEndSize(limit - readSize)
 //                read(buffer)
 //                buffer.moveToEndSize(limit - readSize)
-                readSuspendSize(buffer, limit - readSize)
+                val thisTimeRead = limit - readSize
+                readSuspendSize(buffer, thisTimeRead.toInt())
                 outputStream.write(buffer.copyAvailableBytes())
                 outputStream.flush()
-                readSize += (limit - readSize)
+                readSize += thisTimeRead
                 outputStream.close()
                 break
             } else {

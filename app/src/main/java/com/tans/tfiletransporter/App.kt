@@ -32,6 +32,10 @@ class OffsetDataTimeJsonAdapter : JsonAdapter<OffsetDateTime>() {
 
 }
 
+val moshi = Moshi.Builder()
+        .add(OffsetDateTime::class.java, OffsetDataTimeJsonAdapter())
+        .build()
+
 class App : Application(), DIAware {
 
     override val di: DI by DI.lazy {
@@ -39,11 +43,7 @@ class App : Application(), DIAware {
         import(androidXModule(this@App), allowOverride = true)
 
 
-        bind<Moshi>() with singleton {
-            Moshi.Builder()
-                .add(OffsetDateTime::class.java, OffsetDataTimeJsonAdapter())
-                .build()
-        }
+        bind<Moshi>() with singleton { moshi }
     }
 
     override fun onCreate() {

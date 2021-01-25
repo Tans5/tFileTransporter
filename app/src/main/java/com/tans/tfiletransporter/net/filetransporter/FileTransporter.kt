@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.net.filetransporter
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx2.await
@@ -38,6 +39,12 @@ suspend fun FileTransporter.launchFileTransport(
 class FileTransporter(private val localAddress: InetAddress,
                       private val remoteAddress: InetAddress,
                       private val localFileSystemSeparator: String = FileConstants.FILE_SEPARATOR): Stateable<String> by Stateable("") {
+
+    private val requestFolderChildrenShareReaderHandle = RequestFolderChildrenShareReaderHandle()
+    private val folderChildrenShareReaderHandle = FolderChildrenShareReaderHandle()
+    private val requestFileShareReaderHandle = RequestFilesShareReaderHandle()
+    private val fileShareReaderHandle = FilesShareReaderHandle()
+    private val sendMessageReaderHandle = SendMessageReaderHandle()
 
     @Throws(IOException::class)
     internal suspend fun startAsClient() {
@@ -103,11 +110,47 @@ class FileTransporter(private val localAddress: InetAddress,
         .firstOrError()
         .await()
 
-    private suspend fun handleAction(sc: AsynchronousSocketChannel, remoteFileSeparator: String) = coroutineScope {
-        launch {
+    suspend fun requestFolderChildrenShareChain(readerHandleChain: ReaderHandleChain<Unit>) {
+        requestFolderChildrenShareReaderHandle.newChain(readerHandleChain)
+    }
 
+    suspend fun folderChildrenShareChain(readerHandleChain: ReaderHandleChain<Unit>) {
+        folderChildrenShareReaderHandle.newChain(readerHandleChain)
+    }
+
+    suspend fun requestFilesShareChain(readerHandleChain: ReaderHandleChain<Unit>) {
+        requestFileShareReaderHandle.newChain(readerHandleChain)
+    }
+
+    suspend fun filesShareChain(readerHandleChain: ReaderHandleChain<List<File>>) {
+        fileShareReaderHandle.newChain(readerHandleChain)
+    }
+
+    suspend fun sendMessageChain(readerHandleChain: ReaderHandleChain<Unit>) {
+        sendMessageReaderHandle.newChain(readerHandleChain)
+    }
+
+    private suspend fun handleAction(sc: AsynchronousSocketChannel, remoteFileSeparator: String) = coroutineScope {
+
+        // Read
+        launch {
+            val actionBuffer = ByteBuffer.allocate(1)
+            while (true) {
+                actionBuffer.clear()
+                sc.readSuspend(actionBuffer)
+                actionBuffer.flip()
+                when (val actionCode = actionBuffer.get()) {
+                    FileNetAction.RequestFolderChildrenShare.actionCode -> requestFolderChildrenShareReaderHandle.handle(sc)
+                    FileNetAction.FolderChildrenShare.actionCode -> folderChildrenShareReaderHandle.handle(sc)
+                    FileNetAction.RequestFilesShare.actionCode -> requestFileShareReaderHandle.handle(sc)
+                    FileNetAction.FilesShare.actionCode -> fileShareReaderHandle.handle(sc)
+                    FileNetAction.SendMessage.actionCode -> sendMessageReaderHandle.handle(sc)
+                    else -> error("Unknown Action Code: $actionCode")
+                }
+            }
         }
 
+        // TODO: Write
         launch {
 
         }
