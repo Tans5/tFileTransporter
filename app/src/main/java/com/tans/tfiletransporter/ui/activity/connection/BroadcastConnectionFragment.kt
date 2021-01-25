@@ -35,7 +35,11 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                     requireActivity().showBroadcastReceiverDialog(localIp)
                             .doOnSuccess {
                                 if (it.isPresent) {
-                                    startActivity(FileTransportActivity.getIntent(requireContext(), it.get(), false))
+                                    startActivity(FileTransportActivity.getIntent(
+                                            context = requireContext(),
+                                            localAddress = localIp,
+                                            remoteDevice = it.get(),
+                                            asServer = false))
                                 }
                             }
                 }
@@ -46,7 +50,11 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                 requireActivity().showBroadcastSenderDialog(localIp)
                         .doOnSuccess {
                             if (it.isPresent) {
-                                startActivity(FileTransportActivity.getIntent(requireContext(), it.get(), true))
+                                startActivity(FileTransportActivity.getIntent(
+                                        context = requireContext(),
+                                        localAddress = localIp,
+                                        remoteDevice = it.get(),
+                                        asServer = true))
                             }
                         }
             }

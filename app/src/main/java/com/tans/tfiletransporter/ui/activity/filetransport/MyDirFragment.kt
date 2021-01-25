@@ -28,9 +28,6 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, FileTree>(R.layout.my_d
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
 
-    private val homePathString = Environment.getExternalStorageDirectory().path
-    private val homePath = Paths.get(homePathString)
-
     override fun onInit() {
         bindState()
                 .distinctUntilChanged()

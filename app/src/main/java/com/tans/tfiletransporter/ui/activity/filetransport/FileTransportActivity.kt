@@ -3,13 +3,19 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.net.RemoteDevice
+import com.tans.tfiletransporter.net.filetransporter.FileTransporter
+import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
 import com.tans.tfiletransporter.ui.activity.BaseActivity
+import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.kodein.di.DI
 import org.kodein.di.android.di
 import org.kodein.di.android.retainedSubDI
@@ -18,6 +24,10 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.nio.file.Paths
+
+val homePathString = Environment.getExternalStorageDirectory().path
+val homePath = Paths.get(homePathString)
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -33,8 +43,26 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         launch {
 
             val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
+            val localAddress = intent.getLocalAddress()
             binding.toolBar.title = remoteInfo
             binding.toolBar.subtitle = remoteAddress.hostAddress
+
+            val fileTransporter = FileTransporter(
+                    localAddress = localAddress,
+                    remoteAddress = remoteAddress
+            )
+            launch(Dispatchers.IO) {
+                launch {
+                    runCatching {
+                        fileTransporter.launchFileTransport(isServer) {
+                            // TODO: Handle Reade.
+                        }
+                    }
+                }
+                val dialog = withContext(Dispatchers.Main) { showLoadingDialog(cancelable = false) }
+                runCatching { fileTransporter.whenConnectReady() }
+                withContext(Dispatchers.Main) { dialog.cancel() }
+            }
 
             binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -103,9 +131,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     companion object {
 
+        private const val LOCAL_ADDRESS_EXTRA_KEY = "local_address_extra_key"
         private const val REMOTE_ADDRESS_EXTRA_KEY = "remote_address_extra_key"
         private const val REMOTE_INFO_EXTRA_KEY = "remote_info_extra_key"
         private const val IS_SERVER_EXTRA_KEY = "is_server_extra_key"
+
+        private fun Intent.getLocalAddress(): InetAddress = getSerializableExtra(LOCAL_ADDRESS_EXTRA_KEY) as? InetAddress ?: error("FileTransportActivity get local address fail.")
 
         private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(REMOTE_ADDRESS_EXTRA_KEY) as? InetAddress ?: error("FileTransportActivity get remote address fail.")
 
@@ -113,8 +144,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
         private fun Intent.getIsServer(): Boolean = getBooleanExtra(IS_SERVER_EXTRA_KEY, false)
 
-        fun getIntent(context: Context, remoteDevice: RemoteDevice, asServer: Boolean): Intent {
+        fun getIntent(context: Context,
+                      localAddress: InetAddress,
+                      remoteDevice: RemoteDevice,
+                      asServer: Boolean): Intent {
             val i = Intent(context, FileTransportActivity::class.java)
+            i.putExtra(LOCAL_ADDRESS_EXTRA_KEY, localAddress)
             i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, (remoteDevice.first as InetSocketAddress).address)
             i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDevice.second)
             i.putExtra(IS_SERVER_EXTRA_KEY, asServer)
