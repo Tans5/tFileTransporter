@@ -18,6 +18,7 @@ import java.nio.channels.Channels
 import java.nio.channels.DatagramChannel
 import java.nio.channels.FileChannel
 import java.nio.channels.SocketChannel
+import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.*
@@ -101,4 +102,20 @@ class NetTest {
 //        }
 //        job.join()
 //    }
+
+    @Test
+    fun writeSuspendSizeTest() = runBlocking {
+        val job = launch(Dispatchers.IO) {
+            val path = Paths.get("a.text")
+            if (!Files.exists(path)) {
+                Files.createFile(path)
+            }
+            val fc = FileChannel.open(path, StandardOpenOption.WRITE)
+            val data = "Hello, World!!!".toByteArray(Charsets.UTF_8)
+            val buffer = ByteBuffer.allocate(1024)
+            fc.writeSuspendSize(buffer, arrayOf(data[0]).toByteArray())
+            fc.close()
+        }
+        job.join()
+    }
 }
