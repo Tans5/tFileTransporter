@@ -6,6 +6,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.InputStream
+import java.io.OutputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.lang.Exception
@@ -162,9 +163,9 @@ suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, b
 }
 
 suspend fun AsynchronousSocketChannel.readDataLimit(
-    limit: Long,
-    buffer: ByteBuffer,
-    handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
+        limit: Long,
+        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+        handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     launch(Dispatchers.IO) { handle(PipedInputStream(outputStream)) }
@@ -190,6 +191,37 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
                 buffer.flip()
                 outputStream.write(buffer.copyAvailableBytes())
                 readSize += bufferSize
+            }
+        }
+    }
+}
+
+suspend fun AsynchronousSocketChannel.writeDataLimit(
+        limit: Long,
+        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+        handle: suspend (outputStream: OutputStream) -> Unit
+) = coroutineScope {
+    if (limit <= 0) error("Wrong limit size: $limit")
+    val inputStream = PipedInputStream()
+    launch(Dispatchers.IO) { handle(PipedOutputStream(inputStream)) }
+    launch(Dispatchers.IO) {
+        val bufferSize = buffer.capacity()
+        val readChannel = Channels.newChannel(inputStream)
+        var hasWriteSize = 0L
+        while (true) {
+            buffer.clear()
+            if (hasWriteSize + bufferSize >= limit) {
+                val lastTimeReadSize = limit - hasWriteSize
+                readChannel.readSuspendSize(buffer, lastTimeReadSize.toInt())
+                buffer.flip()
+                writeSuspend(buffer)
+                readChannel.close()
+                inputStream.close()
+            } else {
+                readChannel.readSuspend(buffer)
+                buffer.flip()
+                writeSuspend(buffer)
+                hasWriteSize += bufferSize
             }
         }
     }
