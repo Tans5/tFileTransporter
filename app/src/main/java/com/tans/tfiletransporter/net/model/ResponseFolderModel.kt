@@ -14,6 +14,7 @@ data class ResponseFolderModel(
 @JsonClass(generateAdapter = true)
 data class Folder(
     val name: String,
+    val path: String,
     @Json(name = "child_count") val childCount: Long,
     @Json(name = "last_modify") val lastModify: OffsetDateTime
 )
@@ -21,6 +22,7 @@ data class Folder(
 @JsonClass(generateAdapter = true)
 data class File(
     val name: String,
+    val path: String,
     val size: Long,
     @Json(name = "last_modify") val lastModify: OffsetDateTime
 )
