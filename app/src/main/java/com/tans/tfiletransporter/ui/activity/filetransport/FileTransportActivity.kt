@@ -9,11 +9,13 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
+import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
 import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.withContext
@@ -28,46 +30,59 @@ import java.net.InetSocketAddress
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
+    var remoteSeparator: String? = null
+    var writerHandleChannel: Channel<FileTransporterWriterHandle>? = null
+
     override val di: DI by retainedSubDI(di()) {
         // bind<FileTransportScopeData>() with scoped(AndroidLifecycleScope).singleton { FileTransportScopeData() }
-        bind<FileTransportScopeData>() with singleton { FileTransportScopeData() }
+        bind<FileTransportScopeData>() with singleton {
+            val remoteSeparator = this@FileTransportActivity.remoteSeparator
+            val writerHandleChannel = this@FileTransportActivity.writerHandleChannel
+            if (remoteSeparator == null || writerHandleChannel == null) {
+                error("RemoteSeparator is null")
+            }
+            FileTransportScopeData(remoteSeparator, writerHandleChannel)
+        }
     }
     private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
+        val localAddress = intent.getLocalAddress()
+        binding.toolBar.title = remoteInfo
+        binding.toolBar.subtitle = remoteAddress.hostAddress
+
+        val fileTransporter = FileTransporter(
+            localAddress = localAddress,
+            remoteAddress = remoteAddress
+        )
+
+        launch(Dispatchers.IO) {
+            runCatching {
+                fileTransporter.launchFileTransport(isServer) {
+                    // TODO: Handle Reade.
+                }
+            }
+            withContext(Dispatchers.Main) {
+                showNoOptionalDialog(
+                    title = getString(R.string.connection_error_title),
+                    message = getString(R.string.connection_error_message),
+                    cancelable = true
+                ).await()
+                finish()
+            }
+        }
+
         launch {
 
-            val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
-            val localAddress = intent.getLocalAddress()
-            binding.toolBar.title = remoteInfo
-            binding.toolBar.subtitle = remoteAddress.hostAddress
 
-            val fileTransporter = FileTransporter(
-                    localAddress = localAddress,
-                    remoteAddress = remoteAddress
-            )
-            launch(Dispatchers.IO) {
-                launch {
-                    runCatching {
-                        fileTransporter.launchFileTransport(isServer) {
-                            // TODO: Handle Reade.
-                        }
-                    }
-                    withContext(Dispatchers.Main) {
-                        showNoOptionalDialog(
-                                title = getString(R.string.connection_error_title),
-                                message = getString(R.string.connection_error_message),
-                                cancelable = true
-                        ).await()
-                        finish()
-                    }
-                }
-                val dialog = withContext(Dispatchers.Main) { showLoadingDialog(cancelable = false) }
-                val remoteSeparator = runCatching { fileTransporter.whenConnectReady() }
-                withContext(Dispatchers.Main) { dialog.cancel() }
-            }
+            val loadingDialog = showLoadingDialog(cancelable = false)
+            val remoteSeparator = withContext(Dispatchers.IO) { runCatching { fileTransporter.whenConnectReady() } }
+            this@FileTransportActivity.remoteSeparator = remoteSeparator.getOrNull()
+            this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
+            loadingDialog.cancel()
 
             binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -104,6 +119,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     fun changeDirFragment(dirTabType: DirTabType) {
         val transaction = supportFragmentManager.beginTransaction()
+        binding.appbarLayout.setExpanded(true, true)
         when (dirTabType) {
             DirTabType.MyDir -> {
                 var fragment = supportFragmentManager.findFragmentByTag(MyDirFragment.FRAGMENT_TAG)
