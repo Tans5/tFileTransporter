@@ -203,7 +203,11 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
 ) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val inputStream = PipedInputStream()
-    launch(Dispatchers.IO) { handle(PipedOutputStream(inputStream)) }
+    launch(Dispatchers.IO) {
+        val outputStream = PipedOutputStream(inputStream)
+        handle(outputStream)
+        outputStream.flush()
+    }
     launch(Dispatchers.IO) {
         val bufferSize = buffer.capacity()
         val readChannel = Channels.newChannel(inputStream)
