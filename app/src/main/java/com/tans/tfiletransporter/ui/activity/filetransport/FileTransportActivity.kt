@@ -5,13 +5,17 @@ import android.content.Intent
 import android.os.Bundle
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
+import com.squareup.moshi.Types
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
 import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
+import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
@@ -26,8 +30,11 @@ import org.kodein.di.android.retainedSubDI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import java.io.InputStream
+import java.lang.StringBuilder
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.*
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -58,10 +65,55 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         )
         this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
 
+        suspend fun InputStream.readString(): String {
+            val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
+            val scanner = Scanner(this)
+            val stringBuilder = StringBuilder()
+            while (scanner.hasNextLine()) {
+                stringBuilder.append(scanner.nextLine())
+            }
+            withContext(Dispatchers.Main) { dialog.cancel() }
+            return stringBuilder.toString()
+        }
+
         launch(Dispatchers.IO) {
             runCatching {
+
                 fileTransporter.launchFileTransport(isServer) {
-                    // TODO: Handle Reade.
+
+                    requestFolderChildrenShareChain { _, inputStream, _, _ ->
+                        val string = inputStream.readString()
+                        fileTransporter.writerHandleChannel.send(newFolderChildrenShareWriterHandle(string))
+                    }
+
+                    folderChildrenShareChain { _, inputStream, _, _ ->
+                        val string = inputStream.readString()
+                        val folderModel = ResponseFolderModelJsonAdapter(moshi).fromJson(string)
+                        if (folderModel != null) {
+                            fileTransportScopeData.remoteFolderModelEvent.onNext(folderModel)
+                        }
+                    }
+
+                    requestFilesShareChain { _, inputStream, _, _ ->
+                        val string = inputStream.readString()
+                        val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
+                        val files = moshi.adapter<List<File>>(moshiType).fromJson(string)
+                        if (files != null) {
+                            fileTransporter.writerHandleChannel.send(newRequestFilesShareWriterHandle(
+                                files.map { it.toFileLeaf() }
+                            ))
+                        }
+                    }
+
+                    // TODO: Download Files.
+                    filesShareChain { data, inputStream, _, _ ->
+
+                    }
+
+                    sendMessageChain { _, inputStream, _, _ ->
+                        val message = inputStream.readString()
+                        fileTransportScopeData.remoteMessageEvent.onNext(message)
+                    }
                 }
             }
             withContext(Dispatchers.Main) {

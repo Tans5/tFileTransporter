@@ -146,3 +146,12 @@ fun CommonFileLeaf.toFile(): File {
         lastModify = OffsetDateTime.ofInstant(Instant.ofEpochMilli(lastModified), ZoneId.systemDefault())
     )
 }
+
+fun File.toFileLeaf(): CommonFileLeaf {
+    return CommonFileLeaf(
+        name = name,
+        path = path,
+        size = size,
+        lastModified = lastModify.toInstant().toEpochMilli()
+    )
+}
