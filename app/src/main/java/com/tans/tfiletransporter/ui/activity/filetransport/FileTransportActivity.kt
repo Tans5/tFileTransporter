@@ -7,6 +7,7 @@ import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
+import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
@@ -38,10 +39,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         bind<FileTransportScopeData>() with singleton {
             val remoteSeparator = this@FileTransportActivity.remoteSeparator
             val writerHandleChannel = this@FileTransportActivity.writerHandleChannel
-            if (remoteSeparator == null || writerHandleChannel == null) {
-                error("RemoteSeparator is null")
-            }
-            FileTransportScopeData(remoteSeparator, writerHandleChannel)
+            FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, writerHandleChannel!!)
         }
     }
     private val fileTransportScopeData by instance<FileTransportScopeData>()
@@ -58,6 +56,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             localAddress = localAddress,
             remoteAddress = remoteAddress
         )
+        this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
 
         launch(Dispatchers.IO) {
             runCatching {
@@ -79,40 +78,46 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
 
             val loadingDialog = showLoadingDialog(cancelable = false)
-            val remoteSeparator = withContext(Dispatchers.IO) { runCatching { fileTransporter.whenConnectReady() } }
-            this@FileTransportActivity.remoteSeparator = remoteSeparator.getOrNull()
-            this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
+            val result = withContext(Dispatchers.IO) { runCatching { fileTransporter.whenConnectReady() } }
             loadingDialog.cancel()
+            this@FileTransportActivity.remoteSeparator = result.getOrNull()
 
-            binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-                override fun onTabSelected(tab: TabLayout.Tab?) {
-                    when (tab?.position) {
-                        DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
-                        DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(DirTabType.RemoteDir) }.bindLife()
+            if (result.isSuccess) {
+                binding.tabLayout.addOnTabSelectedListener(object :
+                    TabLayout.OnTabSelectedListener {
+                    override fun onTabSelected(tab: TabLayout.Tab?) {
+                        when (tab?.position) {
+                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
+                            DirTabType.RemoteDir.ordinal -> updateStateCompletable {
+                                it.copy(
+                                    DirTabType.RemoteDir
+                                )
+                            }.bindLife()
+                        }
                     }
-                }
 
-                override fun onTabUnselected(tab: TabLayout.Tab?) {
-                }
-
-                override fun onTabReselected(tab: TabLayout.Tab?) {
-                }
-            })
-
-            binding.floatingActionBt.clicks()
-                .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
-                .bindLife()
-
-
-            render({ it.selectedTabType }) {
-                binding.floatingActionBt.setImageResource(
-                    when (it) {
-                        DirTabType.MyDir -> R.drawable.share_variant_outline
-                        DirTabType.RemoteDir -> R.drawable.download_outline
+                    override fun onTabUnselected(tab: TabLayout.Tab?) {
                     }
-                )
-                changeDirFragment(it)
-            }.bindLife()
+
+                    override fun onTabReselected(tab: TabLayout.Tab?) {
+                    }
+                })
+
+                binding.floatingActionBt.clicks()
+                    .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
+                    .bindLife()
+
+
+                render({ it.selectedTabType }) {
+                    binding.floatingActionBt.setImageResource(
+                        when (it) {
+                            DirTabType.MyDir -> R.drawable.share_variant_outline
+                            DirTabType.RemoteDir -> R.drawable.download_outline
+                        }
+                    )
+                    changeDirFragment(it)
+                }.bindLife()
+            }
         }
 
     }
