@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">tFileTransporter</string>
+    <string name="app_name">tFileTransfer</string>
 
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_dir">MY DIR</string>
