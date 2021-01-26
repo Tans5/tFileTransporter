@@ -218,6 +218,7 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
                 val lastTimeReadSize = limit - hasWriteSize
                 readChannel.readSuspendSize(buffer, lastTimeReadSize.toInt())
                 writeSuspend(buffer)
+                hasWriteSize += lastTimeReadSize
                 readChannel.close()
                 inputStream.close()
                 break
