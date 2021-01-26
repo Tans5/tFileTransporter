@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import com.tans.tadapter.adapter.DifferHandler
@@ -13,6 +12,8 @@ import com.tans.tfiletransporter.databinding.FileItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
+import com.tans.tfiletransporter.file.FileConstants.homePath
+import com.tans.tfiletransporter.file.FileConstants.homePathString
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.utils.dp2px

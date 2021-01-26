@@ -3,7 +3,6 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
@@ -26,10 +25,6 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.file.Paths
-
-val homePathString = Environment.getExternalStorageDirectory().path
-val homePath = Paths.get(homePathString)
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
