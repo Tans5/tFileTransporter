@@ -118,4 +118,24 @@ class NetTest {
         }
         job.join()
     }
+
+//    @Test
+//    fun writeDataLimitTest() = runBlocking {
+//        val path = Paths.get("a.text")
+//        if (!Files.exists(path)) {
+//            Files.createFile(path)
+//        }
+//        val fileChannel = FileChannel.open(path, StandardOpenOption.WRITE)
+//        val result = kotlin.runCatching {
+//            fileChannel.writeDataLimit(
+//                    limit = 10,
+//                    buffer = ByteBuffer.allocate(2)
+//            ) {
+//                val data = "fadfadsfas21312313131".toByteArray(Charsets.UTF_8)
+//                it.write(data)
+//            }
+//        }
+//        fileChannel.close()
+//        //println(result)
+//    }
 }
