@@ -6,6 +6,7 @@ import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import java.io.IOException
 import java.lang.Exception
@@ -45,6 +46,8 @@ class FileTransporter(private val localAddress: InetAddress,
     private val requestFileShareReaderHandle = RequestFilesShareReaderHandle()
     private val fileShareReaderHandle = FilesShareReaderHandle()
     private val sendMessageReaderHandle = SendMessageReaderHandle()
+
+    val writerHandleChannel = Channel<FileTransporterWriterHandle>(Channel.UNLIMITED)
 
     @Throws(IOException::class)
     internal suspend fun startAsClient() {
@@ -150,9 +153,12 @@ class FileTransporter(private val localAddress: InetAddress,
             }
         }
 
-        // TODO: Write
+        // Write
         launch {
-
+            while (true) {
+                val writerHandle = writerHandleChannel.receive()
+                writerHandle.handle(sc)
+            }
         }
     }
 
