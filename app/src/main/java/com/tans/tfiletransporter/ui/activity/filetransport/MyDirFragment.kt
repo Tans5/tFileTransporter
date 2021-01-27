@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.tans.tadapter.adapter.DifferHandler
@@ -20,6 +21,7 @@ import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.rx2.rxSingle
 import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -109,8 +111,10 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, FileTree>(R.layout.my_d
 
         fileTransportScopeData.floatBtnEvent
                 .filter { !isHidden }
-                .doOnNext {
-                    Toast.makeText(requireContext(), "Message From My Dir", Toast.LENGTH_SHORT).show()
+                .flatMapSingle {
+                    rxSingle {
+                        fileTransportScopeData.writerHandleChannel.send(requireActivity().newSendMessageShareWriterHandle("${Build.BRAND} ${Build.MODEL}"))
+                    }
                 }
                 .bindLife()
     }

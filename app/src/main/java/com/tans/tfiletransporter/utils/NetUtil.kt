@@ -9,7 +9,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
-import java.lang.Exception
 import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.*
@@ -168,7 +167,8 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
         handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
-    launch(Dispatchers.IO) { handle(PipedInputStream(outputStream)) }
+    val inputStream = PipedInputStream(outputStream)
+    launch(Dispatchers.IO) { handle(inputStream) }
     launch(Dispatchers.IO) {
         val bufferSize = buffer.capacity()
         var readSize = 0L
@@ -203,8 +203,8 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
 ) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val inputStream = PipedInputStream()
+    val outputStream = PipedOutputStream(inputStream)
     launch(Dispatchers.IO) {
-        val outputStream = PipedOutputStream(inputStream)
         handle(outputStream)
         outputStream.flush()
     }

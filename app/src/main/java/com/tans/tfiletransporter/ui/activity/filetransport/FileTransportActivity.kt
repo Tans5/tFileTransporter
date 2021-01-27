@@ -3,6 +3,8 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.squareup.moshi.Types
@@ -77,7 +79,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
 
         launch(Dispatchers.IO) {
-            runCatching {
+            val result = runCatching {
 
                 fileTransporter.launchFileTransport(isServer) {
 
@@ -113,9 +115,13 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     sendMessageChain { _, inputStream, _, _ ->
                         val message = inputStream.readString()
                         fileTransportScopeData.remoteMessageEvent.onNext(message)
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
+            Log.e(this@FileTransportActivity::javaClass.name,"FileConnectionBreak", result.exceptionOrNull())
             withContext(Dispatchers.Main) {
                 showNoOptionalDialog(
                     title = getString(R.string.connection_error_title),
