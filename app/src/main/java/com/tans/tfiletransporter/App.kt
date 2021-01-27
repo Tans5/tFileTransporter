@@ -18,7 +18,7 @@ import org.threeten.bp.format.DateTimeFormatter
 class OffsetDataTimeJsonAdapter : JsonAdapter<OffsetDateTime>() {
 
     override fun fromJson(reader: JsonReader): OffsetDateTime? {
-        val dateString = reader.nextNull<String>()
+        val dateString = reader.nextString()
         return if (dateString != null) {
             OffsetDateTime.parse(dateString, DateTimeFormatter.ISO_DATE_TIME)
         } else {

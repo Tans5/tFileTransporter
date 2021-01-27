@@ -26,9 +26,9 @@ import java.nio.file.StandardOpenOption
 import kotlin.streams.toList
 
 suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
-    path: DirectoryFileLeaf
+    path: String
 ): RequestFolderChildrenShareWriterHandle {
-    val pathData = path.path.toByteArray(Charsets.UTF_8)
+    val pathData = path.toByteArray(Charsets.UTF_8)
     return RequestFolderChildrenShareWriterHandle(
         pathSize = pathData.size
     ) { outputStream ->
