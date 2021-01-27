@@ -14,5 +14,8 @@
         <!-- Customize your theme here. -->
 
         <item name="android:windowLightStatusBar">true</item>
+
+        <item name="android:splitMotionEvents">false</item>
+        <item name="android:windowEnableSplitTouch">false</item>
     </style>
 </resources>

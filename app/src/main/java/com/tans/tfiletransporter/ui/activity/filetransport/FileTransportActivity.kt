@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.squareup.moshi.Types
@@ -115,9 +114,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     sendMessageChain { _, inputStream, _, _ ->
                         val message = inputStream.readString()
                         fileTransportScopeData.remoteMessageEvent.onNext(message)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
-                        }
                     }
                 }
             }
