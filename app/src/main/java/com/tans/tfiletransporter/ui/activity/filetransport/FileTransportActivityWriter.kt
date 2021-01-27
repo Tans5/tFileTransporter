@@ -89,9 +89,8 @@ suspend fun Activity.newFolderChildrenShareWriterHandle(
 }
 
 suspend fun Activity.newRequestFilesShareWriterHandle(
-    fileLeafs: List<CommonFileLeaf>
+    files: List<File>
 ): RequestFilesShareWriterHandle {
-    val files = fileLeafs.map { it.toFile() }
     val jsonData = FilesShareWriterHandle.getJsonString(files).toByteArray(Charsets.UTF_8)
     return RequestFilesShareWriterHandle(
         filesJsonDataSize = jsonData.size

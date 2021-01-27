@@ -138,4 +138,44 @@ class NetTest {
 //        fileChannel.close()
 //        //println(result)
 //    }
+
+    @Test
+    fun fileNameTest() = runBlocking {
+        // ((.|\s)+)(-\d+)?(\..+)?$
+        val regex1 = "((.|\\s)+)-(\\d+)(\\..+)$".toRegex()
+        val name = "3213131fasd.tans"
+        if (regex1.matches(name)) {
+            val i = regex1.find(name)
+            i?.groupValues?.map {
+                println(it)
+            }
+        }
+        val regex2 = "((.|\\s)+)(\\..+)\$".toRegex()
+        if (regex2.matches(name)) {
+            val i = regex2.find(name)
+            i?.groupValues?.map {
+                println(it)
+            }
+        }
+        val regex3 = "((.|\\s)+)-(\\d+)$".toRegex()
+
+        if (regex3.matches(name)) {
+            val i = regex3.find(name)
+            i?.groupValues?.map {
+                println(it)
+            }
+        }
+
+        Unit
+
+    }
+
+    @Test
+    fun fileCreateTest() {
+        val parent = Paths.get("testdir")
+        if (!Files.exists(parent)) {
+            Files.createDirectory(parent)
+        }
+        parent.newChildFile("tea  fsda")
+    }
 }

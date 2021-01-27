@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
@@ -11,6 +12,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.moshi
+import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
@@ -20,6 +22,10 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
+import com.tans.tfiletransporter.utils.newChildFile
+import com.tans.tfiletransporter.utils.readSuspend
+import com.tans.tfiletransporter.utils.readSuspendSize
+import com.tans.tfiletransporter.utils.writeSuspend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -35,7 +41,15 @@ import java.io.InputStream
 import java.lang.StringBuilder
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
+import java.nio.channels.Channels
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
 import java.util.*
+import kotlin.io.path.Path
+import kotlin.io.path.name
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -101,14 +115,41 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         val files = moshi.adapter<List<File>>(moshiType).fromJson(string)
                         if (files != null) {
                             fileTransporter.writerHandleChannel.send(newRequestFilesShareWriterHandle(
-                                files.map { it.toFileLeaf() }
+                                files
                             ))
                         }
                     }
 
-                    // TODO: Download Files.
-                    filesShareChain { data, inputStream, _, _ ->
 
+                    filesShareChain { files, inputStream, _, _ ->
+                        val downloadDir = Paths.get(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path, getString(R.string.app_name))
+                        if (!Files.exists(downloadDir)) {
+                            Files.createDirectory(downloadDir)
+                        }
+                        val buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                        val reader = Channels.newChannel(inputStream)
+                        files.map { f ->
+                            val fPath = downloadDir.newChildFile(f.name)
+                            val fileWriter = FileChannel.open(fPath, StandardOpenOption.WRITE)
+                            val limit = f.size
+                            var readSize = 0L
+                            val bufferSize = buffer.capacity()
+                            while (true) {
+                                buffer.clear()
+                                if (readSize + bufferSize >= limit) {
+                                    val lastReadSize = limit - readSize
+                                    reader.readSuspendSize(buffer, lastReadSize.toInt())
+                                    fileWriter.writeSuspend(buffer)
+                                    fileWriter.close()
+                                    readSize += lastReadSize
+                                } else {
+                                    reader.readSuspend(buffer)
+                                    buffer.flip()
+                                    fileWriter.writeSuspend(buffer)
+                                    readSize += bufferSize
+                                }
+                            }
+                        }
                     }
 
                     sendMessageChain { _, inputStream, _, _ ->
