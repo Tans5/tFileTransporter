@@ -45,6 +45,7 @@ abstract class BaseCustomDialog<Binding: ViewDataBinding, State>(context: Contex
         baseDialogBinding.outsideLayout.addView(binding.root, lp)
         setContentView(baseDialogBinding.root)
         window?.apply {
+            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
             setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             if (clearBackground) {
