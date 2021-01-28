@@ -294,3 +294,51 @@ suspend fun WritableByteChannel.writeSuspendSize(byteBuffer: ByteBuffer, bytes: 
         }
     }
 }
+
+suspend fun ReadableByteChannel.writeTo(
+        writeable: WritableByteChannel,
+        limit: Long,
+        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+        progress: suspend (writeSize: Long, limit: Long) -> Unit = { _, _ ->}) {
+    var writeSize = 0L
+    val bufferSize = buffer.capacity()
+    while (true) {
+        buffer.clear()
+        val thisTimeWriteSize = if (writeSize + bufferSize >= limit) {
+            (limit - writeSize).toInt()
+        } else {
+            bufferSize
+        }
+        readSuspendSize(buffer, thisTimeWriteSize)
+        writeable.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+        writeSize += thisTimeWriteSize
+        progress(writeSize, limit)
+        if (writeSize >= limit) {
+            break
+        }
+    }
+}
+
+suspend fun WritableByteChannel.readFrom(
+        readable: ReadableByteChannel,
+        limit: Long,
+        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+        progress: suspend (hasWrite: Long, limit: Long) -> Unit = { _, _ -> }) {
+    var readSize = 0L
+    val bufferSize = buffer.capacity()
+    while (true) {
+        buffer.clear()
+        val thisTimeReadSize = if (readSize + bufferSize >= limit) {
+            (limit - readSize).toInt()
+        } else {
+            bufferSize
+        }
+        readable.readSuspendSize(buffer,thisTimeReadSize)
+        writeSuspendSize(buffer, buffer.copyAvailableBytes())
+        readSize += thisTimeReadSize
+        progress(readSize, limit)
+        if (readSize >= limit) {
+            break
+        }
+    }
+}

@@ -42,7 +42,7 @@ suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
 suspend fun Activity.newFolderChildrenShareWriterHandle(
     parentPath: String
 ): FolderChildrenShareWriterHandle {
-    val json = withContext(Dispatchers.IO) {
+    val jsonData = withContext(Dispatchers.IO) {
         val path = Paths.get(FileConstants.homePathString + parentPath)
         val children = Files.list(path)
             .map { p ->
@@ -75,11 +75,8 @@ suspend fun Activity.newFolderChildrenShareWriterHandle(
             childrenFiles = children.filterIsInstance<File>(),
             childrenFolders = children.filterIsInstance<Folder>()
         )
-        FolderChildrenShareWriterHandle.getJsonString(responseFolder)
+        FolderChildrenShareWriterHandle.getJsonString(responseFolder).toByteArray(Charsets.UTF_8)
     }
-
-    val jsonData = json.toByteArray(Charsets.UTF_8)
-    println("Send json string: bytes size: ${jsonData.size}, $json")
 
     return FolderChildrenShareWriterHandle(
         filesJsonSize = jsonData.size
@@ -116,28 +113,10 @@ suspend fun Activity.newFilesShareWriterHandle(
     ) { files, outputStream ->
         val writer = Channels.newChannel(outputStream)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        val bufferSize = NET_BUFFER_SIZE
         files.map { f ->
             val reader = FileChannel.open(Paths.get(FileConstants.homePathString + f.path), StandardOpenOption.READ)
             reader.use {
-                val limit = f.size
-                var readSize = 0L
-                while (true) {
-                    buffer.clear()
-                    val thisTimeReadSize = if (readSize + bufferSize >= limit) {
-                        (limit - readSize).toInt()
-                    } else {
-                        bufferSize
-                    }
-
-                    reader.readSuspendSize(buffer, thisTimeReadSize)
-                    writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                    readSize += thisTimeReadSize
-                    if (readSize >= limit) {
-                        break
-                    }
-
-                }
+                reader.writeTo(writer, f.size, buffer)
             }
         }
     }

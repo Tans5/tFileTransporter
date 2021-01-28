@@ -98,33 +98,22 @@ class BroadcastSender(
             ssc.bindSuspend(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
             while (true) {
                 val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-                byteBuffer.position(NET_BUFFER_SIZE - 4)
-                byteBuffer.limit(NET_BUFFER_SIZE)
                 val isAccept = ssc.acceptSuspend().use { clientSsc ->
-                    clientSsc.readSuspend(byteBuffer)
-                    byteBuffer.position(NET_BUFFER_SIZE - 4)
+                    clientSsc.readSuspendSize(byteBuffer, 4)
                     // 1. Get message size
                     val remoteDeviceInfoSize = min(max(byteBuffer.asIntBuffer().get(), 0), NET_BUFFER_SIZE)
-                    byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
-                    clientSsc.readSuspend(byteBuffer)
-                    byteBuffer.position(NET_BUFFER_SIZE - remoteDeviceInfoSize)
 
                     // 2. Get remote device info.
+                    clientSsc.readSuspendSize(byteBuffer, remoteDeviceInfoSize)
                     val remoteInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
 
                     // 3. Accept or deny.
                     if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
-                        byteBuffer.clear()
-                        byteBuffer.put(BROADCAST_SERVER_ACCEPT)
-                        byteBuffer.flip()
-                        clientSsc.writeSuspend(byteBuffer)
+                        clientSsc.writeSuspendSize(byteBuffer, ByteArray(1) { BROADCAST_SERVER_ACCEPT })
                         result = clientSsc.remoteAddress to remoteInfo
                         true
                     } else {
-                        byteBuffer.clear()
-                        byteBuffer.put(BROADCAST_SERVER_DENY)
-                        byteBuffer.flip()
-                        clientSsc.writeSuspend(byteBuffer)
+                        clientSsc.writeSuspendSize(byteBuffer, ByteArray(1) { BROADCAST_SERVER_DENY })
                         false
                     }
                 }
@@ -212,14 +201,8 @@ class BroadcastReceiver(
                 }
             }
             val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE + 4)
-            buffer.put(sendData.size.toBytes())
-            buffer.put(sendData)
-            buffer.flip()
-            sc.writeSuspend(buffer)
-            buffer.clear()
-            buffer.position(NET_BUFFER_SIZE + 3)
-            sc.readSuspend(buffer)
-            buffer.position(NET_BUFFER_SIZE + 3)
+            sc.writeSuspendSize(buffer, sendData.size.toBytes() + sendData)
+            sc.readSuspendSize(buffer, 1)
             val result = buffer.get()
             result == BROADCAST_SERVER_ACCEPT
         }

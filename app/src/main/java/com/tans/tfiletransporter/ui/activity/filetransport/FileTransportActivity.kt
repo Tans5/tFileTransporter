@@ -34,11 +34,8 @@ import org.kodein.di.android.retainedSubDI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import java.lang.Exception
-import java.lang.StringBuilder
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -48,8 +45,6 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.*
-import kotlin.io.path.Path
-import kotlin.io.path.name
 import kotlin.runCatching
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
@@ -86,34 +81,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             val outputStream = ByteArrayOutputStream()
             val writer = Channels.newChannel(outputStream)
             val reader = Channels.newChannel(this)
-            val bytes = writer.use {
-                reader.use {
-                    val byteBuffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-                    val bufferSize = byteBuffer.capacity()
-                    var readSize = 0L
-                    while (true) {
-                        byteBuffer.clear()
-                        val thisTimeReadSize =if (bufferSize + readSize >= limit) {
-                            (limit - readSize).toInt()
-                        } else {
-                            bufferSize
-                        }
-
-                        reader.readSuspendSize(byteBuffer, thisTimeReadSize)
-                        writer.writeSuspendSize(byteBuffer, byteBuffer.copyAvailableBytes())
-                        readSize += thisTimeReadSize
-                        if (readSize >= limit) {
-                            break
-                        }
-                    }
-                    outputStream.toByteArray()
+            reader.use {
+                writer.use {
+                    writer.readFrom(reader, limit)
                 }
             }
+            val bytes = outputStream.toByteArray()
+            outputStream.close()
             withContext(Dispatchers.Main) { dialog.cancel() }
-            val readAllSize = bytes.size
-            if (limit.toInt() != readAllSize) {
-                println("Limit Size: $limit, Read Size: $readAllSize")
-            }
             return String(bytes, Charsets.UTF_8)
         }
 
@@ -129,15 +104,9 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
                     folderChildrenShareChain { _, inputStream, limit, _ ->
                         val string = inputStream.readString(limit)
-                        try {
-                            val folderModel = ResponseFolderModelJsonAdapter(moshi).fromJson(string)
-                            if (folderModel != null) {
-                                fileTransportScopeData.remoteFolderModelEvent.onNext(folderModel)
-                            }
-                        } catch (e: Exception) {
-                            val bytes = string.toByteArray(Charsets.UTF_8)
-                            println("Error read size: ${bytes.size}, limit size: $limit, string: $string")
-                            throw e
+                        val folderModel = ResponseFolderModelJsonAdapter(moshi).fromJson(string)
+                        if (folderModel != null) {
+                            fileTransportScopeData.remoteFolderModelEvent.onNext(folderModel)
                         }
                     }
 
@@ -163,22 +132,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         files.map { f ->
                             val fPath = downloadDir.newChildFile(f.name)
                             val fileWriter = FileChannel.open(fPath, StandardOpenOption.WRITE)
-                            val limit = f.size
-                            var readSize = 0L
-                            val bufferSize = buffer.capacity()
-                            while (true) {
-                                buffer.clear()
-                                val thisTimeReadSize = if (readSize + bufferSize >= limit) {
-                                    (limit - readSize).toInt()
-                                } else {
-                                    bufferSize
-                                }
-                                reader.readSuspendSize(buffer, thisTimeReadSize)
-                                fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                                readSize += thisTimeReadSize
-                                if (readSize >= limit) {
-                                    break
-                                }
+                            fileWriter.use {
+                                fileWriter.readFrom(
+                                        readable = reader,
+                                        buffer = buffer,
+                                        limit = f.size)
                             }
                         }
                     }
