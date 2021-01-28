@@ -77,7 +77,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
 
         suspend fun InputStream.readString(limit: Long): String {
-            val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
             val outputStream = ByteArrayOutputStream()
             val writer = Channels.newChannel(outputStream)
             val reader = Channels.newChannel(this)
@@ -88,7 +87,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             }
             val bytes = outputStream.toByteArray()
             outputStream.close()
-            withContext(Dispatchers.Main) { dialog.cancel() }
             return String(bytes, Charsets.UTF_8)
         }
 

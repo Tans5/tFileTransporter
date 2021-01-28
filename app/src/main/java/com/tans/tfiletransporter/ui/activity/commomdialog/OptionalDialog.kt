@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.Dialog
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
-import com.tans.tfiletransporter.R
 import io.reactivex.Single
 import java.util.*
 

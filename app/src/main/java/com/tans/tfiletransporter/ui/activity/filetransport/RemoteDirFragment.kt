@@ -70,6 +70,9 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                                                 Log.e(this::class.qualifiedName, it.toString())
                                                 Single.just(Unit)
                                             }
+                                                    .subscribeOn(Schedulers.io())
+                                                    .observeOn(AndroidSchedulers.mainThread())
+                                                    .loadingDialog(requireActivity())
                                         } else {
                                             Single.just(Unit)
                                         }

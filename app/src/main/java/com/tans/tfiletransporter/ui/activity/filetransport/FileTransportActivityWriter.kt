@@ -31,11 +31,9 @@ suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
     return RequestFolderChildrenShareWriterHandle(
         pathSize = pathData.size
     ) { outputStream ->
-        val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
         val buffer = ByteBuffer.allocate(pathData.size)
         writer.writeSuspendSize(buffer, pathData)
-        withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
 
@@ -81,11 +79,9 @@ suspend fun Activity.newFolderChildrenShareWriterHandle(
     return FolderChildrenShareWriterHandle(
         filesJsonSize = jsonData.size
     ) { outputStream ->
-        val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
         val byteBuffer = ByteBuffer.allocate(jsonData.size)
         writer.writeSuspendSize(byteBuffer, jsonData)
-        withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
 
@@ -96,11 +92,9 @@ suspend fun Activity.newRequestFilesShareWriterHandle(
     return RequestFilesShareWriterHandle(
         filesJsonDataSize = jsonData.size
     ) { outputStream ->
-        val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
         val byteBuffer = ByteBuffer.allocate(jsonData.size)
         writer.writeSuspendSize(byteBuffer, jsonData)
-        withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
 
@@ -129,10 +123,8 @@ suspend fun Activity.newSendMessageShareWriterHandle(
     return SendMessageShareWriterHandle(
         messageSize = messageData.size
     ) { outputStream ->
-        val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
         writer.writeSuspend(ByteBuffer.wrap(messageData))
-        withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
 
