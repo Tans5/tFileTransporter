@@ -10,8 +10,7 @@ import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.Folder
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
-import com.tans.tfiletransporter.utils.readSuspend
-import com.tans.tfiletransporter.utils.writeSuspend
+import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.threeten.bp.Instant
@@ -34,7 +33,8 @@ suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
     ) { outputStream ->
         val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
-        writer.writeSuspend(ByteBuffer.wrap(pathData))
+        val buffer = ByteBuffer.allocate(pathData.size)
+        writer.writeSuspendSize(buffer, pathData)
         withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
@@ -42,7 +42,7 @@ suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
 suspend fun Activity.newFolderChildrenShareWriterHandle(
     parentPath: String
 ): FolderChildrenShareWriterHandle {
-    val jsonData = withContext(Dispatchers.IO) {
+    val json = withContext(Dispatchers.IO) {
         val path = Paths.get(FileConstants.homePathString + parentPath)
         val children = Files.list(path)
             .map { p ->
@@ -75,15 +75,19 @@ suspend fun Activity.newFolderChildrenShareWriterHandle(
             childrenFiles = children.filterIsInstance<File>(),
             childrenFolders = children.filterIsInstance<Folder>()
         )
-        FolderChildrenShareWriterHandle.getJsonString(responseFolder).toByteArray(Charsets.UTF_8)
+        FolderChildrenShareWriterHandle.getJsonString(responseFolder)
     }
+
+    val jsonData = json.toByteArray(Charsets.UTF_8)
+    println("Send json string: bytes size: ${jsonData.size}, $json")
 
     return FolderChildrenShareWriterHandle(
         filesJsonSize = jsonData.size
     ) { outputStream ->
         val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
-        writer.writeSuspend(ByteBuffer.wrap(jsonData))
+        val byteBuffer = ByteBuffer.allocate(jsonData.size)
+        writer.writeSuspendSize(byteBuffer, jsonData)
         withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
@@ -97,7 +101,8 @@ suspend fun Activity.newRequestFilesShareWriterHandle(
     ) { outputStream ->
         val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
         val writer = Channels.newChannel(outputStream)
-        writer.writeSuspend(ByteBuffer.wrap(jsonData))
+        val byteBuffer = ByteBuffer.allocate(jsonData.size)
+        writer.writeSuspendSize(byteBuffer, jsonData)
         withContext(Dispatchers.Main) { dialog.cancel() }
     }
 }
@@ -111,14 +116,26 @@ suspend fun Activity.newFilesShareWriterHandle(
     ) { files, outputStream ->
         val writer = Channels.newChannel(outputStream)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+        val bufferSize = NET_BUFFER_SIZE
         files.map { f ->
             val reader = FileChannel.open(Paths.get(FileConstants.homePathString + f.path), StandardOpenOption.READ)
+            val limit = f.size
+            var readSize = 0L
             while (true) {
                 buffer.clear()
-                reader.readSuspend(buffer)
-                buffer.flip()
-                writer.writeSuspend(buffer)
+                if (readSize + bufferSize >= limit) {
+                    val lastReadSize = limit - readSize
+                    reader.readSuspendSize(buffer, lastReadSize.toInt())
+                    writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                    readSize += lastReadSize
+                    break
+                } else {
+                    reader.readSuspendSize(buffer, bufferSize)
+                    writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                    readSize += bufferSize
+                }
             }
+            reader.close()
         }
     }
 }

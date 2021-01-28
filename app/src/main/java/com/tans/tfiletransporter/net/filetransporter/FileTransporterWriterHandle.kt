@@ -9,6 +9,7 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.utils.toBytes
 import com.tans.tfiletransporter.utils.writeDataLimit
 import com.tans.tfiletransporter.utils.writeSuspend
+import com.tans.tfiletransporter.utils.writeSuspendSize
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
@@ -21,11 +22,15 @@ sealed class FileTransporterWriterHandle(val action: FileNetAction) {
     abstract suspend fun handle(writerChannel: AsynchronousSocketChannel)
 
     suspend fun AsynchronousSocketChannel.defaultActionCodeWrite() {
-        writeSuspend(ByteBuffer.wrap(ByteArray(1) { action.actionCode }))
+        val bytes = ByteArray(1) { action.actionCode }
+        val buffer = ByteBuffer.allocate(1)
+        writeSuspendSize(buffer, bytes)
     }
 
     suspend fun AsynchronousSocketChannel.defaultIntSizeWrite(intSize: Int) {
-        writeSuspend(ByteBuffer.wrap(intSize.toBytes()))
+        val bytes = intSize.toBytes()
+        val buffer = ByteBuffer.allocate(4)
+        writeSuspendSize(buffer, bytes)
     }
 }
 

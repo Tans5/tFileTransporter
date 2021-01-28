@@ -22,10 +22,7 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
-import com.tans.tfiletransporter.utils.newChildFile
-import com.tans.tfiletransporter.utils.readSuspend
-import com.tans.tfiletransporter.utils.readSuspendSize
-import com.tans.tfiletransporter.utils.writeSuspend
+import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -37,7 +34,10 @@ import org.kodein.di.android.retainedSubDI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.lang.Exception
 import java.lang.StringBuilder
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -50,6 +50,7 @@ import java.nio.file.StandardOpenOption
 import java.util.*
 import kotlin.io.path.Path
 import kotlin.io.path.name
+import kotlin.runCatching
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -80,15 +81,38 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         )
         this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
 
-        suspend fun InputStream.readString(): String {
+        suspend fun InputStream.readString(limit: Long): String {
             val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
-            val scanner = Scanner(this)
-            val stringBuilder = StringBuilder()
-            while (scanner.hasNextLine()) {
-                stringBuilder.append(scanner.nextLine())
+            val outputStream = ByteArrayOutputStream()
+            val writer = Channels.newChannel(outputStream)
+            val reader = Channels.newChannel(this)
+            val byteBuffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+            val bufferSize = byteBuffer.capacity()
+            var readSize = 0L
+            while (true) {
+                byteBuffer.clear()
+                if (bufferSize + readSize >= limit) {
+                    val lastTimeReadSize = limit - readSize
+                    reader.readSuspendSize(byteBuffer, lastTimeReadSize.toInt())
+                    writer.writeSuspend(byteBuffer)
+                    readSize += lastTimeReadSize
+                    break
+                } else {
+                    reader.readSuspendSize(byteBuffer, bufferSize)
+                    writer.writeSuspendSize(byteBuffer, byteBuffer.copyAvailableBytes())
+                    readSize += bufferSize
+                }
             }
+            val bytes = outputStream.toByteArray()
+            outputStream.close()
+            reader.close()
+            writer.close()
             withContext(Dispatchers.Main) { dialog.cancel() }
-            return stringBuilder.toString()
+            val readAllSize = bytes.size
+            if (limit.toInt() != readAllSize) {
+                println("Limit Size: $limit, Read Size: $readAllSize")
+            }
+            return String(bytes, Charsets.UTF_8)
         }
 
         launch(Dispatchers.IO) {
@@ -96,21 +120,27 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
                 fileTransporter.launchFileTransport(isServer) {
 
-                    requestFolderChildrenShareChain { _, inputStream, _, _ ->
-                        val string = inputStream.readString()
+                    requestFolderChildrenShareChain { _, inputStream, limit, _ ->
+                        val string = inputStream.readString(limit)
                         fileTransporter.writerHandleChannel.send(newFolderChildrenShareWriterHandle(string))
                     }
 
-                    folderChildrenShareChain { _, inputStream, _, _ ->
-                        val string = inputStream.readString()
-                        val folderModel = ResponseFolderModelJsonAdapter(moshi).fromJson(string)
-                        if (folderModel != null) {
-                            fileTransportScopeData.remoteFolderModelEvent.onNext(folderModel)
+                    folderChildrenShareChain { _, inputStream, limit, _ ->
+                        val string = inputStream.readString(limit)
+                        try {
+                            val folderModel = ResponseFolderModelJsonAdapter(moshi).fromJson(string)
+                            if (folderModel != null) {
+                                fileTransportScopeData.remoteFolderModelEvent.onNext(folderModel)
+                            }
+                        } catch (e: Exception) {
+                            val bytes = string.toByteArray(Charsets.UTF_8)
+                            println("Error read size: ${bytes.size}, limit size: $limit, string: $string")
+                            throw e
                         }
                     }
 
-                    requestFilesShareChain { _, inputStream, _, _ ->
-                        val string = inputStream.readString()
+                    requestFilesShareChain { _, inputStream, limit, _ ->
+                        val string = inputStream.readString(limit)
                         val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
                         val files = moshi.adapter<List<File>>(moshiType).fromJson(string)
                         if (files != null) {
@@ -139,21 +169,21 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                                 if (readSize + bufferSize >= limit) {
                                     val lastReadSize = limit - readSize
                                     reader.readSuspendSize(buffer, lastReadSize.toInt())
-                                    fileWriter.writeSuspend(buffer)
+                                    fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
                                     fileWriter.close()
                                     readSize += lastReadSize
+                                    break
                                 } else {
-                                    reader.readSuspend(buffer)
-                                    buffer.flip()
-                                    fileWriter.writeSuspend(buffer)
+                                    reader.readSuspendSize(buffer, bufferSize)
+                                    fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
                                     readSize += bufferSize
                                 }
                             }
                         }
                     }
 
-                    sendMessageChain { _, inputStream, _, _ ->
-                        val message = inputStream.readString()
+                    sendMessageChain { _, inputStream, limit, _ ->
+                        val message = inputStream.readString(limit)
                         fileTransportScopeData.remoteMessageEvent.onNext(message)
                     }
                 }
