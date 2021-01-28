@@ -119,23 +119,26 @@ suspend fun Activity.newFilesShareWriterHandle(
         val bufferSize = NET_BUFFER_SIZE
         files.map { f ->
             val reader = FileChannel.open(Paths.get(FileConstants.homePathString + f.path), StandardOpenOption.READ)
-            val limit = f.size
-            var readSize = 0L
-            while (true) {
-                buffer.clear()
-                if (readSize + bufferSize >= limit) {
-                    val lastReadSize = limit - readSize
-                    reader.readSuspendSize(buffer, lastReadSize.toInt())
+            reader.use {
+                val limit = f.size
+                var readSize = 0L
+                while (true) {
+                    buffer.clear()
+                    val thisTimeReadSize = if (readSize + bufferSize >= limit) {
+                        (limit - readSize).toInt()
+                    } else {
+                        bufferSize
+                    }
+
+                    reader.readSuspendSize(buffer, thisTimeReadSize)
                     writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                    readSize += lastReadSize
-                    break
-                } else {
-                    reader.readSuspendSize(buffer, bufferSize)
-                    writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                    readSize += bufferSize
+                    readSize += thisTimeReadSize
+                    if (readSize >= limit) {
+                        break
+                    }
+
                 }
             }
-            reader.close()
         }
     }
 }

@@ -86,27 +86,29 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             val outputStream = ByteArrayOutputStream()
             val writer = Channels.newChannel(outputStream)
             val reader = Channels.newChannel(this)
-            val byteBuffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-            val bufferSize = byteBuffer.capacity()
-            var readSize = 0L
-            while (true) {
-                byteBuffer.clear()
-                if (bufferSize + readSize >= limit) {
-                    val lastTimeReadSize = limit - readSize
-                    reader.readSuspendSize(byteBuffer, lastTimeReadSize.toInt())
-                    writer.writeSuspend(byteBuffer)
-                    readSize += lastTimeReadSize
-                    break
-                } else {
-                    reader.readSuspendSize(byteBuffer, bufferSize)
-                    writer.writeSuspendSize(byteBuffer, byteBuffer.copyAvailableBytes())
-                    readSize += bufferSize
+            val bytes = writer.use {
+                reader.use {
+                    val byteBuffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                    val bufferSize = byteBuffer.capacity()
+                    var readSize = 0L
+                    while (true) {
+                        byteBuffer.clear()
+                        val thisTimeReadSize =if (bufferSize + readSize >= limit) {
+                            (limit - readSize).toInt()
+                        } else {
+                            bufferSize
+                        }
+
+                        reader.readSuspendSize(byteBuffer, thisTimeReadSize)
+                        writer.writeSuspendSize(byteBuffer, byteBuffer.copyAvailableBytes())
+                        readSize += thisTimeReadSize
+                        if (readSize >= limit) {
+                            break
+                        }
+                    }
+                    outputStream.toByteArray()
                 }
             }
-            val bytes = outputStream.toByteArray()
-            outputStream.close()
-            reader.close()
-            writer.close()
             withContext(Dispatchers.Main) { dialog.cancel() }
             val readAllSize = bytes.size
             if (limit.toInt() != readAllSize) {
@@ -166,17 +168,16 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             val bufferSize = buffer.capacity()
                             while (true) {
                                 buffer.clear()
-                                if (readSize + bufferSize >= limit) {
-                                    val lastReadSize = limit - readSize
-                                    reader.readSuspendSize(buffer, lastReadSize.toInt())
-                                    fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                                    fileWriter.close()
-                                    readSize += lastReadSize
-                                    break
+                                val thisTimeReadSize = if (readSize + bufferSize >= limit) {
+                                    (limit - readSize).toInt()
                                 } else {
-                                    reader.readSuspendSize(buffer, bufferSize)
-                                    fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                                    readSize += bufferSize
+                                    bufferSize
+                                }
+                                reader.readSuspendSize(buffer, thisTimeReadSize)
+                                fileWriter.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                                readSize += thisTimeReadSize
+                                if (readSize >= limit) {
+                                    break
                                 }
                             }
                         }

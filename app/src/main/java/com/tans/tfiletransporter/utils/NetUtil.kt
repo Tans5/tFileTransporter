@@ -189,27 +189,29 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     val inputStream = PipedInputStream(outputStream)
-    launch(Dispatchers.IO) { handle(inputStream) }
+    launch(Dispatchers.IO) {
+        inputStream.use {
+            handle(inputStream)
+        }
+    }
     launch(Dispatchers.IO) {
         val bufferSize = buffer.capacity()
-        var readSize = 0L
-        while (true) {
-            if (readSize + bufferSize >= limit) {
-//                buffer.moveToEndSize(limit - readSize)
-//                read(buffer)
-//                buffer.moveToEndSize(limit - readSize)
-                val thisTimeRead = limit - readSize
-                readSuspendSize(buffer, thisTimeRead.toInt())
-                outputStream.write(buffer.copyAvailableBytes())
-                outputStream.flush()
-                readSize += thisTimeRead
-                outputStream.close()
-                break
-            } else {
-                buffer.clear()
-                readSuspendSize(buffer, bufferSize)
-                outputStream.write(buffer.copyAvailableBytes())
-                readSize += bufferSize
+        outputStream.use {
+            var readSize = 0L
+            while (true) {
+                if (readSize + bufferSize >= limit) {
+                    val thisTimeRead = limit - readSize
+                    readSuspendSize(buffer, thisTimeRead.toInt())
+                    outputStream.write(buffer.copyAvailableBytes())
+                    outputStream.flush()
+                    readSize += thisTimeRead
+                    break
+                } else {
+                    buffer.clear()
+                    readSuspendSize(buffer, bufferSize)
+                    outputStream.write(buffer.copyAvailableBytes())
+                    readSize += bufferSize
+                }
             }
         }
     }
@@ -224,27 +226,31 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
     val inputStream = PipedInputStream()
     val outputStream = PipedOutputStream(inputStream)
     launch(Dispatchers.IO) {
-        handle(outputStream)
-        outputStream.flush()
+        outputStream.use {
+            handle(outputStream)
+            outputStream.flush()
+        }
     }
     launch(Dispatchers.IO) {
         val bufferSize = buffer.capacity()
         val readChannel = Channels.newChannel(inputStream)
-        var hasWriteSize = 0L
-        while (true) {
-            buffer.clear()
-            if (hasWriteSize + bufferSize >= limit) {
-                val lastTimeReadSize = limit - hasWriteSize
-                readChannel.readSuspendSize(buffer, lastTimeReadSize.toInt())
-                writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                hasWriteSize += lastTimeReadSize
-                readChannel.close()
-                inputStream.close()
-                break
-            } else {
-                readChannel.readSuspendSize(buffer, bufferSize)
-                writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                hasWriteSize += bufferSize
+        inputStream.use {
+            readChannel.use {
+                var hasWriteSize = 0L
+                while (true) {
+                    buffer.clear()
+                    if (hasWriteSize + bufferSize >= limit) {
+                        val lastTimeReadSize = limit - hasWriteSize
+                        readChannel.readSuspendSize(buffer, lastTimeReadSize.toInt())
+                        writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                        hasWriteSize += lastTimeReadSize
+                        break
+                    } else {
+                        readChannel.readSuspendSize(buffer, bufferSize)
+                        writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                        hasWriteSize += bufferSize
+                    }
+                }
             }
         }
     }
