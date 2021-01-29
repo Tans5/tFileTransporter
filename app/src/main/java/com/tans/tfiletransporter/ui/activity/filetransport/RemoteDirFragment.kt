@@ -40,6 +40,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                 .filter { it.isPresent }
                 .map { it.get() }
                 .distinctUntilChanged()
+                .observeOn(AndroidSchedulers.mainThread())
                 .flatMapSingle { oldTree ->
                     if (!oldTree.notNeedRefresh) {
                         rxSingle {
@@ -70,14 +71,14 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                                                 Log.e(this::class.qualifiedName, it.toString())
                                                 Single.just(Unit)
                                             }
-                                                    .subscribeOn(Schedulers.io())
-                                                    .observeOn(AndroidSchedulers.mainThread())
-                                                    .loadingDialog(requireActivity())
                                         } else {
                                             Single.just(Unit)
                                         }
                                     }.await()
                         }
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .loadingDialog(requireActivity())
                     } else {
                         Single.just(Unit)
                     }

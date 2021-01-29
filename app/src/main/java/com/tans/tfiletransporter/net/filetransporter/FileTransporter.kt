@@ -139,9 +139,7 @@ class FileTransporter(private val localAddress: InetAddress,
         launch {
             val actionBuffer = ByteBuffer.allocate(1)
             while (true) {
-                actionBuffer.clear()
-                sc.readSuspend(actionBuffer)
-                actionBuffer.flip()
+                sc.readSuspendSize(actionBuffer, 1)
                 when (val actionCode = actionBuffer.get()) {
                     FileNetAction.RequestFolderChildrenShare.actionCode -> requestFolderChildrenShareReaderHandle.handle(sc)
                     FileNetAction.FolderChildrenShare.actionCode -> folderChildrenShareReaderHandle.handle(sc)
