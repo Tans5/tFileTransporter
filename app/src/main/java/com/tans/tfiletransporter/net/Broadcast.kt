@@ -24,6 +24,8 @@ const val BROADCAST_LISTENER_PORT = 6667
 const val BROADCAST_SERVER_ACCEPT: Byte = 0x00
 const val BROADCAST_SERVER_DENY: Byte = 0x01
 
+val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
+
 // 1 KB
 const val NET_BUFFER_SIZE = 1024
 
@@ -39,7 +41,7 @@ typealias RemoteDevice = Pair<SocketAddress, String>
 suspend fun launchBroadcastSender(
         // Unit: milli second
         broadcastDelay: Long = 300,
-        broadMessage: String = "${Build.BRAND} ${Build.MODEL}",
+        broadMessage: String = LOCAL_DEVICE,
         localAddress: InetAddress,
         acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice = coroutineScope {
         val broadcastSender = BroadcastSender(
@@ -55,7 +57,7 @@ suspend fun launchBroadcastSender(
 class BroadcastSender(
         // Unit: milli second
         val broadcastDelay: Long = 300,
-        val broadMessage: String = "${Build.BRAND} ${Build.MODEL}",
+        val broadMessage: String = LOCAL_DEVICE,
         val localAddress: InetAddress) {
 
     private val broadcastAddress = localAddress.getBroadcastAddress()
@@ -187,7 +189,7 @@ class BroadcastReceiver(
      * @see BroadcastSender startBroadcastListener method.
      */
     @Throws(IOException::class)
-    suspend fun connectTo(address: InetAddress, yourDeviceInfo: String = "${Build.BRAND} ${Build.MODEL}"): Boolean {
+    suspend fun connectTo(address: InetAddress, yourDeviceInfo: String = LOCAL_DEVICE): Boolean {
         val sc = openAsynchronousSocketChannel()
         return sc.use {
             sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)

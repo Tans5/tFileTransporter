@@ -11,12 +11,13 @@
     <string name="file_count">%d files</string>
 
     <string name="connection_error_title">Connection Error</string>
-    <string name="connection_error_message">Connection has been broken, please reconnect.</string>
+    <string name="connection_error_message">Connection is closed, please reconnect.</string>
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
     <string name="broadcast_connection_title">Connect Remote Device by Broadcast</string>
     <string name="broadcast_connection_description">Use UPD broadcast to connect target device, your device must be in the same network with target device. </string>
+    <string name="broadcast_connection_local_device">Local Device: %s</string>
     <string name="broadcast_connection_local_ip_address">Local IP Address: %s</string>
     <string name="broadcast_connection_as_receiver">Search Servers</string>
     <string name="broadcast_connection_as_sender">As Server</string>
