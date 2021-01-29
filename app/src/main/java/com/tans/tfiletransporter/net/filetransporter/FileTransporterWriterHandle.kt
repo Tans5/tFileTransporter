@@ -109,13 +109,14 @@ class FilesShareWriterHandle(
     override suspend fun handle(writerChannel: AsynchronousSocketChannel) {
         writerChannel.defaultActionCodeWrite()
         val jsonData = getJsonString(files).toByteArray(Charsets.UTF_8)
+        writerChannel.defaultIntSizeWrite(jsonData.size)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
         writerChannel.writeDataLimit(
                 limit = jsonData.size.toLong(),
                 buffer = buffer
         ) { outputStream ->
             val jsonWriter = Channels.newChannel(outputStream)
-            jsonWriter.writeSuspend(ByteBuffer.wrap(jsonData))
+            jsonWriter.writeSuspendSize(buffer, jsonData)
             val filesLimitSize = files.sumOf { it.size }
             writerChannel.writeDataLimit(
                     limit =  filesLimitSize,

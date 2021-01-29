@@ -76,20 +76,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         )
         this@FileTransportActivity.fileTransporter = fileTransporter
 
-        suspend fun InputStream.readString(limit: Long): String {
-            val outputStream = ByteArrayOutputStream()
-            val writer = Channels.newChannel(outputStream)
-            val reader = Channels.newChannel(this)
-            reader.use {
-                writer.use {
-                    writer.readFrom(reader, limit)
-                }
-            }
-            val bytes = outputStream.toByteArray()
-            outputStream.close()
-            return String(bytes, Charsets.UTF_8)
-        }
-
         launch(Dispatchers.IO) {
             val result = runCatching {
 

@@ -5,13 +5,13 @@ import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.readDataLimit
+import com.tans.tfiletransporter.utils.readString
 import com.tans.tfiletransporter.utils.readSuspend
 import com.tans.tfiletransporter.utils.readSuspendSize
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
-import java.util.*
 
 
 interface ReaderHandleChains<T> {
@@ -101,14 +101,7 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
                 limit = limit.toLong(),
                 buffer = buffer
         ) { inputStream ->
-            val scanner = Scanner(inputStream)
-            val stringBuilder = StringBuilder()
-            scanner.use {
-                while (scanner.hasNextLine()) {
-                    stringBuilder.appendLine(scanner.nextLine())
-                }
-            }
-            val filesJson = stringBuilder.toString()
+            val filesJson = inputStream.readString(limit.toLong())
             val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
             val files: List<File>? = moshi.adapter<List<File>>(moshiType).fromJson(filesJson)
             if (files.isNullOrEmpty()) {

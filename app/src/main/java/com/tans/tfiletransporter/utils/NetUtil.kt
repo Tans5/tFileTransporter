@@ -5,10 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.io.InputStream
-import java.io.OutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
+import java.io.*
 import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.*
@@ -341,4 +338,18 @@ suspend fun WritableByteChannel.readFrom(
             break
         }
     }
+}
+
+suspend fun InputStream.readString(limit: Long): String {
+    val outputStream = ByteArrayOutputStream()
+    val writer = Channels.newChannel(outputStream)
+    val reader = Channels.newChannel(this)
+    reader.use {
+        writer.use {
+            writer.readFrom(reader, limit)
+        }
+    }
+    val bytes = outputStream.toByteArray()
+    outputStream.close()
+    return String(bytes, Charsets.UTF_8)
 }
