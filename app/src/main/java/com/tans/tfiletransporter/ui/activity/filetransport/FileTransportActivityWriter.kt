@@ -100,14 +100,14 @@ suspend fun newRequestFilesShareWriterHandle(
 }
 
 suspend fun Activity.newFilesShareWriterHandle(
-    fileLeafs: List<CommonFileLeaf>
+    files: List<File>
 ): FilesShareWriterHandle {
     val dialog = withContext(Dispatchers.Main) {
         showLoadingDialog()
     }
     return FilesShareWriterHandle(
-        fileLeafs.map { it.toFile() }
-    ) { files, outputStream ->
+        files
+    ) { _, outputStream ->
         withContext(Dispatchers.Main) {
             dialog.cancel()
             startSendingFiles(files, outputStream).await()

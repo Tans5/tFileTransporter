@@ -113,9 +113,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
                         val files = moshi.adapter<List<File>>(moshiType).fromJson(string)
                         if (files != null) {
-                            fileTransporter.writerHandleChannel.send(newRequestFilesShareWriterHandle(
-                                files
-                            ))
+                            fileTransporter.writerHandleChannel.send(newFilesShareWriterHandle(files))
                         }
                     }
 
