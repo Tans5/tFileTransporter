@@ -12,6 +12,10 @@
 
     <string name="connection_error_title">Connection Error</string>
     <string name="connection_error_message">Connection is closed, please reconnect.</string>
+
+    <string name="downloading_files_dialog_title">Downloading Files (%d/%d)</string>
+    <string name="sending_files_dialog_title">Sending Files (%d/%d)</string>
+    <string name="file_deal_progress">%s/%s</string>
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
@@ -33,5 +37,10 @@
     <string name="broadcast_searching_server">Searching&#8230;</string>
     <string name="broadcast_searching_cancel">Cancel</string>
     <!-- Connection Activity End -->
+
+    <string name="size_B">%dB</string>
+    <string name="size_KB">%.1fKB</string>
+    <string name="size_MB">%.1fMB</string>
+    <string name="size_GB">%.1fGB</string>
 
 </resources>

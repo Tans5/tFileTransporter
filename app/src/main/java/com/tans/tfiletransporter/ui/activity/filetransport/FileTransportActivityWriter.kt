@@ -12,6 +12,7 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.withContext
 import org.threeten.bp.Instant
 import org.threeten.bp.OffsetDateTime
@@ -24,7 +25,7 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import kotlin.streams.toList
 
-suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
+suspend fun newRequestFolderChildrenShareWriterHandle(
     path: String
 ): RequestFolderChildrenShareWriterHandle {
     val pathData = path.toByteArray(Charsets.UTF_8)
@@ -37,7 +38,7 @@ suspend fun Activity.newRequestFolderChildrenShareWriterHandle(
     }
 }
 
-suspend fun Activity.newFolderChildrenShareWriterHandle(
+suspend fun newFolderChildrenShareWriterHandle(
     parentPath: String
 ): FolderChildrenShareWriterHandle {
     val jsonData = withContext(Dispatchers.IO) {
@@ -85,7 +86,7 @@ suspend fun Activity.newFolderChildrenShareWriterHandle(
     }
 }
 
-suspend fun Activity.newRequestFilesShareWriterHandle(
+suspend fun newRequestFilesShareWriterHandle(
     files: List<File>
 ): RequestFilesShareWriterHandle {
     val jsonData = FilesShareWriterHandle.getJsonString(files).toByteArray(Charsets.UTF_8)
@@ -98,25 +99,23 @@ suspend fun Activity.newRequestFilesShareWriterHandle(
     }
 }
 
-// TODO: Add loading dialog.
 suspend fun Activity.newFilesShareWriterHandle(
     fileLeafs: List<CommonFileLeaf>
 ): FilesShareWriterHandle {
+    val dialog = withContext(Dispatchers.Main) {
+        showLoadingDialog()
+    }
     return FilesShareWriterHandle(
         fileLeafs.map { it.toFile() }
     ) { files, outputStream ->
-        val writer = Channels.newChannel(outputStream)
-        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        files.map { f ->
-            val reader = FileChannel.open(Paths.get(FileConstants.homePathString + f.path), StandardOpenOption.READ)
-            reader.use {
-                reader.writeTo(writer, f.size, buffer)
-            }
+        withContext(Dispatchers.Main) {
+            dialog.cancel()
+            startSendingFiles(files, outputStream).await()
         }
     }
 }
 
-suspend fun Activity.newSendMessageShareWriterHandle(
+suspend fun newSendMessageShareWriterHandle(
     message: String
 ): SendMessageShareWriterHandle {
     val messageData = message.toByteArray(Charsets.UTF_8)

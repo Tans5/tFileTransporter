@@ -41,7 +41,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                 .flatMapSingle { oldTree ->
                     if (!oldTree.notNeedRefresh) {
                         rxSingle {
-                            fileTransportScopeData.fileTransporter.writerHandleChannel.send(requireActivity().newRequestFolderChildrenShareWriterHandle(oldTree.path))
+                            fileTransportScopeData.fileTransporter.writerHandleChannel.send(newRequestFolderChildrenShareWriterHandle(oldTree.path))
                             fileTransportScopeData.remoteFolderModelEvent.firstOrError()
                                     .flatMap { remoteFolder ->
                                         if (remoteFolder.path == oldTree.path) {

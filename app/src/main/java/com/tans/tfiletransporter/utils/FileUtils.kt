@@ -1,5 +1,10 @@
 package com.tans.tfiletransporter.utils
 
+import android.content.Context
+import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.file.FileConstants.GB
+import com.tans.tfiletransporter.file.FileConstants.KB
+import com.tans.tfiletransporter.file.FileConstants.MB
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -29,4 +34,12 @@ fun Path.newChildFile(name: String): Path {
         Files.createFile(childPath)
         childPath
     }
+}
+
+fun Context.getSizeString(size: Long): String = when (size) {
+    in 0 until KB -> getString(R.string.size_B, size)
+    in KB until MB -> getString(R.string.size_KB, size.toDouble() / KB)
+    in MB until GB -> getString(R.string.size_MB, size.toDouble() / MB)
+    in GB until Long.MAX_VALUE -> getString(R.string.size_GB, size.toDouble() / GB)
+    else -> ""
 }

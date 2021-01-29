@@ -121,21 +121,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
 
                     filesShareChain { files, inputStream, _, _ ->
-                        val downloadDir = Paths.get(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path, getString(R.string.app_name))
-                        if (!Files.exists(downloadDir)) {
-                            Files.createDirectory(downloadDir)
-                        }
-                        val buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-                        val reader = Channels.newChannel(inputStream)
-                        files.map { f ->
-                            val fPath = downloadDir.newChildFile(f.name)
-                            val fileWriter = FileChannel.open(fPath, StandardOpenOption.WRITE)
-                            fileWriter.use {
-                                fileWriter.readFrom(
-                                        readable = reader,
-                                        buffer = buffer,
-                                        limit = f.size)
-                            }
+                        withContext(Dispatchers.Main) {
+                            startDownloadingFiles(files, inputStream).await()
                         }
                     }
 

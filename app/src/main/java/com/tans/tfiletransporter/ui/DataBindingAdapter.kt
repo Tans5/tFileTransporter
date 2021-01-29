@@ -3,6 +3,9 @@ package com.tans.tfiletransporter.ui
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.file.FileConstants.GB
+import com.tans.tfiletransporter.file.FileConstants.KB
+import com.tans.tfiletransporter.file.FileConstants.MB
 import org.threeten.bp.*
 import org.threeten.bp.format.DateTimeFormatter
 
@@ -25,9 +28,7 @@ object DataBindingAdapter {
         }
     }
 
-    const val KB = 1024
-    const val MB = 1024 * 1024
-    const val GB = 1024 * 1024 * 1024
+
     @JvmStatic
     @BindingAdapter("app:fileSizeText")
     fun fileSizeText(view: TextView, size: Long) {
