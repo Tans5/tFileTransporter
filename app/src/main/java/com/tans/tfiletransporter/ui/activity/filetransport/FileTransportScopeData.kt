@@ -1,14 +1,13 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
+import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
-import kotlinx.coroutines.channels.Channel
 
 class FileTransportScopeData(
     val remoteDirSeparator: String,
-    val writerHandleChannel: Channel<FileTransporterWriterHandle>
+    val fileTransporter: FileTransporter
 ) {
 
     // Floating Action Button in Activity clicks event, Activity To Event

@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.net.filetransporter
 
 import com.squareup.moshi.Types
+import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.model.File
@@ -10,14 +11,18 @@ import com.tans.tfiletransporter.utils.toBytes
 import com.tans.tfiletransporter.utils.writeDataLimit
 import com.tans.tfiletransporter.utils.writeSuspend
 import com.tans.tfiletransporter.utils.writeSuspendSize
-import java.io.InputStream
+import kotlinx.coroutines.rx2.await
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
 
 
-sealed class FileTransporterWriterHandle(val action: FileNetAction) {
+sealed class FileTransporterWriterHandle(val action: FileNetAction) : Stateable<FileTransporterWriterHandle.Companion.TransporterWriterState> by Stateable(TransporterWriterState.Create) {
+
+    suspend fun updateState(state: TransporterWriterState) {
+        updateState { state }.await()
+    }
 
     abstract suspend fun handle(writerChannel: AsynchronousSocketChannel)
 
@@ -31,6 +36,14 @@ sealed class FileTransporterWriterHandle(val action: FileNetAction) {
         val bytes = intSize.toBytes()
         val buffer = ByteBuffer.allocate(4)
         writeSuspendSize(buffer, bytes)
+    }
+
+    companion object {
+        enum class TransporterWriterState {
+            Create,
+            Start,
+            Finish
+        }
     }
 }
 

@@ -50,14 +50,14 @@ import kotlin.runCatching
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
     var remoteSeparator: String? = null
-    var writerHandleChannel: Channel<FileTransporterWriterHandle>? = null
+    var fileTransporter: FileTransporter? = null
 
     override val di: DI by retainedSubDI(di()) {
         // bind<FileTransportScopeData>() with scoped(AndroidLifecycleScope).singleton { FileTransportScopeData() }
         bind<FileTransportScopeData>() with singleton {
             val remoteSeparator = this@FileTransportActivity.remoteSeparator
-            val writerHandleChannel = this@FileTransportActivity.writerHandleChannel
-            FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, writerHandleChannel!!)
+            val fileTransporter = this@FileTransportActivity.fileTransporter
+            FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, fileTransporter!!)
         }
     }
     private val fileTransportScopeData by instance<FileTransportScopeData>()
@@ -74,7 +74,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             localAddress = localAddress,
             remoteAddress = remoteAddress
         )
-        this@FileTransportActivity.writerHandleChannel = fileTransporter.writerHandleChannel
+        this@FileTransportActivity.fileTransporter = fileTransporter
 
         suspend fun InputStream.readString(limit: Long): String {
             val outputStream = ByteArrayOutputStream()

@@ -3,16 +3,12 @@ package com.tans.tfiletransporter.ui.activity.connection
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
-import java.nio.file.Files
-import java.nio.file.Paths
 
 class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     layoutId = R.layout.connection_activity,

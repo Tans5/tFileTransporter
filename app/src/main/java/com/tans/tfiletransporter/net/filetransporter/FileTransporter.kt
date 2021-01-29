@@ -133,6 +133,14 @@ class FileTransporter(private val localAddress: InetAddress,
         sendMessageReaderHandle.newChain(readerHandleChain)
     }
 
+    suspend fun startWriterHandleWhenFinish(writerHandle: FileTransporterWriterHandle) {
+        writerHandleChannel.send(writerHandle)
+        writerHandle.bindState()
+                .filter { it == FileTransporterWriterHandle.Companion.TransporterWriterState.Finish }
+                .firstOrError()
+                .await()
+    }
+
     private suspend fun handleAction(sc: AsynchronousSocketChannel, remoteFileSeparator: String) = coroutineScope {
 
         // Read
@@ -155,7 +163,9 @@ class FileTransporter(private val localAddress: InetAddress,
         launch {
             while (true) {
                 val writerHandle = writerHandleChannel.receive()
+                writerHandle.updateState(FileTransporterWriterHandle.Companion.TransporterWriterState.Start)
                 writerHandle.handle(sc)
+                writerHandle.updateState(FileTransporterWriterHandle.Companion.TransporterWriterState.Finish)
             }
         }
     }

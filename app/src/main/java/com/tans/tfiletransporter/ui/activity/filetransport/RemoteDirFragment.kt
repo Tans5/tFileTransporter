@@ -21,10 +21,7 @@ import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import org.kodein.di.instance
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.*
-import kotlin.streams.toList
 
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTree>>(R.layout.remote_dir_fragment, Optional.empty()) {
 
@@ -44,7 +41,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                 .flatMapSingle { oldTree ->
                     if (!oldTree.notNeedRefresh) {
                         rxSingle {
-                            fileTransportScopeData.writerHandleChannel.send(requireActivity().newRequestFolderChildrenShareWriterHandle(oldTree.path))
+                            fileTransportScopeData.fileTransporter.writerHandleChannel.send(requireActivity().newRequestFolderChildrenShareWriterHandle(oldTree.path))
                             fileTransportScopeData.remoteFolderModelEvent.firstOrError()
                                     .flatMap { remoteFolder ->
                                         if (remoteFolder.path == oldTree.path) {
