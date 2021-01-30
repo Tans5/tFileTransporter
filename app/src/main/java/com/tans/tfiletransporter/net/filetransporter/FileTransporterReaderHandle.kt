@@ -38,12 +38,22 @@ interface ReaderHandleChains<T> {
 
 typealias ReaderHandleChain<T> = suspend (data: T, inputStream: InputStream, limit: Long, chains: ReaderHandleChains<T>?) -> Unit
 
-fun <T> ReaderHandleChains(defaultChain: ReaderHandleChain<T> = { _, inputStream, _, _ ->
+fun <T> ReaderHandleChains(defaultChain: ReaderHandleChain<T> = { _, inputStream, limit, _ ->
     val c = Channels.newChannel(inputStream)
     val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+    val bufferSize = NET_BUFFER_SIZE
+    var read = 0L
     while (true) {
-        buffer.clear()
-        if (c.readSuspend(buffer) == -1) { break }
+        val thisTimeRead = if (read + bufferSize >= limit) {
+            (limit - read).toInt()
+        } else {
+            bufferSize
+        }
+        c.readSuspendSize(buffer, thisTimeRead)
+        read += thisTimeRead
+        if (read >= limit) {
+            break
+        }
     }
 }) = object : ReaderHandleChains<T> {
     override var chains: List<ReaderHandleChain<T>> = listOf(defaultChain)
