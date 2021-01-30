@@ -105,9 +105,33 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
 
                     filesShareChain { files, inputStream, _, _ ->
-                        withContext(Dispatchers.Main) {
-                            startDownloadingFiles(files, inputStream).await()
+//                        withContext(Dispatchers.Main) {
+//                            startDownloadingFiles(files, inputStream).await()
+//                        }
+
+                        val dialog = withContext(Dispatchers.Main) { showLoadingDialog() }
+
+                        val downloadDir = Paths.get(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path, getString(R.string.app_name))
+                        if (!Files.exists(downloadDir)) {
+                            Files.createDirectory(downloadDir)
                         }
+                        val buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+                        val reader = Channels.newChannel(inputStream)
+                        for ((i, f) in files.withIndex()) {
+                            val fileSizeString = getSizeString(f.size)
+                            val fPath = downloadDir.newChildFile(f.name)
+                            if (f.size <=0 ) continue
+                            try {
+                                val fileWriter = FileChannel.open(fPath, StandardOpenOption.WRITE)
+                                fileWriter.use {
+                                    fileWriter.transferFrom(reader, 0, f.size)
+                                }
+                            } catch (e: Throwable) {
+                                Files.delete(fPath)
+                                throw e
+                            }
+                        }
+                        withContext(Dispatchers.Main) { dialog.cancel() }
                     }
 
                     sendMessageChain { _, inputStream, limit, _ ->

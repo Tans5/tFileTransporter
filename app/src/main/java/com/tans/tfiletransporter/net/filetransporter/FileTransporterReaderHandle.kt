@@ -118,12 +118,13 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
                 throw error("FilesShareReaderHandle, wrong files string: $filesJson")
             } else {
                 val filesLimit = files.sumOf { it.size }
-                readChannel.readDataLimit(
-                        limit = filesLimit,
-                        buffer = buffer
-                ) { fileInputStream ->
-                    process(files, fileInputStream, filesLimit)
-                }
+                println("Download Files: $filesJson, limit: $filesLimit")
+//                readChannel.readDataLimit(
+//                        limit = filesLimit,
+//                        buffer = buffer
+//                ) { fileInputStream ->
+//                    process(files, fileInputStream, filesLimit)
+//                }
             }
         }
     }

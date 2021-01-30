@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.app.Activity
+import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.file.CommonFileLeaf
 import com.tans.tfiletransporter.file.DirectoryFileLeaf
 import com.tans.tfiletransporter.file.FileConstants
@@ -102,15 +103,25 @@ suspend fun newRequestFilesShareWriterHandle(
 suspend fun Activity.newFilesShareWriterHandle(
     files: List<File>
 ): FilesShareWriterHandle {
-    val dialog = withContext(Dispatchers.Main) {
-        showLoadingDialog()
-    }
+
     return FilesShareWriterHandle(
         files
     ) { _, outputStream ->
+        val dialog = withContext(Dispatchers.Main) {
+            showLoadingDialog()
+        }
+
+        val writer = Channels.newChannel(outputStream)
+        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
+        for ((i, f) in files.withIndex()) {
+            val fileSizeString = getSizeString(f.size)
+            val reader = FileChannel.open(Paths.get(FileConstants.homePathString + f.path), StandardOpenOption.READ)
+            reader.use {
+                reader.transferTo(0, f.size, writer)
+            }
+        }
         withContext(Dispatchers.Main) {
             dialog.cancel()
-            startSendingFiles(files, outputStream).await()
         }
     }
 }

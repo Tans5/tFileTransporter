@@ -186,31 +186,33 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     val inputStream = PipedInputStream(outputStream)
+    val writer = Channels.newChannel(outputStream)
     launch(Dispatchers.IO) {
         inputStream.use {
             handle(inputStream)
         }
+        inputStream.close()
     }
     launch(Dispatchers.IO) {
-        val bufferSize = buffer.capacity()
-        outputStream.use {
+        writer.use {
+            val bufferSize = buffer.capacity()
             var readSize = 0L
             while (true) {
-                if (readSize + bufferSize >= limit) {
-                    val thisTimeRead = limit - readSize
-                    readSuspendSize(buffer, thisTimeRead.toInt())
-                    outputStream.write(buffer.copyAvailableBytes())
-                    outputStream.flush()
-                    readSize += thisTimeRead
-                    break
+                val thisTimeReadSize = if (readSize + bufferSize >= limit) {
+                    (limit - readSize).toInt()
                 } else {
-                    buffer.clear()
-                    readSuspendSize(buffer, bufferSize)
-                    outputStream.write(buffer.copyAvailableBytes())
-                    readSize += bufferSize
+                    bufferSize
+                }
+                readSuspendSize(buffer, thisTimeReadSize)
+                writer.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                readSize += thisTimeReadSize
+                if (readSize >= limit) {
+                    break
                 }
             }
         }
+        outputStream.flush()
+        outputStream.close()
     }
 }
 
@@ -222,31 +224,29 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
     if (limit <= 0) error("Wrong limit size: $limit")
     val inputStream = PipedInputStream()
     val outputStream = PipedOutputStream(inputStream)
+    val reader = Channels.newChannel(inputStream)
     launch(Dispatchers.IO) {
         outputStream.use {
             handle(outputStream)
             outputStream.flush()
+            outputStream.close()
         }
     }
     launch(Dispatchers.IO) {
         val bufferSize = buffer.capacity()
-        val readChannel = Channels.newChannel(inputStream)
-        inputStream.use {
-            readChannel.use {
-                var hasWriteSize = 0L
-                while (true) {
-                    buffer.clear()
-                    if (hasWriteSize + bufferSize >= limit) {
-                        val lastTimeReadSize = limit - hasWriteSize
-                        readChannel.readSuspendSize(buffer, lastTimeReadSize.toInt())
-                        writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                        hasWriteSize += lastTimeReadSize
-                        break
-                    } else {
-                        readChannel.readSuspendSize(buffer, bufferSize)
-                        writeSuspendSize(buffer, buffer.copyAvailableBytes())
-                        hasWriteSize += bufferSize
-                    }
+        reader.use {
+            var hasWriteSize = 0L
+            while (true) {
+                val thisTimeWriteSize = if (hasWriteSize + bufferSize >= limit) {
+                    (limit - hasWriteSize).toInt()
+                } else {
+                    bufferSize
+                }
+                reader.readSuspendSize(buffer, thisTimeWriteSize)
+                writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                hasWriteSize += thisTimeWriteSize
+                if (hasWriteSize >= limit) {
+                    break
                 }
             }
         }
