@@ -108,26 +108,18 @@ class FilesShareWriterHandle(
 
     override suspend fun handle(writerChannel: AsynchronousSocketChannel) {
         writerChannel.defaultActionCodeWrite()
-        val jsonString = getJsonString(files)
-        val jsonData = jsonString.toByteArray(Charsets.UTF_8)
+        val jsonData = getJsonString(files).toByteArray(Charsets.UTF_8)
         writerChannel.defaultIntSizeWrite(jsonData.size)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        writerChannel.writeSuspendSize(buffer, jsonData)
-        val filesLimitSize = files.sumOf { it.size }
-        println("Send Files: $jsonString, Size: $filesLimitSize")
-//        writerChannel.writeDataLimit(
-//                limit = jsonData.size.toLong(),
-//                buffer = buffer
-//        ) { outputStream ->
-//            val jsonWriter = Channels.newChannel(outputStream)
-//            jsonWriter.writeSuspendSize(buffer, jsonData)
-//            val filesLimitSize = files.sumOf { it.size }
-//            println("Send Files: $jsonString, Size: $filesLimitSize")
-////            writerChannel.writeDataLimit(
-////                    limit =  filesLimitSize,
-////                    buffer = buffer
-////            ) { filesWrite(files, it) }
-//        }
+        writerChannel.writeDataLimit(limit = jsonData.size.toLong()) { outputStream ->
+            val jsonWriter = Channels.newChannel(outputStream)
+            jsonWriter.writeSuspendSize(buffer, jsonData)
+            val filesLimitSize = files.sumOf { it.size }
+            writerChannel.writeDataLimit(
+                    limit =  filesLimitSize,
+                    buffer = buffer
+            ) { filesWrite(files, it) }
+        }
     }
 
     companion object {
