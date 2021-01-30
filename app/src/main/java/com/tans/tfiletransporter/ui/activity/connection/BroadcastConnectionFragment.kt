@@ -8,8 +8,12 @@ import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
+import com.tans.tfiletransporter.utils.findLocalAddressV4
 import io.reactivex.rxkotlin.withLatestFrom
 import com.tans.tfiletransporter.utils.toBytes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
 import org.kodein.di.instance
 import java.net.InetAddress
 import java.util.*
@@ -35,12 +39,38 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             }
 
             override fun onLost(network: Network) {
-                updateState { Optional.empty() }.bindLife()
+                // to deal as hotspot host situation, ugly code.
+                launch {
+                    updateState {
+                        Optional.empty()
+
+                    }.await()
+                    delay(5000)
+                    updateState {
+                        val canUseAddress = findLocalAddressV4().getOrNull(0)
+                        if (canUseAddress != null) {
+                            Optional.of(canUseAddress)
+                        } else {
+                            Optional.empty()
+                        }
+                    }.await()
+                }
             }
         }
     }
 
     override fun onInit() {
+
+        updateState {
+            // to deal as hotspot host situation, ugly code.
+            val canUseAddress = findLocalAddressV4().getOrNull(0)
+            if (canUseAddress != null) {
+                Optional.of(canUseAddress)
+            } else {
+                Optional.empty()
+            }
+        }.bindLife()
+
         connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
 
 
