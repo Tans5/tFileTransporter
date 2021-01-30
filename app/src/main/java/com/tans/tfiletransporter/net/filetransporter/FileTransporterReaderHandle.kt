@@ -107,7 +107,7 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
         readChannel.readSuspendSize(buffer, 4)
         val limit = buffer.asIntBuffer().get()
-        readChannel.readDataLimit(
+        val files = readChannel.readDataLimit(
                 limit = limit.toLong(),
                 buffer = buffer
         ) { inputStream ->
@@ -117,14 +117,16 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
             if (files.isNullOrEmpty()) {
                 throw error("FilesShareReaderHandle, wrong files string: $filesJson")
             } else {
-                val filesLimit = files.sumOf { it.size }
-                readChannel.readDataLimit(
-                        limit = filesLimit,
-                        buffer = buffer
-                ) { fileInputStream ->
-                    process(files, fileInputStream, filesLimit)
-                }
+                files
             }
+        }
+
+        val filesLimit = files.sumOf { it.size }
+        readChannel.readDataLimit(
+                limit = filesLimit,
+                buffer = buffer
+        ) { fileInputStream ->
+            process(files, fileInputStream, filesLimit)
         }
     }
 

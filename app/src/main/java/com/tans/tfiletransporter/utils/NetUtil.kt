@@ -1,14 +1,12 @@
 package com.tans.tfiletransporter.utils
 
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.*
 import java.io.*
 import java.net.*
 import java.nio.ByteBuffer
 import java.nio.channels.*
+import java.nio.channels.CompletionHandler
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -179,19 +177,18 @@ suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer, b
     }
 }
 
-suspend fun AsynchronousSocketChannel.readDataLimit(
+suspend fun <T> AsynchronousSocketChannel.readDataLimit(
         limit: Long,
         buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        handle: suspend (inputStream: InputStream) -> Unit) = coroutineScope {
+        handle: suspend (inputStream: InputStream) -> T): T = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     val inputStream = PipedInputStream(outputStream)
     val writer = Channels.newChannel(outputStream)
-    launch(Dispatchers.IO) {
+    val result = async(Dispatchers.IO) {
         inputStream.use {
             handle(inputStream)
         }
-        inputStream.close()
     }
     launch(Dispatchers.IO) {
         writer.use {
@@ -214,6 +211,7 @@ suspend fun AsynchronousSocketChannel.readDataLimit(
         outputStream.flush()
         outputStream.close()
     }
+    result.await()
 }
 
 suspend fun AsynchronousSocketChannel.writeDataLimit(
@@ -229,7 +227,6 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
         outputStream.use {
             handle(outputStream)
             outputStream.flush()
-            outputStream.close()
         }
     }
     launch(Dispatchers.IO) {
@@ -250,6 +247,7 @@ suspend fun AsynchronousSocketChannel.writeDataLimit(
                 }
             }
         }
+        inputStream.close()
     }
 }
 

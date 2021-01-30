@@ -114,12 +114,12 @@ class FilesShareWriterHandle(
         writerChannel.writeDataLimit(limit = jsonData.size.toLong()) { outputStream ->
             val jsonWriter = Channels.newChannel(outputStream)
             jsonWriter.writeSuspendSize(buffer, jsonData)
-            val filesLimitSize = files.sumOf { it.size }
-            writerChannel.writeDataLimit(
-                    limit =  filesLimitSize,
-                    buffer = buffer
-            ) { filesWrite(files, it) }
         }
+        val filesLimitSize = files.sumOf { it.size }
+        writerChannel.writeDataLimit(
+                limit =  filesLimitSize,
+                buffer = buffer
+        ) { filesWrite(files, it) }
     }
 
     companion object {
