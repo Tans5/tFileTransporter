@@ -15,6 +15,9 @@ import com.tans.tfiletransporter.file.FileConstants.homePath
 import com.tans.tfiletransporter.file.FileConstants.homePathString
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.toFile
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers

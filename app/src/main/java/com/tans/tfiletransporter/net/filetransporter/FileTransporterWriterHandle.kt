@@ -9,7 +9,6 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.utils.toBytes
 import com.tans.tfiletransporter.utils.writeDataLimit
-import com.tans.tfiletransporter.utils.writeSuspend
 import com.tans.tfiletransporter.utils.writeSuspendSize
 import kotlinx.coroutines.rx2.await
 import java.io.OutputStream

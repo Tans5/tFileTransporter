@@ -26,11 +26,9 @@ const val BROADCAST_SERVER_DENY: Byte = 0x01
 
 val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
 
-// 2 MB
-const val NET_BUFFER_SIZE = 1024 * 1024 * 2
+// 3 MB
+const val NET_BUFFER_SIZE = 1024 * 1024 * 3
 
-// 4 KB
-const val FILE_BUFFER_SIZE = 4 * 1024
 
 typealias RemoteDevice = Pair<SocketAddress, String>
 

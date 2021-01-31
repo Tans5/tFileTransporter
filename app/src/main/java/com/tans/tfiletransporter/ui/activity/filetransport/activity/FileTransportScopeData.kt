@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.filetransport
+package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.model.ResponseFolderModel

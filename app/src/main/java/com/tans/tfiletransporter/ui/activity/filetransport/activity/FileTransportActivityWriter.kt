@@ -1,11 +1,8 @@
-package com.tans.tfiletransporter.ui.activity.filetransport
+package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.app.Activity
-import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.file.CommonFileLeaf
-import com.tans.tfiletransporter.file.DirectoryFileLeaf
 import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.filetransporter.*
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.Folder
@@ -20,10 +17,8 @@ import org.threeten.bp.OffsetDateTime
 import org.threeten.bp.ZoneId
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
 import kotlin.streams.toList
 
 suspend fun newRequestFolderChildrenShareWriterHandle(

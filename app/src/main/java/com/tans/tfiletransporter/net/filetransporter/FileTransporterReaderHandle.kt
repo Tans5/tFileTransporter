@@ -6,7 +6,6 @@ import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.readDataLimit
 import com.tans.tfiletransporter.utils.readString
-import com.tans.tfiletransporter.utils.readSuspend
 import com.tans.tfiletransporter.utils.readSuspendSize
 import java.io.InputStream
 import java.nio.ByteBuffer

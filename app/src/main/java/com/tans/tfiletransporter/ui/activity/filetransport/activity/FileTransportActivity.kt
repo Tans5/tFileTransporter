@@ -1,9 +1,8 @@
-package com.tans.tfiletransporter.ui.activity.filetransport
+package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
@@ -12,19 +11,18 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.moshi
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
-import com.tans.tfiletransporter.net.filetransporter.FileTransporterWriterHandle
 import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment
+import com.tans.tfiletransporter.ui.activity.filetransport.RemoteDirFragment
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.withContext
@@ -34,16 +32,8 @@ import org.kodein.di.android.retainedSubDI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
-import java.nio.channels.Channels
-import java.nio.channels.FileChannel
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
 import java.util.*
 import kotlin.runCatching
 
@@ -143,7 +133,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
                             DirTabType.RemoteDir.ordinal -> updateStateCompletable {
                                 it.copy(
-                                    DirTabType.RemoteDir
+                                        DirTabType.RemoteDir
                                 )
                             }.bindLife()
                         }

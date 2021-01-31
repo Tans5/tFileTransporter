@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.filetransport
+package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.app.Activity
 import android.app.Dialog

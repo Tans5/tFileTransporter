@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity"
+        <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity"
             android:screenOrientation="portrait" />
 
     </application>

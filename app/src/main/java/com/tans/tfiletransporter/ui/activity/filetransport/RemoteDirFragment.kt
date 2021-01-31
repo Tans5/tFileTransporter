@@ -14,6 +14,8 @@ import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newRequestFolderChildrenShareWriterHandle
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers

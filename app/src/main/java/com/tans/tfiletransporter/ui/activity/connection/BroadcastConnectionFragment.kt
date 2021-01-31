@@ -7,7 +7,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.utils.findLocalAddressV4
 import io.reactivex.rxkotlin.withLatestFrom
 import com.tans.tfiletransporter.utils.toBytes
