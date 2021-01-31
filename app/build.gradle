@@ -43,6 +43,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.2.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     implementation "androidx.fragment:fragment-ktx:1.3.0-rc01"
+    implementation deps.view.swiperefresh
 
     implementation deps.rxJava.runtime
     implementation deps.rxJava.kotlin
@@ -51,6 +52,7 @@ dependencies {
     implementation deps.rxbinding.runtime
     implementation deps.rxbinding.appcompat
     implementation deps.rxbinding.core
+    implementation deps.rxbinding.swiperefreshlayout
 
     implementation deps.coroutines.runtime
     implementation deps.coroutines.android

@@ -37,6 +37,7 @@ versions.tadapter = '0.7.1'
 versions.rxutils = "0.1.0"
 versions.kotlincroutines = "1.3.5"
 versions.date = "1.3.0"
+versions.swiperefresh = "1.1.0"
 
 def view = [:]
 // androidx view
@@ -49,6 +50,7 @@ view.coordinatorlayout = "androidx.coordinatorlayout:coordinatorlayout:$versions
 view.palette = "androidx.palette:palette:$versions.palette"
 view.gridlayout = "androidx.gridlayout:gridlayout:$versions.gridlayout"
 view.design = "com.google.android.material:material:$versions.design"
+view.swiperefresh = "androidx.swiperefreshlayout:swiperefreshlayout:$versions.swiperefresh"
 ext.deps.view = view
 
 def dagger = [:]

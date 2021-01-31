@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
+import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -23,7 +24,11 @@ import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -35,53 +40,57 @@ data class MyDirFragmentState(
         val fileTree: FileTree = newRootFileTree(),
         val selectedFiles: Set<CommonFileLeaf> = emptySet())
 
-class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState())
-{
+class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
 
     override fun onInit() {
         bindState()
-                .map { it.fileTree }
-                .distinctUntilChanged()
-                .flatMapSingle { oldTree ->
-                    if (!oldTree.notNeedRefresh) {
-                        updateState {
-                            val path = if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
-                            val children = Files.list(path).map { p ->
-                                if (Files.isDirectory(p)) {
-                                    DirectoryYoungLeaf(
-                                            name = p.fileName.toString(),
-                                            childrenCount = Files.list(p).let { s ->
-                                                val size = s.count()
-                                                s.close()
-                                                size
-                                            },
-                                            lastModified = Files.getLastModifiedTime(p).toMillis()
-                                    )
-                                } else {
-                                    FileYoungLeaf(
-                                            name = p.fileName.toString(),
-                                            size = Files.size(p),
-                                            lastModified = Files.getLastModifiedTime(p).toMillis()
-                                    )
-                                }
-                            }.toList()
-                            MyDirFragmentState(children.refreshFileTree(oldTree), emptySet())
-                        }
-                                .subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .loadingDialog(requireActivity())
-                                .map { }
-                                .onErrorResumeNext {
-                                    Log.e(this::class.qualifiedName, it.toString())
-                                    Single.just(Unit)
-                                }
-                    } else {
-                        Single.just(Unit)
+            .map { it.fileTree }
+            .distinctUntilChanged()
+            .observeOn(AndroidSchedulers.mainThread())
+            .flatMapSingle { oldTree ->
+                if (!oldTree.notNeedRefresh) {
+                    updateState { oldState ->
+                        val path =
+                            if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
+                        val children = Files.list(path).map { p ->
+                            if (Files.isDirectory(p)) {
+                                DirectoryYoungLeaf(
+                                    name = p.fileName.toString(),
+                                    childrenCount = Files.list(p).let { s ->
+                                        val size = s.count()
+                                        s.close()
+                                        size
+                                    },
+                                    lastModified = Files.getLastModifiedTime(p).toMillis()
+                                )
+                            } else {
+                                FileYoungLeaf(
+                                    name = p.fileName.toString(),
+                                    size = Files.size(p),
+                                    lastModified = Files.getLastModifiedTime(p).toMillis()
+                                )
+                            }
+                        }.toList()
+                        oldState.copy(
+                            fileTree = children.refreshFileTree(oldTree),
+                            selectedFiles = emptySet()
+                        )
                     }
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .loadingDialog(requireActivity())
+                        .map { }
+                        .onErrorResumeNext {
+                            Log.e(this::class.qualifiedName, it.toString())
+                            Single.just(Unit)
+                        }
+                } else {
+                    Single.just(Unit)
                 }
-                .bindLife()
+            }
+            .bindLife()
 
         render({ it.fileTree }) {
             binding.pathTv.text = it.path
@@ -97,8 +106,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 ),
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
-                        updateState { (parentTree, _) ->
-                            MyDirFragmentState(data.newSubTree(parentTree), emptySet())
+                        updateState { oldState ->
+                            oldState.copy(fileTree = data.newSubTree(oldState.fileTree), selectedFiles = emptySet())
                         }.map { }
                     }
                 }
@@ -152,6 +161,21 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                         ))
                     }.flatMap {
                         updateState { state -> state.copy(selectedFiles = emptySet()) }
+                    }
+                }
+                .bindLife()
+
+        binding.refreshLayout.refreshes()
+                .flatMapSingle {
+                    rxSingle {
+                        withContext(Dispatchers.IO) {
+                            updateState { oldState ->
+                                val newTree = oldState.fileTree.copy(notNeedRefresh = false)
+                                oldState.copy(fileTree = newTree, selectedFiles = emptySet())
+                            }.await()
+                            delay(500)
+                        }
+                        withContext(Dispatchers.Main) { binding.refreshLayout.isRefreshing = false }
                     }
                 }
                 .bindLife()

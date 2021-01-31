@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
+import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -24,6 +25,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
@@ -46,54 +48,64 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         }.bindLife()
 
         bindState()
-                .map { it.fileTree }
-                .filter { it.isPresent }
-                .map { it.get() }
-                .distinctUntilChanged()
-                .observeOn(AndroidSchedulers.mainThread())
-                .flatMapSingle { oldTree ->
-                    if (!oldTree.notNeedRefresh) {
-                        rxSingle {
-                            fileTransportScopeData.fileTransporter.writerHandleChannel.send(newRequestFolderChildrenShareWriterHandle(oldTree.path))
-                            fileTransportScopeData.remoteFolderModelEvent.firstOrError()
-                                    .flatMap { remoteFolder ->
-                                        if (remoteFolder.path == oldTree.path) {
-                                            updateState {
-                                                val children: List<YoungLeaf> = remoteFolder.childrenFolders
-                                                        .map {
-                                                            DirectoryYoungLeaf(
-                                                                    name = it.name,
-                                                                    childrenCount = it.childCount,
-                                                                    lastModified = it.lastModify.toInstant().toEpochMilli()
-                                                            )
-                                                        } + remoteFolder.childrenFiles
-                                                        .map {
-                                                            FileYoungLeaf(
-                                                                    name = it.name,
-                                                                    size = it.size,
-                                                                    lastModified = it.lastModify.toInstant().toEpochMilli()
-                                                            )
-                                                        }
-                                                RemoteDirState(Optional.of(children.refreshFileTree(oldTree)), emptySet())
-                                            }.map {
-
-                                            }.onErrorResumeNext {
-                                                Log.e(this::class.qualifiedName, it.toString())
-                                                Single.just(Unit)
+            .map { it.fileTree }
+            .filter { it.isPresent }
+            .map { it.get() }
+            .distinctUntilChanged()
+            .observeOn(AndroidSchedulers.mainThread())
+            .flatMapSingle { oldTree ->
+                if (!oldTree.notNeedRefresh) {
+                    rxSingle {
+                        fileTransportScopeData.fileTransporter.writerHandleChannel.send(
+                            newRequestFolderChildrenShareWriterHandle(oldTree.path)
+                        )
+                        fileTransportScopeData.remoteFolderModelEvent.firstOrError()
+                            .flatMap { remoteFolder ->
+                                if (remoteFolder.path == oldTree.path) {
+                                    updateState { oldState ->
+                                        val children: List<YoungLeaf> = remoteFolder.childrenFolders
+                                            .map {
+                                                DirectoryYoungLeaf(
+                                                    name = it.name,
+                                                    childrenCount = it.childCount,
+                                                    lastModified = it.lastModify.toInstant()
+                                                        .toEpochMilli()
+                                                )
+                                            } + remoteFolder.childrenFiles
+                                            .map {
+                                                FileYoungLeaf(
+                                                    name = it.name,
+                                                    size = it.size,
+                                                    lastModified = it.lastModify.toInstant()
+                                                        .toEpochMilli()
+                                                )
                                             }
-                                        } else {
-                                            Single.just(Unit)
-                                        }
-                                    }.await()
-                        }
-                                .subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .loadingDialog(requireActivity())
-                    } else {
-                        Single.just(Unit)
+                                        oldState.copy(
+                                            fileTree = Optional.of(
+                                                children.refreshFileTree(
+                                                    oldTree
+                                                )
+                                            ), selectedFiles = emptySet()
+                                        )
+                                    }.map {
+
+                                    }.onErrorResumeNext {
+                                        Log.e(this::class.qualifiedName, it.toString())
+                                        Single.just(Unit)
+                                    }
+                                } else {
+                                    Single.just(Unit)
+                                }
+                            }.await()
                     }
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .loadingDialog(requireActivity())
+                } else {
+                    Single.just(Unit)
                 }
-                .bindLife()
+            }
+            .bindLife()
 
         render({ it.fileTree }) {
             binding.remotePathTv.text = if (it.isPresent) it.get().path else ""
@@ -109,8 +121,8 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 ),
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
-                        updateState { parentTree ->
-                            RemoteDirState(Optional.of(data.newSubTree(parentTree.fileTree.get())), emptySet())
+                        updateState { oldState ->
+                            oldState.copy(Optional.of(data.newSubTree(oldState.fileTree.get())), emptySet())
                         }.map { }
                     }
                 }
@@ -172,6 +184,25 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                     }
                 }
                 .bindLife()
+
+        binding.refreshLayout.refreshes()
+            .flatMapSingle {
+                rxSingle {
+                    withContext(Dispatchers.IO) {
+                        updateState { oldState ->
+                            val fileTree = oldState.fileTree
+                            if (fileTree.isPresent) {
+                                oldState.copy(fileTree = Optional.of(fileTree.get().copy(notNeedRefresh = false)), emptySet())
+                            } else {
+                                oldState
+                            }
+                        }.await()
+                        delay(500)
+                    }
+                    withContext(Dispatchers.Main) { binding.refreshLayout.isRefreshing = false }
+                }
+            }
+            .bindLife()
     }
 
     override fun onBackPressed(): Boolean {
@@ -180,7 +211,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         } else {
             updateState { state ->
                 val parent = state.fileTree.get().parentTree
-                if (parent != null) RemoteDirState(Optional.of(parent)) else state
+                if (parent != null) state.copy(fileTree = Optional.of(parent), selectedFiles = emptySet()) else state
             }.bindLife()
             true
         }
