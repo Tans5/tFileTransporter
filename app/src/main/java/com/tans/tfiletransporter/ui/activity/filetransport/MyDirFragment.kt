@@ -31,13 +31,18 @@ import kotlin.streams.toList
 
 object FileSelectChange
 
-class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<CommonFileLeaf>>>(R.layout.my_dir_fragment, newRootFileTree() to emptySet()) {
+data class MyDirFragmentState(
+        val fileTree: FileTree = newRootFileTree(),
+        val selectFiles: Set<CommonFileLeaf> = emptySet())
+
+class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState())
+{
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
 
     override fun onInit() {
         bindState()
-                .map { it.first }
+                .map { it.fileTree }
                 .distinctUntilChanged()
                 .flatMapSingle { oldTree ->
                     if (!oldTree.notNeedRefresh) {
@@ -62,7 +67,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
                                     )
                                 }
                             }.toList()
-                            children.refreshFileTree(oldTree) to emptySet()
+                            MyDirFragmentState(children.refreshFileTree(oldTree), emptySet())
                         }
                                 .subscribeOn(Schedulers.io())
                                 .observeOn(AndroidSchedulers.mainThread())
@@ -78,14 +83,14 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
                 }
                 .bindLife()
 
-        render({ it.first }) {
+        render({ it.fileTree }) {
             binding.pathTv.text = it.path
         }.bindLife()
 
         binding.fileFolderRv.adapter = (SimpleAdapterSpec<DirectoryFileLeaf, FolderItemLayoutBinding>(
                 layoutId = R.layout.folder_item_layout,
                 bindData = { _, data, binding -> binding.data = data },
-                dataUpdater = bindState().map { it.first.dirLeafs },
+                dataUpdater = bindState().map { it.fileTree.dirLeafs },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.path == b.path },
                         contentTheSame = { a, b -> a == b }
@@ -93,14 +98,14 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { (parentTree, _) ->
-                            data.newSubTree(parentTree) to emptySet()
+                            MyDirFragmentState(data.newSubTree(parentTree), emptySet())
                         }.map { }
                     }
                 }
         ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
                 bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
-                dataUpdater = bindState().map { state -> state.first.fileLeafs.map { it to state.second.contains(it) } },
+                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.map { it to state.selectFiles.contains(it) } },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.first.path == b.first.path },
                         contentTheSame = { a, b -> a == b },
@@ -123,8 +128,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, (file, isSelect) ->
                         updateState { oldState ->
-                            val selectedFiles = oldState.second
-                            oldState.copy(second = if (isSelect) selectedFiles - file else selectedFiles + file)
+                            val selectedFiles = oldState.selectFiles
+                            oldState.copy(selectFiles = if (isSelect) selectedFiles - file else selectedFiles + file)
                         }.map {  }
                     }
                 }
@@ -138,7 +143,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
         )
 
         fileTransportScopeData.floatBtnEvent
-                .withLatestFrom(bindState().map { it.second })
+                .withLatestFrom(bindState().map { it.selectFiles })
                 .filter { !isHidden && it.second.isNotEmpty() }
                 .flatMapSingle { (_, selectedFiles) ->
                     rxSingle {
@@ -146,7 +151,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
                                 selectedFiles.map { it.toFile() }
                         ))
                     }.flatMap {
-                        updateState { state -> state.copy(second = emptySet()) }
+                        updateState { state -> state.copy(selectFiles = emptySet()) }
                     }
                 }
                 .bindLife()
@@ -154,11 +159,11 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Pair<FileTree, Set<Comm
 
 
     override fun onBackPressed(): Boolean {
-        return if (bindState().firstOrError().blockingGet().first.isRootFileTree()) {
+        return if (bindState().firstOrError().blockingGet().fileTree.isRootFileTree()) {
             false
         } else {
             updateState { state ->
-                if (state.first.parentTree == null) state else state.first.parentTree!! to emptySet()
+                if (state.fileTree.parentTree == null) state else MyDirFragmentState(state.fileTree.parentTree, emptySet())
             }.bindLife()
             true
         }
