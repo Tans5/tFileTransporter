@@ -32,6 +32,22 @@
                 android:textSize="16sp"
                 tools:text="/a/b/c" />
 
+            <FrameLayout
+                android:id="@+id/folder_menu_layout"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="5dp"
+                android:layout_marginTop="5dp"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/dots_vertical"
+                    android:layout_gravity="center"/>
+
+            </FrameLayout>
+
         </LinearLayout>
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout

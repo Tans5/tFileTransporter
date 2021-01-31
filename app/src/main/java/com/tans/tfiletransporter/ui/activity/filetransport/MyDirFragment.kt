@@ -1,7 +1,10 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
+import androidx.appcompat.widget.PopupMenu
+import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
+import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -32,13 +35,39 @@ import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import kotlin.streams.toList
 
 object FileSelectChange
 
+enum class FileSortType {
+    SortByDate,
+    SortByName
+}
+
 data class MyDirFragmentState(
-        val fileTree: FileTree = newRootFileTree(),
-        val selectedFiles: Set<CommonFileLeaf> = emptySet())
+    val fileTree: FileTree = newRootFileTree(),
+    val selectedFiles: Set<CommonFileLeaf> = emptySet(),
+    val sortType: FileSortType = FileSortType.SortByName
+)
+
+fun List<CommonFileLeaf>.sortFile(sortType: FileSortType): List<CommonFileLeaf> = when (sortType) {
+    FileSortType.SortByDate -> {
+        sortedByDescending { it.lastModified }
+    }
+    FileSortType.SortByName -> {
+        sortedBy { it.name }
+    }
+}
+
+fun List<DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<DirectoryFileLeaf> = when (sortType) {
+    FileSortType.SortByDate -> {
+        sortedByDescending { it.lastModified }
+    }
+    FileSortType.SortByName -> {
+        sortedBy { it.name }
+    }
+}
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
@@ -99,7 +128,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         binding.fileFolderRv.adapter = (SimpleAdapterSpec<DirectoryFileLeaf, FolderItemLayoutBinding>(
                 layoutId = R.layout.folder_item_layout,
                 bindData = { _, data, binding -> binding.data = data },
-                dataUpdater = bindState().map { it.fileTree.dirLeafs },
+                dataUpdater = bindState().map { it.fileTree.dirLeafs.sortDir(it.sortType) },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.path == b.path },
                         contentTheSame = { a, b -> a == b }
@@ -114,7 +143,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
                 bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
-                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.map { it to state.selectedFiles.contains(it) } },
+                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.sortFile(state.sortType).map { it to state.selectedFiles.contains(it) } },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.first.path == b.first.path },
                         contentTheSame = { a, b -> a == b },
@@ -179,6 +208,45 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                     }
                 }
                 .bindLife()
+
+        val popupMenu = PopupMenu(requireContext(), binding.folderMenuLayout)
+        popupMenu.inflate(R.menu.folder_menu)
+
+        popupMenu.itemClicks()
+            .flatMapSingle { menuItem ->
+                updateState { oldState ->
+                    val tree = oldState.fileTree
+                    when (menuItem.itemId) {
+                        R.id.select_all_files -> {
+                            oldState.copy(fileTree = tree, selectedFiles = tree.fileLeafs.toHashSet())
+                        }
+
+                        R.id.unselect_all_files -> {
+                            oldState.copy(fileTree = tree, selectedFiles = emptySet())
+                        }
+
+                        R.id.sort_by_date -> {
+                            oldState.copy(sortType = FileSortType.SortByDate)
+                        }
+
+                        R.id.sort_by_name -> {
+                            oldState.copy(sortType = FileSortType.SortByName)
+                        }
+
+                        else -> {
+                            oldState
+                        }
+                    }
+
+                }
+            }
+            .bindLife()
+
+        binding.folderMenuLayout.clicks()
+            .doOnNext {
+                popupMenu.show()
+            }
+            .bindLife()
     }
 
 

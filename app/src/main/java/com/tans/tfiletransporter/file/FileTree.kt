@@ -66,8 +66,7 @@ fun List<YoungLeaf>.refreshFileTree(parentTree: FileTree, dirSeparator: String =
 }
 
 fun FileTree.refreshFileTree(leafs: List<FileLeaf>): FileTree {
-    val sortedLeafs = leafs.sortedByDescending { it.lastModified }
-    return this.copy(leafs = sortedLeafs, dirLeafs = sortedLeafs.filterIsInstance<DirectoryFileLeaf>(), fileLeafs = sortedLeafs.filterIsInstance<CommonFileLeaf>(), notNeedRefresh = true)
+    return this.copy(leafs = leafs, dirLeafs = leafs.filterIsInstance<DirectoryFileLeaf>(), fileLeafs = leafs.filterIsInstance<CommonFileLeaf>(), notNeedRefresh = true)
 }
 
 fun FileTree.cleanFileTree(): FileTree = this.copy(leafs = emptyList(), dirLeafs = emptyList(), fileLeafs = emptyList(), notNeedRefresh = false)

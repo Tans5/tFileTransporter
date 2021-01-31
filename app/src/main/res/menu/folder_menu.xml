@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:id="@+id/select_all_files"
+        android:title="@string/folder_menu_select_all_files"/>
+
+    <item android:id="@+id/unselect_all_files"
+        android:title="@string/folder_menu_unselect_all_files"/>
+
+    <item android:id="@+id/sort_by_date"
+        android:title="@string/folder_menu_sort_by_date"/>
+
+    <item android:id="@+id/sort_by_name"
+        android:title="@string/folder_menu_sort_by_file_name"/>
+</menu>

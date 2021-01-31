@@ -1,7 +1,10 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
+import androidx.appcompat.widget.PopupMenu
+import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
+import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -34,7 +37,8 @@ import java.util.*
 
 data class RemoteDirState(
         val fileTree: Optional<FileTree> = Optional.empty(),
-        val selectedFiles: Set<CommonFileLeaf> = emptySet()
+        val selectedFiles: Set<CommonFileLeaf> = emptySet(),
+        val sortType: FileSortType = FileSortType.SortByName
 )
 
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
@@ -114,7 +118,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         binding.remoteFileFolderRv.adapter = (SimpleAdapterSpec<DirectoryFileLeaf, FolderItemLayoutBinding>(
                 layoutId = R.layout.folder_item_layout,
                 bindData = { _, data, binding -> binding.data = data },
-                dataUpdater = bindState().map { if (it.fileTree.isPresent) it.fileTree.get().dirLeafs else emptyList() },
+                dataUpdater = bindState().map { if (it.fileTree.isPresent) it.fileTree.get().dirLeafs.sortDir(it.sortType) else emptyList() },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.path == b.path },
                         contentTheSame = { a, b -> a == b }
@@ -122,14 +126,14 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { oldState ->
-                            oldState.copy(Optional.of(data.newSubTree(oldState.fileTree.get())), emptySet())
+                            oldState.copy(fileTree = Optional.of(data.newSubTree(oldState.fileTree.get())), selectedFiles = emptySet())
                         }.map { }
                     }
                 }
         ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
                 bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
-                dataUpdater = bindState().map { state -> state.fileTree.get().fileLeafs.map { it to state.selectedFiles.contains(it) } },
+                dataUpdater = bindState().map { state -> state.fileTree.get().fileLeafs.sortFile(state.sortType).map { it to state.selectedFiles.contains(it) } },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.first.path == b.first.path },
                         contentTheSame = { a, b -> a == b },
@@ -201,6 +205,52 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                     }
                     withContext(Dispatchers.Main) { binding.refreshLayout.isRefreshing = false }
                 }
+            }
+            .bindLife()
+
+        val popupMenu = PopupMenu(requireContext(), binding.folderMenuLayout)
+        popupMenu.inflate(R.menu.folder_menu)
+
+        popupMenu.itemClicks()
+            .flatMapSingle { menuItem ->
+                updateState { oldState ->
+                    if (oldState.fileTree.isPresent) {
+                        val tree = oldState.fileTree.get()
+                        when (menuItem.itemId) {
+                            R.id.select_all_files -> {
+                                oldState.copy(
+                                    fileTree = Optional.of(tree),
+                                    selectedFiles = tree.fileLeafs.toHashSet()
+                                )
+                            }
+
+                            R.id.unselect_all_files -> {
+                                oldState.copy(fileTree = Optional.of(tree), selectedFiles = emptySet())
+                            }
+
+                            R.id.sort_by_date -> {
+                                oldState.copy(sortType = FileSortType.SortByDate)
+                            }
+
+                            R.id.sort_by_name -> {
+                                oldState.copy(sortType = FileSortType.SortByName)
+                            }
+                            else -> {
+                                oldState
+                            }
+                        }
+
+                    } else {
+                        oldState
+                    }
+
+                }
+            }
+            .bindLife()
+
+        binding.folderMenuLayout.clicks()
+            .doOnNext {
+                popupMenu.show()
             }
             .bindLife()
     }

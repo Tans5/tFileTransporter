@@ -43,4 +43,11 @@
     <string name="size_MB">%.1fMB</string>
     <string name="size_GB">%.1fGB</string>
 
+    <!-- Folder Menu Start -->
+    <string name="folder_menu_select_all_files">Select All Files</string>
+    <string name="folder_menu_unselect_all_files">Unselect All Files</string>
+    <string name="folder_menu_sort_by_date">Sort By Modified Date</string>
+    <string name="folder_menu_sort_by_file_name">Sort By Name</string>
+    <!-- Folder Menu End -->
+
 </resources>
