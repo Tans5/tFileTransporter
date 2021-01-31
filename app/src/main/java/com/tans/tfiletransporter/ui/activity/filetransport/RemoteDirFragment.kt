@@ -28,7 +28,6 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
@@ -104,9 +103,16 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                     }
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
-                        .loadingDialog(requireActivity())
                 } else {
                     Single.just(Unit)
+                }.let {
+                    if (binding.refreshLayout.isRefreshing) {
+                        it.doFinally {
+                            binding.refreshLayout.isRefreshing = false
+                        }
+                    } else {
+                        it.loadingDialog(requireActivity())
+                    }
                 }
             }
             .bindLife()
@@ -191,19 +197,13 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
 
         binding.refreshLayout.refreshes()
             .flatMapSingle {
-                rxSingle {
-                    withContext(Dispatchers.IO) {
-                        updateState { oldState ->
-                            val fileTree = oldState.fileTree
-                            if (fileTree.isPresent) {
-                                oldState.copy(fileTree = Optional.of(fileTree.get().copy(notNeedRefresh = false)), emptySet())
-                            } else {
-                                oldState
-                            }
-                        }.await()
-                        delay(500)
+                updateState { oldState ->
+                    val fileTree = oldState.fileTree
+                    if (fileTree.isPresent) {
+                        oldState.copy(fileTree = Optional.of(fileTree.get().copy(notNeedRefresh = false)), selectedFiles = emptySet())
+                    } else {
+                        oldState
                     }
-                    withContext(Dispatchers.Main) { binding.refreshLayout.isRefreshing = false }
                 }
             }
             .bindLife()
@@ -212,38 +212,49 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         popupMenu.inflate(R.menu.folder_menu)
 
         popupMenu.itemClicks()
-            .flatMapSingle { menuItem ->
-                updateState { oldState ->
-                    if (oldState.fileTree.isPresent) {
-                        val tree = oldState.fileTree.get()
-                        when (menuItem.itemId) {
-                            R.id.select_all_files -> {
-                                oldState.copy(
-                                    fileTree = Optional.of(tree),
-                                    selectedFiles = tree.fileLeafs.toHashSet()
-                                )
-                            }
+            .withLatestFrom(bindState())
+            .flatMapSingle { (menuItem, state) ->
+                rxSingle {
+                    val newState = withContext(Dispatchers.IO) {
+                        updateState { oldState ->
+                            if (oldState.fileTree.isPresent) {
+                                val tree = oldState.fileTree.get()
+                                when (menuItem.itemId) {
+                                    R.id.select_all_files -> {
+                                        oldState.copy(
+                                            fileTree = Optional.of(tree),
+                                            selectedFiles = tree.fileLeafs.toHashSet()
+                                        )
+                                    }
 
-                            R.id.unselect_all_files -> {
-                                oldState.copy(fileTree = Optional.of(tree), selectedFiles = emptySet())
-                            }
+                                    R.id.unselect_all_files -> {
+                                        oldState.copy(
+                                            fileTree = Optional.of(tree),
+                                            selectedFiles = emptySet()
+                                        )
+                                    }
 
-                            R.id.sort_by_date -> {
-                                oldState.copy(sortType = FileSortType.SortByDate)
-                            }
+                                    R.id.sort_by_date -> {
+                                        oldState.copy(sortType = FileSortType.SortByDate)
+                                    }
 
-                            R.id.sort_by_name -> {
-                                oldState.copy(sortType = FileSortType.SortByName)
-                            }
-                            else -> {
+                                    R.id.sort_by_name -> {
+                                        oldState.copy(sortType = FileSortType.SortByName)
+                                    }
+                                    else -> {
+                                        oldState
+                                    }
+                                }
+
+                            } else {
                                 oldState
                             }
-                        }
 
-                    } else {
-                        oldState
+                        }.await()
                     }
-
+//                    if (newState.sortType != state.sortType) {
+//                        withContext(Dispatchers.Main) { binding.remoteFileFolderRv.scrollToPosition(0) }
+//                    }
                 }
             }
             .bindLife()

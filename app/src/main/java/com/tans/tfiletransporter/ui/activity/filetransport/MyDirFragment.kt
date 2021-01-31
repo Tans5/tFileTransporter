@@ -28,14 +28,12 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.*
 import kotlin.streams.toList
 
 object FileSelectChange
@@ -108,8 +106,16 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                         )
                     }
                         .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .loadingDialog(requireActivity())
+                        .observeOn(AndroidSchedulers.mainThread()).let {
+
+                            if (binding.refreshLayout.isRefreshing) {
+                                it.doFinally {
+                                    binding.refreshLayout.isRefreshing = false
+                                }
+                            } else {
+                                it.loadingDialog(requireActivity())
+                            }
+                        }
                         .map { }
                         .onErrorResumeNext {
                             Log.e(this::class.qualifiedName, it.toString())
@@ -196,15 +202,9 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
         binding.refreshLayout.refreshes()
                 .flatMapSingle {
-                    rxSingle {
-                        withContext(Dispatchers.IO) {
-                            updateState { oldState ->
-                                val newTree = oldState.fileTree.copy(notNeedRefresh = false)
-                                oldState.copy(fileTree = newTree, selectedFiles = emptySet())
-                            }.await()
-                            delay(500)
-                        }
-                        withContext(Dispatchers.Main) { binding.refreshLayout.isRefreshing = false }
+                    updateState { oldState ->
+                        val newTree = oldState.fileTree.copy(notNeedRefresh = false)
+                        oldState.copy(fileTree = newTree, selectedFiles = emptySet())
                     }
                 }
                 .bindLife()
@@ -213,31 +213,50 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         popupMenu.inflate(R.menu.folder_menu)
 
         popupMenu.itemClicks()
-            .flatMapSingle { menuItem ->
-                updateState { oldState ->
-                    val tree = oldState.fileTree
-                    when (menuItem.itemId) {
-                        R.id.select_all_files -> {
-                            oldState.copy(fileTree = tree, selectedFiles = tree.fileLeafs.toHashSet())
-                        }
+            .withLatestFrom(bindState())
+            .flatMapSingle { (menuItem, state) ->
+                rxSingle {
+                    val newState = withContext(Dispatchers.IO) {
+                        updateState { oldState ->
+                            val tree = oldState.fileTree
+                            when (menuItem.itemId) {
+                                R.id.select_all_files -> {
+                                    oldState.copy(fileTree = tree, selectedFiles = tree.fileLeafs.toHashSet())
+                                }
 
-                        R.id.unselect_all_files -> {
-                            oldState.copy(fileTree = tree, selectedFiles = emptySet())
-                        }
+                                R.id.unselect_all_files -> {
+                                    oldState.copy(fileTree = tree, selectedFiles = emptySet())
+                                }
 
-                        R.id.sort_by_date -> {
-                            oldState.copy(sortType = FileSortType.SortByDate)
-                        }
+                                R.id.sort_by_date -> {
+                                    if (oldState.sortType != FileSortType.SortByDate) {
+                                        oldState.copy(
+                                            sortType = FileSortType.SortByDate
+                                        )
+                                    } else {
+                                        oldState
+                                    }
+                                }
 
-                        R.id.sort_by_name -> {
-                            oldState.copy(sortType = FileSortType.SortByName)
-                        }
+                                R.id.sort_by_name -> {
+                                    if (oldState.sortType != FileSortType.SortByName) {
+                                        oldState.copy(sortType = FileSortType.SortByName)
+                                    } else {
+                                        oldState
+                                    }
+                                }
 
-                        else -> {
-                            oldState
-                        }
+                                else -> {
+                                    oldState
+                                }
+                            }
+
+                        }.await()
                     }
-
+                    // below code useless.
+//                    if (state.sortType != newState.sortType) {
+//                        withContext(Dispatchers.Main) { binding.fileFolderRv.scrollToPosition(0) }
+//                    }
                 }
             }
             .bindLife()
