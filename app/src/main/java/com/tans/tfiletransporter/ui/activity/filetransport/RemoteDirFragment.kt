@@ -1,7 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
-import android.widget.Toast
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -14,28 +13,40 @@ import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newRequestFilesShareWriterHandle
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newRequestFolderChildrenShareWriterHandle
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.toFile
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.util.*
 
-class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTree>>(R.layout.remote_dir_fragment, Optional.empty()) {
+data class RemoteDirState(
+        val fileTree: Optional<FileTree> = Optional.empty(),
+        val selectedFiles: Set<CommonFileLeaf> = emptySet()
+)
+
+class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
 
     override fun onInit() {
 
         updateState {
-            Optional.of(newRootFileTree(path = fileTransportScopeData.remoteDirSeparator))
+            RemoteDirState(Optional.of(newRootFileTree(path = fileTransportScopeData.remoteDirSeparator)), emptySet())
         }.bindLife()
 
         bindState()
+                .map { it.fileTree }
                 .filter { it.isPresent }
                 .map { it.get() }
                 .distinctUntilChanged()
@@ -63,7 +74,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                                                                     lastModified = it.lastModify.toInstant().toEpochMilli()
                                                             )
                                                         }
-                                                Optional.of(children.refreshFileTree(oldTree))
+                                                RemoteDirState(Optional.of(children.refreshFileTree(oldTree)), emptySet())
                                             }.map {
 
                                             }.onErrorResumeNext {
@@ -84,14 +95,14 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                 }
                 .bindLife()
 
-        render {
+        render({ it.fileTree }) {
             binding.remotePathTv.text = if (it.isPresent) it.get().path else ""
         }.bindLife()
 
         binding.remoteFileFolderRv.adapter = (SimpleAdapterSpec<DirectoryFileLeaf, FolderItemLayoutBinding>(
                 layoutId = R.layout.folder_item_layout,
                 bindData = { _, data, binding -> binding.data = data },
-                dataUpdater = bindState().map { if (it.isPresent) it.get().dirLeafs else emptyList() },
+                dataUpdater = bindState().map { if (it.fileTree.isPresent) it.fileTree.get().dirLeafs else emptyList() },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.path == b.path },
                         contentTheSame = { a, b -> a == b }
@@ -99,18 +110,41 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { parentTree ->
-                            Optional.of(data.newSubTree(parentTree.get()))
+                            RemoteDirState(Optional.of(data.newSubTree(parentTree.fileTree.get())), emptySet())
                         }.map { }
                     }
                 }
-        ) + SimpleAdapterSpec<CommonFileLeaf, FileItemLayoutBinding>(
+        ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
-                bindData = { _, data, binding -> binding.data = data },
-                dataUpdater = bindState().map { if (it.isPresent) it.get().fileLeafs else emptyList()},
+                bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
+                dataUpdater = bindState().map { state -> state.fileTree.get().fileLeafs.map { it to state.selectedFiles.contains(it) } },
                 differHandler = DifferHandler(
-                        itemsTheSame = { a, b -> a.path == b.path },
-                        contentTheSame = { a, b -> a == b }
-                )
+                        itemsTheSame = { a, b -> a.first.path == b.first.path },
+                        contentTheSame = { a, b -> a == b },
+                        changePayLoad = { d1, d2 ->
+                            if (d1.first == d2.first && d1.second != d2.second) {
+                                FileSelectChange
+                            } else {
+                                null
+                            }
+                        }
+                ),
+                bindDataPayload = { _, data, binding, payloads ->
+                    if (payloads.contains(FileSelectChange)) {
+                        binding.isSelect = data.second
+                        true
+                    } else {
+                        false
+                    }
+                },
+                itemClicks = listOf { binding, _ ->
+                    binding.root to { _, (file, isSelect) ->
+                        updateState { oldState ->
+                            val selectedFiles = oldState.selectedFiles
+                            oldState.copy(selectedFiles = if (isSelect) selectedFiles - file else selectedFiles + file)
+                        }.map {  }
+                    }
+                }
         )).toAdapter()
 
         binding.remoteFileFolderRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
@@ -121,20 +155,32 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Optional<FileTr
         )
 
         fileTransportScopeData.floatBtnEvent
-                .filter { !isHidden }
-                .doOnNext {
-                    Toast.makeText(requireContext(), "Message From Remote Dir", Toast.LENGTH_SHORT).show()
+                .withLatestFrom(bindState().map { it.selectedFiles })
+                .map { it.second }
+                .filter { !isHidden && it.isNotEmpty() }
+                .observeOn(AndroidSchedulers.mainThread())
+                .flatMapSingle {
+                    rxSingle {
+                        val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
+                        withContext(Dispatchers.IO) {
+                            fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(newRequestFilesShareWriterHandle(it.map { it.toFile() }))
+                        }
+                        updateState {
+                            it.copy(selectedFiles = emptySet())
+                        }.await()
+                        withContext(Dispatchers.Main) { dialog.cancel() }
+                    }
                 }
                 .bindLife()
     }
 
     override fun onBackPressed(): Boolean {
-        return if (bindState().firstOrError().blockingGet().get().isRootFileTree()) {
+        return if (bindState().firstOrError().blockingGet().fileTree.get().isRootFileTree()) {
             false
         } else {
             updateState { state ->
-                val parent = state.get().parentTree
-                if (parent != null) Optional.of(parent) else state
+                val parent = state.fileTree.get().parentTree
+                if (parent != null) RemoteDirState(Optional.of(parent)) else state
             }.bindLife()
             true
         }

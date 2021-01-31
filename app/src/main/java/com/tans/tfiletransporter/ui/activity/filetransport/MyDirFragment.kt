@@ -33,7 +33,7 @@ object FileSelectChange
 
 data class MyDirFragmentState(
         val fileTree: FileTree = newRootFileTree(),
-        val selectFiles: Set<CommonFileLeaf> = emptySet())
+        val selectedFiles: Set<CommonFileLeaf> = emptySet())
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState())
 {
@@ -105,7 +105,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
                 bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
-                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.map { it to state.selectFiles.contains(it) } },
+                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.map { it to state.selectedFiles.contains(it) } },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.first.path == b.first.path },
                         contentTheSame = { a, b -> a == b },
@@ -128,8 +128,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, (file, isSelect) ->
                         updateState { oldState ->
-                            val selectedFiles = oldState.selectFiles
-                            oldState.copy(selectFiles = if (isSelect) selectedFiles - file else selectedFiles + file)
+                            val selectedFiles = oldState.selectedFiles
+                            oldState.copy(selectedFiles = if (isSelect) selectedFiles - file else selectedFiles + file)
                         }.map {  }
                     }
                 }
@@ -143,7 +143,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         )
 
         fileTransportScopeData.floatBtnEvent
-                .withLatestFrom(bindState().map { it.selectFiles })
+                .withLatestFrom(bindState().map { it.selectedFiles })
                 .filter { !isHidden && it.second.isNotEmpty() }
                 .flatMapSingle { (_, selectedFiles) ->
                     rxSingle {
@@ -151,7 +151,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                                 selectedFiles.map { it.toFile() }
                         ))
                     }.flatMap {
-                        updateState { state -> state.copy(selectFiles = emptySet()) }
+                        updateState { state -> state.copy(selectedFiles = emptySet()) }
                     }
                 }
                 .bindLife()
