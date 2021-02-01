@@ -7,7 +7,6 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
 import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newSendMessageShareWriterHandle
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +34,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
             layoutId = R.layout.message_item_layout,
             bindData = { _, data, lBinding -> lBinding.message = data },
             dataUpdater = bindState()
-        ).toAdapter()
+        ).toAdapter { if (it.isNotEmpty()) { binding.messageRv.scrollToPosition(it.size - 1) } }
 
         fileTransportScopeData.remoteMessageEvent
             .flatMapSingle { remoteMessage ->

@@ -20,7 +20,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toTopOf="@id/edit_layout"
-            app:layout_constrainedWidth="true"
+            app:layout_constrainedHeight="true"
             app:layout_constraintVertical_bias="1"
             app:layout_constraintVertical_chainStyle="packed"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
@@ -30,7 +30,7 @@
         <LinearLayout
             android:id="@+id/edit_layout"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
+            android:layout_height="50dp"
             android:orientation="horizontal"
             android:background="@color/white"
             android:elevation="4dp"
