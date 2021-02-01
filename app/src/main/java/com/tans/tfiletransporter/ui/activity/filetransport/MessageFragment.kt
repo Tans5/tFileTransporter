@@ -13,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent
+import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener
 import org.kodein.di.instance
 
 data class Message(
@@ -76,6 +78,20 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
                 }
             }
             .bindLife()
+
+        KeyboardVisibilityEvent.registerEventListener(requireActivity(), object : KeyboardVisibilityEventListener {
+            override fun onVisibilityChanged(isOpen: Boolean) {
+                if (isOpen) {
+                    bindState().firstOrError()
+                        .doOnSuccess {
+                            if (it.isNotEmpty()) {
+                                binding.messageRv.scrollToPosition(it.size - 1)
+                            }
+                        }
+                        .bindLife()
+                }
+            }
+        })
     }
 
     companion object {
