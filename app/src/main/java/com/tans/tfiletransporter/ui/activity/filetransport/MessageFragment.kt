@@ -1,8 +1,20 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import com.jakewharton.rxbinding3.view.clicks
+import com.tans.tadapter.spec.SimpleAdapterSpec
+import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
+import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newSendMessageShareWriterHandle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
+import org.kodein.di.instance
 
 data class Message(
         val isRemote: Boolean,
@@ -10,10 +22,60 @@ data class Message(
         val message: String
 )
 
-class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(R.layout.message_fragment, emptyList()) {
+class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
+    R.layout.message_fragment,
+    emptyList()
+) {
+
+    private val fileTransportScopeData: FileTransportScopeData by instance()
 
     override fun onInit() {
 
+        binding.messageRv.adapter = SimpleAdapterSpec<Message, MessageItemLayoutBinding>(
+            layoutId = R.layout.message_item_layout,
+            bindData = { _, data, lBinding -> lBinding.message = data },
+            dataUpdater = bindState()
+        ).toAdapter()
+
+        fileTransportScopeData.remoteMessageEvent
+            .flatMapSingle { remoteMessage ->
+                updateState { oldState ->
+                    val message = Message(
+                        isRemote = true,
+                        timeMilli = System.currentTimeMillis(),
+                        message = remoteMessage
+                    )
+                    val newState = oldState + message
+                    newState
+                }
+            }
+            .bindLife()
+
+        binding.sendLayout.clicks()
+            .map { binding.editText.text.toString()}
+            .filter { it.isNotEmpty() }
+            .switchMapSingle { sendingMessage ->
+                rxSingle {
+                    val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
+                    withContext(Dispatchers.IO) {
+                        fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(
+                            newSendMessageShareWriterHandle(sendingMessage)
+                        )
+                    }
+                    updateState { oldState ->
+                        oldState + Message(
+                            isRemote = false,
+                            timeMilli = System.currentTimeMillis(),
+                            message = sendingMessage
+                        )
+                    }.await()
+                    withContext(Dispatchers.Main) {
+                        binding.editText.text?.clear()
+                        dialog.cancel()
+                    }
+                }
+            }
+            .bindLife()
     }
 
     companion object {
