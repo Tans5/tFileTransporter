@@ -34,6 +34,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             android:visibility="@{message.isRemote ? View.VISIBLE : View.GONE}"
+            android:textIsSelectable="true"
             tools:visibility="gone"
             tools:text="3123123213131313131231231231321313123123123123123123131321312312"/>
 
@@ -50,6 +51,7 @@
             android:textSize="14sp"
             android:text="@{message.message}"
             android:visibility="@{message.isRemote ? View.GONE : View.VISIBLE}"
+            android:textIsSelectable="true"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="1"
             app:layout_constraintStart_toStartOf="parent"

@@ -28,6 +28,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
@@ -43,6 +44,9 @@ data class RemoteDirState(
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
+
+    private val recyclerViewScrollChannel = Channel<Int>(1)
+    private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
     override fun onInit() {
 
@@ -132,6 +136,8 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { oldState ->
+                            val i = this@RemoteDirFragment.binding.remoteFileFolderRv.lastVisibleItemPosition()
+                            folderPositionDeque.push(i)
                             oldState.copy(fileTree = Optional.of(data.newSubTree(oldState.fileTree.get())), selectedFiles = emptySet())
                         }.map { }
                     }
@@ -167,7 +173,12 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                         }.map {  }
                     }
                 }
-        )).toAdapter()
+        )).toAdapter { list ->
+            val position = recyclerViewScrollChannel.poll()
+            if (position != null && position < list.size) {
+                binding.remoteFileFolderRv.scrollToPosition(position)
+            }
+        }
 
         binding.remoteFileFolderRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
                 .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
@@ -235,11 +246,21 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                                     }
 
                                     R.id.sort_by_date -> {
-                                        oldState.copy(sortType = FileSortType.SortByDate)
+                                        if (oldState.sortType != FileSortType.SortByDate) {
+                                            recyclerViewScrollChannel.offer(0)
+                                            oldState.copy(sortType = FileSortType.SortByDate)
+                                        } else {
+                                            oldState
+                                        }
                                     }
 
                                     R.id.sort_by_name -> {
-                                        oldState.copy(sortType = FileSortType.SortByName)
+                                        if (oldState.sortType != FileSortType.SortByName) {
+                                            recyclerViewScrollChannel.offer(0)
+                                            oldState.copy(sortType = FileSortType.SortByName)
+                                        } else {
+                                            oldState
+                                        }
                                     }
                                     else -> {
                                         oldState
@@ -271,6 +292,10 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
             false
         } else {
             updateState { state ->
+                val i = folderPositionDeque.poll()
+                if (i != null) {
+                    recyclerViewScrollChannel.offer(i)
+                }
                 val parent = state.fileTree.get().parentTree
                 if (parent != null) state.copy(fileTree = Optional.of(parent), selectedFiles = emptySet()) else state
             }.bindLife()

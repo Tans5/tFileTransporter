@@ -2,6 +2,8 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
 import androidx.appcompat.widget.PopupMenu
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.jakewharton.rxbinding3.view.clicks
@@ -28,12 +30,14 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import kotlin.streams.toList
 
 object FileSelectChange
@@ -70,6 +74,9 @@ fun List<DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<DirectoryFileL
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
+
+    private val recyclerViewScrollChannel = Channel<Int>(1)
+    private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
     override fun onInit() {
         bindState()
@@ -142,6 +149,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { oldState ->
+                            val i = this@MyDirFragment.binding.fileFolderRv.lastVisibleItemPosition()
+                            folderPositionDeque.push(i)
                             oldState.copy(fileTree = data.newSubTree(oldState.fileTree), selectedFiles = emptySet())
                         }.map { }
                     }
@@ -177,7 +186,12 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                         }.map {  }
                     }
                 }
-        )).toAdapter()
+        )).toAdapter { list ->
+            val position = recyclerViewScrollChannel.poll()
+            if (position != null && position < list.size) {
+                binding.fileFolderRv.scrollToPosition(position)
+            }
+        }
 
         binding.fileFolderRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
                 .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
@@ -230,6 +244,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
                                 R.id.sort_by_date -> {
                                     if (oldState.sortType != FileSortType.SortByDate) {
+                                        recyclerViewScrollChannel.offer(0)
                                         oldState.copy(
                                             sortType = FileSortType.SortByDate
                                         )
@@ -240,6 +255,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
                                 R.id.sort_by_name -> {
                                     if (oldState.sortType != FileSortType.SortByName) {
+                                        recyclerViewScrollChannel.offer(0)
                                         oldState.copy(sortType = FileSortType.SortByName)
                                     } else {
                                         oldState
@@ -274,6 +290,10 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             false
         } else {
             updateState { state ->
+                val i = folderPositionDeque.poll()
+                if (i != null) {
+                    recyclerViewScrollChannel.offer(i)
+                }
                 if (state.fileTree.parentTree == null) state else MyDirFragmentState(state.fileTree.parentTree, emptySet())
             }.bindLife()
             true
@@ -283,4 +303,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
     companion object {
         const val FRAGMENT_TAG = "my_dir_fragment_tag"
     }
+}
+
+fun RecyclerView.lastVisibleItemPosition(): Int {
+    return (layoutManager as? LinearLayoutManager)?.findLastCompletelyVisibleItemPosition() ?: 0
 }
