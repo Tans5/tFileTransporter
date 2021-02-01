@@ -17,6 +17,7 @@
             android:background="@color/white">
 
             <com.google.android.material.appbar.CollapsingToolbarLayout
+                android:id="@+id/collapsing_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:layout_scrollFlags="enterAlwaysCollapsed|scroll"
@@ -36,6 +37,7 @@
                 android:id="@+id/tab_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:tabMode="scrollable"
                 app:layout_scrollFlags="enterAlways|scroll">
 
                 <com.google.android.material.tabs.TabItem
@@ -49,6 +51,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/file_transport_activity_tab_remote_dir"/>
+
+                <com.google.android.material.tabs.TabItem
+                    android:id="@+id/message_item"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/file_transport_activity_tab_message"/>
 
             </com.google.android.material.tabs.TabLayout>
 

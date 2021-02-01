@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.jakewharton.rxbinding3.view.clicks
 import com.squareup.moshi.Types
@@ -19,6 +21,7 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.MessageFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.RemoteDirFragment
 import com.tans.tfiletransporter.utils.*
@@ -130,12 +133,9 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: TabLayout.Tab?) {
                         when (tab?.position) {
-                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(DirTabType.MyDir) }.bindLife()
-                            DirTabType.RemoteDir.ordinal -> updateStateCompletable {
-                                it.copy(
-                                        DirTabType.RemoteDir
-                                )
-                            }.bindLife()
+                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
+                            DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
+                            DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
                         }
                     }
 
@@ -152,12 +152,39 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
 
                 render({ it.selectedTabType }) {
-                    binding.floatingActionBt.setImageResource(
-                        when (it) {
-                            DirTabType.MyDir -> R.drawable.share_variant_outline
-                            DirTabType.RemoteDir -> R.drawable.download_outline
+
+                    when (it) {
+                        DirTabType.MyDir, DirTabType.RemoteDir -> {
+                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
+                            binding.collapsingLayout.layoutParams = lpCollapsing
+                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+                            binding.tabLayout.layoutParams = lpTab
                         }
-                    )
+                        DirTabType.Message -> {
+                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
+                            binding.collapsingLayout.layoutParams = lpCollapsing
+                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
+                            binding.tabLayout.layoutParams = lpTab
+                        }
+                    }
+
+                    when (it) {
+                        DirTabType.MyDir -> {
+                            binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
+                            binding.floatingActionBt.visibility = View.VISIBLE
+                        }
+                        DirTabType.RemoteDir -> {
+                            binding.floatingActionBt.setImageResource(R.drawable.download_outline)
+                            binding.floatingActionBt.visibility = View.VISIBLE
+                        }
+                        DirTabType.Message -> {
+                            binding.floatingActionBt.visibility = View.GONE
+                        }
+                    }
                     changeDirFragment(it)
                 }.bindLife()
             }
@@ -165,21 +192,17 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     }
 
-    fun changeDirFragment(dirTabType: DirTabType) {
+    private fun changeDirFragment(dirTabType: DirTabType) {
         val transaction = supportFragmentManager.beginTransaction()
         binding.appbarLayout.setExpanded(true, true)
-        when (dirTabType) {
+        val showFragment = when (dirTabType) {
             DirTabType.MyDir -> {
                 var fragment = supportFragmentManager.findFragmentByTag(MyDirFragment.FRAGMENT_TAG)
                 if (fragment == null) {
                     fragment = MyDirFragment()
                     transaction.add(R.id.fragment_container_layout, fragment, MyDirFragment.FRAGMENT_TAG)
-                } else {
-                    transaction.show(fragment)
                 }
-                for (f in supportFragmentManager.fragments) {
-                    if (f != fragment) { transaction.hide(f) }
-                }
+                fragment
             }
 
             DirTabType.RemoteDir -> {
@@ -187,13 +210,22 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 if (fragment == null) {
                     fragment = RemoteDirFragment()
                     transaction.add(R.id.fragment_container_layout, fragment, RemoteDirFragment.FRAGMENT_TAG)
-                } else {
-                    transaction.show(fragment)
                 }
-                for (f in supportFragmentManager.fragments) {
-                    if (f != fragment) { transaction.hide(f) }
-                }
+                fragment
             }
+
+            DirTabType.Message -> {
+                var fragment = supportFragmentManager.findFragmentByTag(MessageFragment.FRAGMENT_TAG)
+                if (fragment == null) {
+                    fragment = MessageFragment()
+                    transaction.add(R.id.fragment_container_layout, fragment, MessageFragment.FRAGMENT_TAG)
+                }
+                fragment
+            }
+        }
+        transaction.show(showFragment)
+        for (f in supportFragmentManager.fragments) {
+            if (f != showFragment) { transaction.hide(f) }
         }
         transaction.commitAllowingStateLoss()
     }
@@ -232,4 +264,4 @@ data class FileTransportActivityState(
     val selectedTabType: DirTabType = DirTabType.MyDir
 )
 
-enum class DirTabType { MyDir, RemoteDir }
+enum class DirTabType { MyDir, RemoteDir, Message }
