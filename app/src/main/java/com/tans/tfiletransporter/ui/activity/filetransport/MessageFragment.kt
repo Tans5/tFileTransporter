@@ -56,7 +56,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
             .filter { it.isNotEmpty() }
             .switchMapSingle { sendingMessage ->
                 rxSingle {
-                    val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
+                    // val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
                     withContext(Dispatchers.IO) {
                         fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(
                             newSendMessageShareWriterHandle(sendingMessage)
@@ -71,7 +71,8 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
                     }.await()
                     withContext(Dispatchers.Main) {
                         binding.editText.text?.clear()
-                        dialog.cancel()
+                        // dialog.cancel()
+                        Unit
                     }
                 }
             }
