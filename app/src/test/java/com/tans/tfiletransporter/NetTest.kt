@@ -18,9 +18,11 @@ import java.nio.channels.Channels
 import java.nio.channels.DatagramChannel
 import java.nio.channels.FileChannel
 import java.nio.channels.SocketChannel
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
 import java.util.*
 
 class NetTest {
@@ -177,5 +179,14 @@ class NetTest {
             Files.createDirectory(parent)
         }
         parent.newChildFile("tea  fsda")
+    }
+
+    @Test
+    fun md5Deal() {
+        val result = Paths.get("build.gradle").getFileMd5()
+        val json = moshi.adapter(ByteArray::class.java).toJson(result)
+        println(json)
+        val result2 = moshi.adapter(ByteArray::class.java).fromJson(json)
+        println(result2)
     }
 }

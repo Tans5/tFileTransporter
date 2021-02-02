@@ -2,11 +2,15 @@ package com.tans.tfiletransporter.net.filetransporter
 
 import com.squareup.moshi.Types
 import com.tans.tfiletransporter.core.Stateable
+import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.filetransporter.FolderChildrenShareWriterHandle.Companion.getJsonString
 import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
+import com.tans.tfiletransporter.utils.getFileMd5
 import com.tans.tfiletransporter.utils.toBytes
 import com.tans.tfiletransporter.utils.writeDataLimit
 import com.tans.tfiletransporter.utils.writeSuspendSize
@@ -15,6 +19,7 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
+import java.nio.file.Paths
 
 
 sealed class FileTransporterWriterHandle(val action: FileNetAction) : Stateable<FileTransporterWriterHandle.Companion.TransporterWriterState> by Stateable(TransporterWriterState.Create) {
@@ -98,6 +103,12 @@ class RequestFilesShareWriterHandle(
         ) { filesJsonDataWrite(it) }
     }
 
+    companion object {
+        fun getJsonString(files: List<File>): String {
+            val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
+            return moshi.adapter<List<File>>(moshiType).toJson(files) ?: ""
+        }
+    }
 }
 
 class FilesShareWriterHandle(
@@ -107,7 +118,7 @@ class FilesShareWriterHandle(
 
     override suspend fun handle(writerChannel: AsynchronousSocketChannel) {
         writerChannel.defaultActionCodeWrite()
-        val jsonData = getJsonString(files).toByteArray(Charsets.UTF_8)
+        val jsonData = getJsonString(files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(FileConstants.homePathString, it.path).getFileMd5(), it) }).toByteArray(Charsets.UTF_8)
         writerChannel.defaultIntSizeWrite(jsonData.size)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
         writerChannel.writeDataLimit(limit = jsonData.size.toLong()) { outputStream ->
@@ -122,9 +133,9 @@ class FilesShareWriterHandle(
     }
 
     companion object {
-        fun getJsonString(files: List<File>): String {
-            val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
-            return moshi.adapter<List<File>>(moshiType).toJson(files) ?: ""
+        fun getJsonString(md5Files: List<FileMd5>): String {
+            val moshiType = Types.newParameterizedType(List::class.java, FileMd5::class.java)
+            return moshi.adapter<List<FileMd5>>(moshiType).toJson(md5Files) ?: ""
         }
     }
 }

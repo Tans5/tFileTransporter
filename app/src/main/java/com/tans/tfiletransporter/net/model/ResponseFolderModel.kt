@@ -26,3 +26,28 @@ data class File(
     val size: Long,
     @Json(name = "last_modify") val lastModify: OffsetDateTime
 )
+
+@JsonClass(generateAdapter = true)
+data class FileMd5(
+    val md5: ByteArray,
+    val file: File
+    ) {
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as FileMd5
+
+        if (!md5.contentEquals(other.md5)) return false
+        if (file != other.file) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = md5.contentHashCode()
+        result = 31 * result + file.hashCode()
+        return result
+    }
+}

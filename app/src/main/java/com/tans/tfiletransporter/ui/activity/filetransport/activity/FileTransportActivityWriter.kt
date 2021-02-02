@@ -4,6 +4,7 @@ import android.app.Activity
 import com.tans.tfiletransporter.file.CommonFileLeaf
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.filetransporter.*
+import com.tans.tfiletransporter.net.filetransporter.RequestFilesShareWriterHandle.Companion.getJsonString
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.Folder
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
@@ -85,7 +86,7 @@ suspend fun newFolderChildrenShareWriterHandle(
 suspend fun newRequestFilesShareWriterHandle(
     files: List<File>
 ): RequestFilesShareWriterHandle {
-    val jsonData = FilesShareWriterHandle.getJsonString(files).toByteArray(Charsets.UTF_8)
+    val jsonData = getJsonString(files).toByteArray(Charsets.UTF_8)
     return RequestFilesShareWriterHandle(
         filesJsonDataSize = jsonData.size
     ) { outputStream ->

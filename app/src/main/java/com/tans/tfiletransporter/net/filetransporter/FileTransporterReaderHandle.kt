@@ -4,6 +4,7 @@ import com.squareup.moshi.Types
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.readDataLimit
 import com.tans.tfiletransporter.utils.readString
 import com.tans.tfiletransporter.utils.readSuspendSize
@@ -111,8 +112,8 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
                 buffer = buffer
         ) { inputStream ->
             val filesJson = inputStream.readString(limit.toLong())
-            val moshiType = Types.newParameterizedType(List::class.java, File::class.java)
-            val files: List<File>? = moshi.adapter<List<File>>(moshiType).fromJson(filesJson)
+            val moshiType = Types.newParameterizedType(List::class.java, FileMd5::class.java)
+            val files: List<File>? = moshi.adapter<List<FileMd5>>(moshiType).fromJson(filesJson)?.map { it.file }
             if (files.isNullOrEmpty()) {
                 throw error("FilesShareReaderHandle, wrong files string: $filesJson")
             } else {
