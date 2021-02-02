@@ -18,7 +18,7 @@ fun Path.newChildFile(name: String): Path {
         when {
             regex1.matches(name) -> {
                 val values = regex1.find(name)!!.groupValues
-                newChildFile("${values[1]}-${values[3].toInt() + 1}${values[4]}")
+                newChildFile("${values[1]}-${values[3].toIntOrNull() ?: 0 + 1}${values[4]}")
             }
             regex2.matches(name) -> {
                 val values = regex2.find(name)!!.groupValues
@@ -26,7 +26,7 @@ fun Path.newChildFile(name: String): Path {
             }
             regex3.matches(name) -> {
                 val values = regex3.find(name)!!.groupValues
-                newChildFile("${values[1]}-${values[3].toInt() + 1}")
+                newChildFile("${values[1]}-${values[3].toIntOrNull() ?: 0 + 1}")
             }
             else -> newChildFile("$name-1")
         }
