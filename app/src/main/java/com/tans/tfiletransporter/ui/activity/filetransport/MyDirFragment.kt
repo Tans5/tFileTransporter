@@ -149,7 +149,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { oldState ->
-                            val i = this@MyDirFragment.binding.fileFolderRv.lastVisibleItemPosition()
+                            val i = this@MyDirFragment.binding.fileFolderRv.firstVisibleItemPosition()
                             folderPositionDeque.push(i)
                             oldState.copy(fileTree = data.newSubTree(oldState.fileTree), selectedFiles = emptySet())
                         }.map { }
@@ -189,7 +189,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         )).toAdapter { list ->
             val position = recyclerViewScrollChannel.poll()
             if (position != null && position < list.size) {
-                binding.fileFolderRv.scrollToPosition(position)
+                (binding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
             }
         }
 
@@ -307,4 +307,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
 fun RecyclerView.lastVisibleItemPosition(): Int {
     return (layoutManager as? LinearLayoutManager)?.findLastCompletelyVisibleItemPosition() ?: 0
+}
+
+fun RecyclerView.firstVisibleItemPosition(): Int {
+    return (layoutManager as? LinearLayoutManager)?.findFirstCompletelyVisibleItemPosition() ?: 0
 }

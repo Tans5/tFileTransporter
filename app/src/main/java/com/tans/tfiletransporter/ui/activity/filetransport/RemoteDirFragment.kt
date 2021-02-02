@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.util.Log
 import androidx.appcompat.widget.PopupMenu
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.jakewharton.rxbinding3.view.clicks
@@ -136,7 +137,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         updateState { oldState ->
-                            val i = this@RemoteDirFragment.binding.remoteFileFolderRv.lastVisibleItemPosition()
+                            val i = this@RemoteDirFragment.binding.remoteFileFolderRv.firstVisibleItemPosition()
                             folderPositionDeque.push(i)
                             oldState.copy(fileTree = Optional.of(data.newSubTree(oldState.fileTree.get())), selectedFiles = emptySet())
                         }.map { }
@@ -176,7 +177,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         )).toAdapter { list ->
             val position = recyclerViewScrollChannel.poll()
             if (position != null && position < list.size) {
-                binding.remoteFileFolderRv.scrollToPosition(position)
+                (binding.remoteFileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
             }
         }
 
@@ -273,9 +274,6 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
 
                         }.await()
                     }
-//                    if (newState.sortType != state.sortType) {
-//                        withContext(Dispatchers.Main) { binding.remoteFileFolderRv.scrollToPosition(0) }
-//                    }
                 }
             }
             .bindLife()
