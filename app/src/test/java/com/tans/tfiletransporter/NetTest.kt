@@ -189,4 +189,11 @@ class NetTest {
         val result2 = moshi.adapter(ByteArray::class.java).fromJson(json)
         println(result2)
     }
+
+    @Test
+    fun longBytesTest() {
+        val a = -1L
+        val bytes = a.toBytes()
+        println(bytes.contentToString())
+    }
 }

@@ -108,6 +108,11 @@ fun Int.toBytes(isRevert: Boolean = false): ByteArray {
     }
 }
 
+fun Long.toBytes(): ByteArray = ByteArray(8) { index ->
+    val slide = (7 - index) * 8
+    (this and ((0x00_00_00_00_00_00_00_FF).toLong() shl slide) ushr slide).toByte()
+}
+
 fun findLocalAddressV4(): List<InetAddress> {
     val interfaces = NetworkInterface.getNetworkInterfaces()
     val result = ArrayList<InetAddress>()
