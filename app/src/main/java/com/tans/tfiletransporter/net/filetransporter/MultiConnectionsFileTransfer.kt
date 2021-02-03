@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.jvm.Throws
 import kotlin.math.max
 
-// 2 MB
-private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024 * 2
+// 1.5 MB
+private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024 + 1024 * 512
 private const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
 private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
@@ -198,17 +198,22 @@ class MultiConnectionsFileTransferClient(
                 val frameSize = fileSize / max((MULTI_CONNECTIONS_MAX - 1), 1)
                 frameSize to max((if (fileSize % frameSize > 0L) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1), 1)
             }
-            for (i in 0 until frameCount) {
-                val start = i * frameSize
-                if (start >= fileSize) {
-                    break
+            val result = kotlin.runCatching {
+                for (i in 0 until frameCount) {
+                    val start = i * frameSize
+                    if (start >= fileSize) {
+                        break
+                    }
+                    val end = if (start + frameSize > fileSize) {
+                        fileSize
+                    } else {
+                        start + frameSize
+                    }
+                    launch(Dispatchers.IO) { downloadFrame(start, end) }
                 }
-                val end = if (start + frameSize > fileSize) {
-                    fileSize
-                } else {
-                    start + frameSize
-                }
-                launch(Dispatchers.IO) { downloadFrame(start, end) }
+            }
+            if (result.isFailure) {
+                Files.delete(path)
             }
 
         }
