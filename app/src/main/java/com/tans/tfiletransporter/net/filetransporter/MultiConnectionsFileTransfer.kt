@@ -109,7 +109,7 @@ class MultiConnectionsFileServer(
      * Write:
      * File's frame.
      */
-    private suspend fun newClient(client: AsynchronousSocketChannel) = client.use {
+    private suspend fun newClient(client: AsynchronousSocketChannel) {
         val buffer = ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE)
         client.readSuspendSize(buffer, 16)
         val remoteMd5 = buffer.copyAvailableBytes()
