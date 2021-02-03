@@ -20,6 +20,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.jvm.Throws
+import kotlin.math.max
 
 // 1 MB
 private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024
@@ -28,6 +29,7 @@ private const val MULTI_CONNECTIONS_MAX: Int = 100
 private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
 private const val MULTI_CONNECTIONS_FILES_TRANSFER_PORT = 6669
 
+private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
 @Throws(IOException::class)
 suspend fun startMultiConnectionsFileServer(
@@ -75,6 +77,7 @@ class MultiConnectionsFileServer(
             if (fileData == null) { return@coroutineScope }
             fileData.use {
                 val job = launch(Dispatchers.IO) {
+                    var errorTimes: Int = 0
                     while (true) {
                         val client = ssc.acceptSuspend()
                         launch(Dispatchers.IO) {
@@ -83,7 +86,12 @@ class MultiConnectionsFileServer(
                             }
                             if (result.isFailure) {
                                 Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
+                                errorTimes ++
+                                if (errorTimes >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
+                                    throw result.exceptionOrNull()!!
+                                }
                             }
+
                         }
                     }
                 }
@@ -119,29 +127,31 @@ class MultiConnectionsFileServer(
         var offset: Long = start
         var hasRead: Long = 0
         val bufferSize = buffer.capacity()
-        val fileChannel = synchronized(fileData!!) { fileData!!.channel.map(FileChannel.MapMode.READ_ONLY, start, end) }
-        while (true) {
-            val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
-                (limitReadSize - hasRead).toInt()
-            } else {
-                bufferSize
+        val fileChannel = synchronized(fileData!!) { fileData!!.channel.map(FileChannel.MapMode.READ_ONLY, start, limitReadSize) }
+        val result = kotlin.runCatching {
+            while (true) {
+                val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
+                    (limitReadSize - hasRead).toInt()
+                } else {
+                    bufferSize
+                }
+                buffer.readFrom(fileChannel, thisTimeRead)
+                client.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                hasRead += thisTimeRead
+                offset += thisTimeRead
+                val allSend = progressLong.addAndGet(thisTimeRead.toLong())
+                progress(allSend, file.size)
+                if (allSend >= file.size) {
+                    finishCheckChannel.send(Unit)
+                }
+                if (hasRead >= limitReadSize) {
+                    break
+                }
             }
-//            synchronized(fileData!!) {
-//                fileData!!.seek(offset)
-//                runBlocking { fileData!!.channel.readSuspendSize(byteBuffer = buffer, size = thisTimeRead) }
-//            }
-            buffer.readFrom(fileChannel, thisTimeRead)
-            client.writeSuspendSize(buffer, buffer.copyAvailableBytes())
-            hasRead += thisTimeRead
-            offset += thisTimeRead
-            val allSend = progressLong.addAndGet(thisTimeRead.toLong())
-            progress(allSend, file.size)
-            if (allSend >= file.size) {
-                finishCheckChannel.send(Unit)
-            }
-            if (hasRead >= limitReadSize) {
-                break
-            }
+        }
+        if (result.isFailure) {
+            progressLong.set(progressLong.get() - hasRead)
+            throw result.exceptionOrNull()!!
         }
     }
 }
@@ -183,10 +193,10 @@ class MultiConnectionsFileTransferClient(
     suspend fun start() = fileData.use {
         coroutineScope {
             val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
-                MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE > 0) 1 else 0
+                MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE != 0L) 1 else 0
             } else {
-                val frameSize = fileSize / (MULTI_CONNECTIONS_MAX - 1)
-                frameSize to (if (fileSize % frameSize > 0) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1)
+                val frameSize = fileSize / max((MULTI_CONNECTIONS_MAX - 1), 1)
+                frameSize to max((if (fileSize % frameSize > 0L) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1), 1)
             }
             for (i in 0 until frameCount) {
                 val start = i * frameSize
@@ -227,7 +237,7 @@ class MultiConnectionsFileTransferClient(
                 var hasRead: Long = 0
                 val bufferSize = buffer.capacity()
                 val fileChannel = synchronized(fileData) {
-                    fileData.channel.map(FileChannel.MapMode.READ_WRITE, start, end)
+                    fileData.channel.map(FileChannel.MapMode.READ_WRITE, start, limitReadSize)
                 }
                 while (true) {
                     val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
@@ -236,10 +246,6 @@ class MultiConnectionsFileTransferClient(
                         bufferSize
                     }
                     sc.readSuspendSize(buffer, thisTimeRead)
-//                    synchronized(fileData) {
-//                        fileData.seek(offset)
-//                        runBlocking { fileData.channel.writeSuspendSize(buffer, buffer.copyAvailableBytes()) }
-//                    }
                     fileChannel.put(buffer.copyAvailableBytes())
                     offset += thisTimeRead
                     hasRead += thisTimeRead
