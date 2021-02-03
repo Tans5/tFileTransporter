@@ -5,13 +5,9 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.file.FileConstants.GB
 import com.tans.tfiletransporter.file.FileConstants.KB
 import com.tans.tfiletransporter.file.FileConstants.MB
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
 
 fun Path.newChildFile(name: String): Path {
     val childPath = Paths.get(toAbsolutePath().toString(), name)
@@ -22,7 +18,7 @@ fun Path.newChildFile(name: String): Path {
         when {
             regex1.matches(name) -> {
                 val values = regex1.find(name)!!.groupValues
-                newChildFile("${values[1]}-${values[3].toIntOrNull() ?: 0 + 1}${values[4]}")
+                newChildFile("${values[1]}-${values[3].toInt() + 1}${values[4]}")
             }
             regex2.matches(name) -> {
                 val values = regex2.find(name)!!.groupValues
@@ -30,7 +26,7 @@ fun Path.newChildFile(name: String): Path {
             }
             regex3.matches(name) -> {
                 val values = regex3.find(name)!!.groupValues
-                newChildFile("${values[1]}-${values[3].toIntOrNull() ?: 0 + 1}")
+                newChildFile("${values[1]}-${values[3].toInt() + 1}")
             }
             else -> newChildFile("$name-1")
         }
@@ -46,30 +42,4 @@ fun Context.getSizeString(size: Long): String = when (size) {
     in MB until GB -> getString(R.string.size_MB, size.toDouble() / MB)
     in GB until Long.MAX_VALUE -> getString(R.string.size_GB, size.toDouble() / GB)
     else -> ""
-}
-
-// 1MB
-const val FILE_BUFFER_SIZE: Int = 1024 * 1024
-
-/**
- * return the size is 16.
- */
-fun Path.getFileMd5(): ByteArray {
-    if (!Files.exists(this) || Files.isDirectory(this)) {
-        error("Wrong file path: ${this.toAbsolutePath()}")
-    }
-    val md5 = MessageDigest.getInstance("MD5")
-    val fileChannel = FileChannel.open(this, StandardOpenOption.READ)
-    val byteBuffer = ByteBuffer.allocate(FILE_BUFFER_SIZE)
-    fileChannel.use {
-        while (true) {
-            byteBuffer.clear()
-            if (fileChannel.read(byteBuffer) == -1) {
-                break
-            }
-            byteBuffer.flip()
-            md5.update(byteBuffer)
-        }
-    }
-    return md5.digest()
 }
