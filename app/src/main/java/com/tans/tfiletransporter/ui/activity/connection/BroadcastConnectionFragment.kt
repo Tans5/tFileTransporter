@@ -11,6 +11,7 @@ import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTranspor
 import com.tans.tfiletransporter.utils.findLocalAddressV4
 import io.reactivex.rxkotlin.withLatestFrom
 import com.tans.tfiletransporter.utils.toBytes
+import io.reactivex.Single
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -95,6 +96,10 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                                             asServer = false))
                                 }
                             }
+                            .map {  }
+                            .onErrorResumeNext {
+                                Single.just(Unit)
+                            }
                 }
                 .bindLife()
 
@@ -112,6 +117,10 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                                             remoteDevice = it.get(),
                                             asServer = true))
                                 }
+                            }
+                            .map {  }
+                            .onErrorResumeNext {
+                                Single.just(Unit)
                             }
                 }
                 .bindLife()

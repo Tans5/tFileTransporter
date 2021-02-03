@@ -22,9 +22,9 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.jvm.Throws
 import kotlin.math.max
 
-// 1 MB
-private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024
-private const val MULTI_CONNECTIONS_MAX: Int = 100
+// 2 MB
+private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024 * 2
+private const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
 private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
 private const val MULTI_CONNECTIONS_FILES_TRANSFER_PORT = 6669
