@@ -3,27 +3,14 @@ package com.tans.tfiletransporter
 import com.tans.tfiletransporter.net.launchBroadcastSender
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import java.io.File
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
-import java.lang.Exception
-import java.net.InetSocketAddress
-import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
-import java.nio.channels.Channels
-import java.nio.channels.DatagramChannel
 import java.nio.channels.FileChannel
-import java.nio.channels.SocketChannel
-import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
-import java.util.*
 
 class NetTest {
 
@@ -196,4 +183,38 @@ class NetTest {
         val bytes = a.toBytes()
         println(bytes.contentToString())
     }
+//
+//    @Test
+//    fun multiConnectionsFileTransferTest() = runBlocking {
+//        val path = Paths.get("test")
+//        val size = Files.size(path)
+//        val file = com.tans.tfiletransporter.net.model.File(
+//                name = "test",
+//                path = "test",
+//                size = size
+//        )
+//        val md5 = path.getFileMd5()
+//        val fileMd5 = FileMd5(
+//                md5,
+//                file
+//        )
+//        val localAddress = findLocalAddressV4()[0]
+//
+//        val job1 = launch(Dispatchers.IO) {
+//            println("Server Running !!!")
+//            startMultiConnectionsFileServer(fileMd5, localAddress) { progress, _ ->
+//                println("Has send: $progress")
+//            }
+//        }
+//
+//        val job2 = launch(Dispatchers.IO) {
+//            println("Client Running !!!")
+//            startMultiConnectionsFileClient(fileMd5, localAddress) { progress, _ ->
+//                println("Hes Download: $progress")
+//            }
+//        }
+//
+//        job1.join()
+//        job2.join()
+//    }
 }
