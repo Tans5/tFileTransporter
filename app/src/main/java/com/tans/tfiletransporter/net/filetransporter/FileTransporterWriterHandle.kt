@@ -128,7 +128,7 @@ class FilesShareWriterHandle(
             val jsonWriter = Channels.newChannel(outputStream)
             jsonWriter.writeSuspendSize(buffer, jsonData)
         }
-        filesWrite(fileMd5s, (writerChannel.remoteAddress as InetSocketAddress).address)
+        filesWrite(fileMd5s, (writerChannel.localAddress as InetSocketAddress).address)
     }
 
     companion object {
