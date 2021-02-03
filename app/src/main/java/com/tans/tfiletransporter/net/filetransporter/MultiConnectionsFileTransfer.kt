@@ -177,17 +177,19 @@ class MultiConnectionsFileTransferClient(
     }
     private val progressLong = AtomicLong(0L)
 
-    suspend fun start() = coroutineScope {
-        fileData.use {
+    suspend fun start() = fileData.use {
+        coroutineScope {
             val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
                 MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE > 0) 1 else 0
             } else {
                 val frameSize = fileSize / (MULTI_CONNECTIONS_MAX - 1)
-                frameSize to (if (fileSize % frameSize > 0 ) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1)
+                frameSize to (if (fileSize % frameSize > 0) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1)
             }
             for (i in 0 until frameCount) {
                 val start = i * frameSize
-                if (start >= fileSize) { break }
+                if (start >= fileSize) {
+                    break
+                }
                 val end = if (start + frameSize > fileSize) {
                     fileSize
                 } else {
