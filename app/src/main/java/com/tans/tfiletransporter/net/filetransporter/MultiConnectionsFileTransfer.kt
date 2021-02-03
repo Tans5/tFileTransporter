@@ -119,16 +119,18 @@ class MultiConnectionsFileServer(
         var offset: Long = start
         var hasRead: Long = 0
         val bufferSize = buffer.capacity()
+        val fileChannel = synchronized(fileData!!) { fileData!!.channel.map(FileChannel.MapMode.READ_ONLY, start, end) }
         while (true) {
             val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
                 (limitReadSize - hasRead).toInt()
             } else {
                 bufferSize
             }
-            synchronized(fileData!!) {
-                fileData!!.seek(offset)
-                runBlocking { fileData!!.channel.readSuspendSize(byteBuffer = buffer, size = thisTimeRead) }
-            }
+//            synchronized(fileData!!) {
+//                fileData!!.seek(offset)
+//                runBlocking { fileData!!.channel.readSuspendSize(byteBuffer = buffer, size = thisTimeRead) }
+//            }
+            buffer.readFrom(fileChannel, thisTimeRead)
             client.writeSuspendSize(buffer, buffer.copyAvailableBytes())
             hasRead += thisTimeRead
             offset += thisTimeRead

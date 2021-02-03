@@ -73,3 +73,16 @@ fun Path.getFileMd5(): ByteArray {
     }
     return md5.digest()
 }
+
+fun ByteBuffer.readFrom(source: ByteBuffer, size: Int) {
+    clear()
+    val mySize = capacity()
+    val sourceSize = source.capacity()
+    if (mySize < size || sourceSize < size) {
+        error("Wrong Size: $size")
+    }
+    for (i in 0 until size) {
+        put(source.get())
+    }
+    flip()
+}
