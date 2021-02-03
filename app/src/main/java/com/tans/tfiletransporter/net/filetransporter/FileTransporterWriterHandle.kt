@@ -16,6 +16,8 @@ import com.tans.tfiletransporter.utils.writeDataLimit
 import com.tans.tfiletransporter.utils.writeSuspendSize
 import kotlinx.coroutines.rx2.await
 import java.io.OutputStream
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
@@ -113,23 +115,20 @@ class RequestFilesShareWriterHandle(
 
 class FilesShareWriterHandle(
         val files: List<File>,
-        val filesWrite: suspend FilesShareWriterHandle.(files: List<File>, outputStream: OutputStream) -> Unit
+        val filesWrite: suspend FilesShareWriterHandle.(filesMd5s: List<FileMd5>, localAddress: InetAddress) -> Unit
 ) : FileTransporterWriterHandle(FileNetAction.FilesShare) {
 
     override suspend fun handle(writerChannel: AsynchronousSocketChannel) {
         writerChannel.defaultActionCodeWrite()
-        val jsonData = getJsonString(files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(FileConstants.homePathString, it.path).getFileMd5(), it) }).toByteArray(Charsets.UTF_8)
+        val fileMd5s = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(FileConstants.homePathString, it.path).getFileMd5(), it) }
+        val jsonData = getJsonString(fileMd5s).toByteArray(Charsets.UTF_8)
         writerChannel.defaultIntSizeWrite(jsonData.size)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
         writerChannel.writeDataLimit(limit = jsonData.size.toLong()) { outputStream ->
             val jsonWriter = Channels.newChannel(outputStream)
             jsonWriter.writeSuspendSize(buffer, jsonData)
         }
-        val filesLimitSize = files.sumOf { it.size }
-        writerChannel.writeDataLimit(
-                limit =  filesLimitSize,
-                buffer = buffer
-        ) { filesWrite(files, it) }
+        filesWrite(fileMd5s, (writerChannel.remoteAddress as InetSocketAddress).address)
     }
 
     companion object {

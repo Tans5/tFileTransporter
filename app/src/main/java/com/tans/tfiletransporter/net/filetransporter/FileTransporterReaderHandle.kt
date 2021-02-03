@@ -9,6 +9,8 @@ import com.tans.tfiletransporter.utils.readDataLimit
 import com.tans.tfiletransporter.utils.readString
 import com.tans.tfiletransporter.utils.readSuspendSize
 import java.io.InputStream
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
@@ -101,8 +103,9 @@ class RequestFilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandl
 /**
  * @see com.tans.tfiletransporter.net.filetransporter.FileNetAction.FilesShare
  */
-class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains<List<File>> by ReaderHandleChains() {
-
+typealias FileDownloader = suspend (files: List<FileMd5>, remoteAddress: InetAddress) -> Boolean
+class FilesShareReaderHandle : FileTransporterReaderHandle() {
+    var downloaders: List<FileDownloader> = emptyList()
     override suspend fun handle(readChannel: AsynchronousSocketChannel) {
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
         readChannel.readSuspendSize(buffer, 4)
@@ -113,20 +116,24 @@ class FilesShareReaderHandle : FileTransporterReaderHandle(), ReaderHandleChains
         ) { inputStream ->
             val filesJson = inputStream.readString(limit.toLong())
             val moshiType = Types.newParameterizedType(List::class.java, FileMd5::class.java)
-            val files: List<File>? = moshi.adapter<List<FileMd5>>(moshiType).fromJson(filesJson)?.map { it.file }
+            val files: List<FileMd5>? = moshi.adapter<List<FileMd5>>(moshiType).fromJson(filesJson)
             if (files.isNullOrEmpty()) {
                 throw error("FilesShareReaderHandle, wrong files string: $filesJson")
             } else {
                 files
             }
         }
+        val downloaders = this.downloaders
+        for (d in downloaders) {
+            if (d(files, (readChannel.remoteAddress as InetSocketAddress).address)) {
+                break
+            }
+        }
+    }
 
-        val filesLimit = files.sumOf { it.size }
-        readChannel.readDataLimit(
-                limit = filesLimit,
-                buffer = buffer
-        ) { fileInputStream ->
-            process(files, fileInputStream, filesLimit)
+    suspend fun newDownloader(d: FileDownloader) {
+        synchronized(downloaders) {
+            downloaders = downloaders + d
         }
     }
 

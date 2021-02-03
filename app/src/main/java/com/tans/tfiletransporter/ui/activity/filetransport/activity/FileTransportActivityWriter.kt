@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.app.Activity
+import android.util.Log
 import com.tans.tfiletransporter.file.CommonFileLeaf
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.filetransporter.*
@@ -106,11 +107,16 @@ suspend fun Activity.newFilesShareWriterHandle(
 
     return FilesShareWriterHandle(
         files
-    ) { _, outputStream ->
+    ) { filesMd5, localAddress ->
 
         withContext(Dispatchers.Main) {
             dialog.cancel()
-            startSendingFiles(files, outputStream).await()
+            val result = kotlin.runCatching {
+                startSendingFiles(filesMd5, localAddress).await()
+            }
+            if (result.isFailure) {
+                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+            }
         }
     }
 }

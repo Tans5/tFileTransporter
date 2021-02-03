@@ -97,10 +97,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
 
 
-                    filesShareChain { files, inputStream, _, _ ->
+
+                    filesShareDownloader { files, remoteAddress ->
                         withContext(Dispatchers.Main) {
-                            startDownloadingFiles(files, inputStream).await()
+                            startDownloadingFiles(files, remoteAddress).await()
                         }
+                        true
                     }
 
                     sendMessageChain { _, inputStream, limit, _ ->

@@ -125,8 +125,8 @@ class FileTransporter(private val localAddress: InetAddress,
         requestFileShareReaderHandle.newChain(readerHandleChain)
     }
 
-    suspend fun filesShareChain(readerHandleChain: ReaderHandleChain<List<File>>) {
-        fileShareReaderHandle.newChain(readerHandleChain)
+    suspend fun filesShareDownloader(downloader: FileDownloader) {
+        fileShareReaderHandle.newDownloader(downloader)
     }
 
     suspend fun sendMessageChain(readerHandleChain: ReaderHandleChain<Unit>) {
