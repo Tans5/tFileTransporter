@@ -189,7 +189,7 @@ class MultiConnectionsFileTransferClient(
                 val start = i * frameSize
                 if (start >= fileSize) { break }
                 val end = if (start + frameSize > fileSize) {
-                    fileSize - start
+                    fileSize
                 } else {
                     start + frameSize
                 }
