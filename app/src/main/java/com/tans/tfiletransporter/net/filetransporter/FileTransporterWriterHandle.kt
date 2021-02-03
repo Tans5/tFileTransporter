@@ -10,10 +10,7 @@ import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
 import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
-import com.tans.tfiletransporter.utils.getFileMd5
-import com.tans.tfiletransporter.utils.toBytes
-import com.tans.tfiletransporter.utils.writeDataLimit
-import com.tans.tfiletransporter.utils.writeSuspendSize
+import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.rx2.await
 import java.io.OutputStream
 import java.net.InetAddress
@@ -120,7 +117,7 @@ class FilesShareWriterHandle(
 
     override suspend fun handle(writerChannel: AsynchronousSocketChannel) {
         writerChannel.defaultActionCodeWrite()
-        val fileMd5s = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(FileConstants.homePathString, it.path).getFileMd5(), it) }
+        val fileMd5s = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(FileConstants.homePathString, it.path).getFilePathMd5(), it) }
         val jsonData = getJsonString(fileMd5s).toByteArray(Charsets.UTF_8)
         writerChannel.defaultIntSizeWrite(jsonData.size)
         val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)

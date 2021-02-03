@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import kotlin.io.path.name
 
 fun Path.newChildFile(name: String): Path {
     val childPath = Paths.get(toAbsolutePath().toString(), name)
@@ -72,6 +73,15 @@ fun Path.getFileMd5(): ByteArray {
         }
     }
     return md5.digest()
+}
+
+/**
+ * return the size is 16.
+ */
+fun Path.getFilePathMd5(): ByteArray {
+    val pathStringData = toAbsolutePath().toString().toByteArray(Charsets.UTF_8)
+    val md5 = MessageDigest.getInstance("MD5")
+    return md5.digest(pathStringData)
 }
 
 fun ByteBuffer.readFrom(source: ByteBuffer, size: Int) {
