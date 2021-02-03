@@ -14,6 +14,7 @@ import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -223,6 +224,9 @@ class MultiConnectionsFileTransferClient(
                 var offset: Long = start
                 var hasRead: Long = 0
                 val bufferSize = buffer.capacity()
+                val fileChannel = synchronized(fileData) {
+                    fileData.channel.map(FileChannel.MapMode.READ_WRITE, start, end)
+                }
                 while (true) {
                     val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
                         (limitReadSize - hasRead).toInt()
@@ -230,10 +234,11 @@ class MultiConnectionsFileTransferClient(
                         bufferSize
                     }
                     sc.readSuspendSize(buffer, thisTimeRead)
-                    synchronized(fileData) {
-                        fileData.seek(offset)
-                        runBlocking { fileData.channel.writeSuspendSize(buffer, buffer.copyAvailableBytes()) }
-                    }
+//                    synchronized(fileData) {
+//                        fileData.seek(offset)
+//                        runBlocking { fileData.channel.writeSuspendSize(buffer, buffer.copyAvailableBytes()) }
+//                    }
+                    fileChannel.put(buffer.copyAvailableBytes())
                     offset += thisTimeRead
                     hasRead += thisTimeRead
                     progress(progressLong.addAndGet(thisTimeRead.toLong()), fileSize)
