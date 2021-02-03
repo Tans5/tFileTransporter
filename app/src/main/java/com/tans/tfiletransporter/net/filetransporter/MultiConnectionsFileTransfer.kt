@@ -136,7 +136,7 @@ class MultiConnectionsFileServer(
                     bufferSize
                 }
                 buffer.readFrom(fileChannel, thisTimeRead)
-                client.writeSuspendSize(buffer, buffer.copyAvailableBytes())
+                client.writeSuspendSize(buffer)
                 hasRead += thisTimeRead
                 offset += thisTimeRead
                 val allSend = progressLong.addAndGet(thisTimeRead.toLong())
