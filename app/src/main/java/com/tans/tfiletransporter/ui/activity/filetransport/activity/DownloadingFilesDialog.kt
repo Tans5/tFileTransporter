@@ -2,38 +2,31 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.app.Activity
 import android.app.Dialog
-import android.os.Environment
+import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileClient
-import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
-import com.tans.tfiletransporter.utils.newChildFile
-import com.tans.tfiletransporter.utils.readFrom
 import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
-import java.io.InputStream
 import java.net.InetAddress
-import java.nio.ByteBuffer
-import java.nio.channels.Channels
-import java.nio.channels.FileChannel
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
+import java.util.*
 
 fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddress): Single<Unit> {
     var dialog: Dialog? = null
     return Single.create<Unit> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Unit>(
+        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileTransferClient>>(
                 context = this,
                 layoutId = R.layout.reading_writing_files_dialog_layout,
-                defaultState = Unit,
+                defaultState = Optional.empty(),
                 outSizeCancelable = false
         ) {
 
@@ -50,7 +43,12 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
                             delay(200)
-                            startMultiConnectionsFileClient(f, serverAddress) { hasDownload, limit ->
+                            startMultiConnectionsFileClient(
+                                    fileMd5 = f,
+                                    serverAddress = serverAddress,
+                                    clientInstance = { client ->
+                                        updateState { Optional.of(client) }.await()
+                                    }) { hasDownload, limit ->
                                 withContext(Dispatchers.Main) {
                                     binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
                                     binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
@@ -67,6 +65,18 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                     }
                 }
 
+                binding.cancelButton.clicks()
+                        .concatMapSingle {
+                            rxSingle {
+                                val activeClient = bindState().firstOrError().await()
+                                if (activeClient.isPresent) { activeClient.get().cancel() }
+                                withContext(Dispatchers.Main) {
+                                    emitter.onError(Throwable("Download Canceled By User"))
+                                    cancel()
+                                }
+                            }
+                        }
+                        .bindLife()
             }
         }
         dialogInternal.setCancelable(false)

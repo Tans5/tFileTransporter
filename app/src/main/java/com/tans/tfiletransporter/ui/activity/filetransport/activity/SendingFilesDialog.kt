@@ -2,36 +2,31 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.app.Activity
 import android.app.Dialog
+import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileServer
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileServer
-import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
-import com.tans.tfiletransporter.utils.writeTo
 import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
-import java.io.OutputStream
 import java.net.InetAddress
-import java.nio.ByteBuffer
-import java.nio.channels.Channels
-import java.nio.channels.FileChannel
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
+import java.util.*
 
 
 fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress): Single<Unit> {
     var dialog: Dialog? = null
     return Single.create<Unit> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Unit>(
+        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileServer>>(
                 context = this,
                 layoutId = R.layout.reading_writing_files_dialog_layout,
-                defaultState = Unit,
+                defaultState = Optional.empty(),
                 outSizeCancelable = false
         ) {
 
@@ -48,7 +43,10 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress):
                                 binding.filePb.progress = 0
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
-                            startMultiConnectionsFileServer(fileMd5 = f, localAddress = localAddress) { hasSend, limit ->
+                            startMultiConnectionsFileServer(
+                                    fileMd5 = f,
+                                    localAddress = localAddress,
+                                    serverInstance = { server -> updateState { Optional.of(server) }.await() }) { hasSend, limit ->
                                 withContext(Dispatchers.Main) {
                                     binding.filePb.progress = ((hasSend.toDouble() / limit.toDouble()) * 100.0).toInt()
                                     binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasSend), fileSizeString)
@@ -65,6 +63,19 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress):
                         }
                     }
                 }
+
+                binding.cancelButton.clicks()
+                        .concatMapSingle {
+                            rxSingle {
+                                val activeServer = bindState().firstOrError().await()
+                                if (activeServer.isPresent) { activeServer.get().cancel() }
+                                withContext(Dispatchers.Main) {
+                                    emitter.onError(Throwable("Sending Files Canceled By User."))
+                                    cancel()
+                                }
+                            }
+                        }
+                        .bindLife()
 
             }
         }

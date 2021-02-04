@@ -55,9 +55,32 @@
             android:layout_marginStart="?attr/dialogPreferredPadding"
             android:layout_marginEnd="?attr/dialogPreferredPadding"
             android:layout_marginTop="5dp"
-            android:layout_marginBottom="12dp"
             android:layout_gravity="end"
             tools:text="100.0MB/2.3GB"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/md_dialog_button_layout_padding_horizontal"
+            android:layout_marginEnd="@dimen/md_dialog_button_layout_padding_horizontal"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:paddingTop="@dimen/md_dialog_button_layout_padding_vertical"
+            android:paddingBottom="@dimen/md_dialog_button_layout_padding_vertical">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/cancel_button"
+                style="?attr/buttonBarNegativeButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/broadcast_waiting_cancel" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </layout>

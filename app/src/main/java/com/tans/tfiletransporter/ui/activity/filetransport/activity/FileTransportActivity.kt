@@ -97,10 +97,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
 
 
-
                     filesShareDownloader { files, remoteAddress ->
                         withContext(Dispatchers.Main) {
-                            startDownloadingFiles(files, remoteAddress).await()
+                            val result = runCatching {
+                                startDownloadingFiles(files, remoteAddress).await()
+                            }
+                            if (result.isFailure) {
+                                Log.e("Download Files Fail", "Download Files Fail", result.exceptionOrNull())
+                            }
                         }
                         true
                     }

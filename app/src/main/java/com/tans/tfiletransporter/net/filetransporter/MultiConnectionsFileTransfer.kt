@@ -2,23 +2,27 @@ package com.tans.tfiletransporter.net.filetransporter
 
 import android.os.Environment
 import android.util.Log
+import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.rx2.await
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
+import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.io.path.deleteIfExists
 import kotlin.jvm.Throws
 import kotlin.math.max
 
@@ -35,9 +39,11 @@ private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 suspend fun startMultiConnectionsFileServer(
         fileMd5: FileMd5,
         localAddress: InetAddress,
+        serverInstance: suspend (server: MultiConnectionsFileServer) -> Unit = {},
         progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
 ) {
     val server = MultiConnectionsFileServer(fileMd5, localAddress, progress)
+    serverInstance(server)
     server.start()
 }
 
@@ -65,12 +71,13 @@ class MultiConnectionsFileServer(
         }
     }
 
+    private val ssc: AsynchronousServerSocketChannel by lazy { AsynchronousServerSocketChannel.open() }
+
     private val progressLong = AtomicLong(0L)
 
     private val finishCheckChannel = Channel<Unit>(1)
 
-    suspend fun start() = coroutineScope {
-        val ssc = openAsynchronousServerSocketChannelSuspend()
+    internal suspend fun start() = coroutineScope {
         ssc.use {
             ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
             ssc.bindSuspend(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT), MULTI_CONNECTIONS_MAX)
@@ -154,6 +161,11 @@ class MultiConnectionsFileServer(
             throw result.exceptionOrNull()!!
         }
     }
+
+    suspend fun cancel() {
+        if (ssc.isOpen) ssc.close()
+    }
+
 }
 
 
@@ -162,9 +174,11 @@ class MultiConnectionsFileServer(
 suspend fun startMultiConnectionsFileClient(
         fileMd5: FileMd5,
         serverAddress: InetAddress,
+        clientInstance: suspend (client: MultiConnectionsFileTransferClient) -> Unit = {},
         progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
 ) {
     val client = MultiConnectionsFileTransferClient(fileMd5, serverAddress, progress)
+    clientInstance(client)
     client.start()
 }
 
@@ -173,7 +187,7 @@ class MultiConnectionsFileTransferClient(
         fileMd5: FileMd5,
         private val serverAddress: InetAddress,
         val progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
-) {
+): Stateable<List<Job>> by Stateable(emptyList()) {
     private val file = fileMd5.file
     private val md5 = fileMd5.md5
     private val fileSize = file.size
@@ -190,7 +204,7 @@ class MultiConnectionsFileTransferClient(
     }
     private val progressLong = AtomicLong(0L)
 
-    suspend fun start() = fileData.use {
+    internal suspend fun start() = fileData.use {
         coroutineScope {
             val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
                 MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE != 0L) 1 else 0
@@ -209,7 +223,8 @@ class MultiConnectionsFileTransferClient(
                     } else {
                         start + frameSize
                     }
-                    launch(Dispatchers.IO) { downloadFrame(start, end) }
+                    val job = launch(Dispatchers.IO) { downloadFrame(start, end) }
+                    updateState { it + job }.await()
                 }
             }
             if (result.isFailure) {
@@ -232,6 +247,7 @@ class MultiConnectionsFileTransferClient(
             val sc = openAsynchronousSocketChannel()
             sc.use {
                 sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                sc.setOptionSuspend(StandardSocketOptions.TCP_NODELAY, true)
                 sc.connectSuspend(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT))
                 val buffer = ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE)
                 sc.writeSuspendSize(buffer, md5)
@@ -269,6 +285,16 @@ class MultiConnectionsFileTransferClient(
                 throw result.exceptionOrNull()!!
             }
         }
+    }
+
+    suspend fun cancel() {
+        val jobs = bindState().firstOrError().await()
+        for (job in jobs) {
+            if (job.isActive) {
+                job.cancel("Cancel by handle.")
+            }
+        }
+        if (Files.exists(path)) { Files.delete(path) }
     }
 
 }
