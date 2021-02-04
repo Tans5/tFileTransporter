@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.view.inputmethod.InputMethodManager
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
@@ -7,8 +8,10 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
 import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newSendMessageShareWriterHandle
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
@@ -29,6 +32,8 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
 ) {
 
     private val fileTransportScopeData: FileTransportScopeData by instance()
+
+    private val inputMethodManager: InputMethodManager by instance()
 
     override fun onInit() {
 
@@ -78,6 +83,14 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
                 }
             }
             .bindLife()
+
+        (requireActivity() as? FileTransportActivity)?.bindState()
+                ?.distinctUntilChanged()
+                ?.observeOn(AndroidSchedulers.mainThread())
+                ?.doOnNext {
+                    inputMethodManager.hideSoftInputFromWindow(binding.editText.windowToken, 0)
+                }
+                ?.bindLife()
 
         KeyboardVisibilityEvent.registerEventListener(requireActivity(), object : KeyboardVisibilityEventListener {
             override fun onVisibilityChanged(isOpen: Boolean) {
