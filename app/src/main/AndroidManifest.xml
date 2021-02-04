@@ -29,7 +29,7 @@
 
         <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize"/>
+            android:windowSoftInputMode="adjustResize|stateHidden"/>
 
     </application>
 
