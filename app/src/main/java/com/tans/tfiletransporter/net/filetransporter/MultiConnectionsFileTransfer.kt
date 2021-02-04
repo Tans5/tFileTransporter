@@ -17,13 +17,10 @@ import java.net.StandardSocketOptions
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.io.path.deleteIfExists
-import kotlin.jvm.Throws
 import kotlin.math.max
 
 // 1.5 MB
@@ -63,13 +60,6 @@ class MultiConnectionsFileServer(
             it
         }
     }
-    private val fileData: RandomAccessFile? by lazy {
-        if (path != null) {
-            RandomAccessFile(path.toFile(), "r")
-        } else {
-            null
-        }
-    }
 
     private val ssc: AsynchronousServerSocketChannel by lazy { AsynchronousServerSocketChannel.open() }
 
@@ -81,30 +71,26 @@ class MultiConnectionsFileServer(
         ssc.use {
             ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
             ssc.bindSuspend(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT), MULTI_CONNECTIONS_MAX)
-            if (fileData == null) { return@coroutineScope }
-            fileData.use {
-                val job = launch(Dispatchers.IO) {
-                    var errorTimes: Int = 0
-                    while (true) {
-                        val client = ssc.acceptSuspend()
-                        launch(Dispatchers.IO) {
-                            val result = kotlin.runCatching {
-                                newClient(client)
+            val job = launch(Dispatchers.IO) {
+                var errorTimes: Int = 0
+                while (true) {
+                    val client = ssc.acceptSuspend()
+                    launch(Dispatchers.IO) {
+                        val result = kotlin.runCatching {
+                            newClient(client)
+                        }
+                        if (result.isFailure) {
+                            Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
+                            errorTimes++
+                            if (errorTimes >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
+                                throw result.exceptionOrNull()!!
                             }
-                            if (result.isFailure) {
-                                Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
-                                errorTimes ++
-                                if (errorTimes >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
-                                    throw result.exceptionOrNull()!!
-                                }
-                            }
-
                         }
                     }
                 }
-                finishCheckChannel.receive()
-                job.cancel("File: ${file.name}, Download Finish")
             }
+            finishCheckChannel.receive()
+            job.cancel("File: ${file.name}, Download Finish")
         }
     }
 
@@ -117,11 +103,16 @@ class MultiConnectionsFileServer(
      * File's frame.
      */
     private suspend fun newClient(client: AsynchronousSocketChannel) {
+        if (path == null) {
+            client.close()
+            return
+        }
         val buffer = ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE)
         client.readSuspendSize(buffer, 16)
         val remoteMd5 = buffer.copyAvailableBytes()
         if (!md5.contentEquals(remoteMd5)) {
             client.close()
+            return
         }
         client.readSuspendSize(buffer, 8)
         val start = buffer.asLongBuffer().get()
@@ -129,30 +120,39 @@ class MultiConnectionsFileServer(
         val end = buffer.asLongBuffer().get()
         if (start >= end || end > file.size) {
             client.close()
+            return
         }
         val limitReadSize = end - start
         var offset: Long = start
         var hasRead: Long = 0
         val bufferSize = buffer.capacity()
-        val fileChannel = synchronized(fileData!!) { fileData!!.channel.map(FileChannel.MapMode.READ_ONLY, start, limitReadSize) }
+        val file = RandomAccessFile(path.toFile(), "r")
+        file.seek(start)
+        val fileChannel = file.channel
         val result = kotlin.runCatching {
-            while (true) {
-                val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
-                    (limitReadSize - hasRead).toInt()
-                } else {
-                    bufferSize
-                }
-                buffer.readFrom(fileChannel, thisTimeRead)
-                client.writeSuspendSize(buffer)
-                hasRead += thisTimeRead
-                offset += thisTimeRead
-                val allSend = progressLong.addAndGet(thisTimeRead.toLong())
-                progress(allSend, file.size)
-                if (allSend >= file.size) {
-                    finishCheckChannel.send(Unit)
-                }
-                if (hasRead >= limitReadSize) {
-                    break
+            file.use {
+                fileChannel.use {
+                    val fileLock = fileChannel.lock(start, limitReadSize, true)
+                    while (true) {
+                        val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
+                            (limitReadSize - hasRead).toInt()
+                        } else {
+                            bufferSize
+                        }
+                        fileChannel.readSuspendSize(buffer, thisTimeRead)
+                        client.writeSuspendSize(buffer)
+                        hasRead += thisTimeRead
+                        offset += thisTimeRead
+                        val allSend = progressLong.addAndGet(thisTimeRead.toLong())
+                        progress(allSend, this.file.size)
+                        if (allSend >= this.file.size) {
+                            finishCheckChannel.send(Unit)
+                        }
+                        if (hasRead >= limitReadSize) {
+                            break
+                        }
+                    }
+                    // fileLock.release()
                 }
             }
         }
@@ -199,40 +199,38 @@ class MultiConnectionsFileTransferClient(
         result
     }
     private val path: Path by lazy { downloadDir.newChildFile(file.name) }
-    private val fileData: RandomAccessFile by lazy {
-        RandomAccessFile(path.toFile(), "rw").apply { setLength(fileSize) }
-    }
     private val progressLong = AtomicLong(0L)
 
-    internal suspend fun start() = fileData.use {
-        coroutineScope {
-            val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
-                MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE != 0L) 1 else 0
-            } else {
-                val frameSize = fileSize / max((MULTI_CONNECTIONS_MAX - 1), 1)
-                frameSize to max((if (fileSize % frameSize > 0L) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1), 1)
-            }
-            val result = kotlin.runCatching {
-                for (i in 0 until frameCount) {
-                    val start = i * frameSize
-                    if (start >= fileSize) {
-                        break
-                    }
-                    val end = if (start + frameSize > fileSize) {
-                        fileSize
-                    } else {
-                        start + frameSize
-                    }
-                    val job = launch(Dispatchers.IO) { downloadFrame(start, end) }
-                    updateState { it + job }.await()
+    internal suspend fun start() =
+            coroutineScope {
+                val file = RandomAccessFile(path.toFile(), "rw")
+                file.use { file.setLength(fileSize) }
+                val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
+                    MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE != 0L) 1 else 0
+                } else {
+                    val frameSize = fileSize / max((MULTI_CONNECTIONS_MAX - 1), 1)
+                    frameSize to max((if (fileSize % frameSize > 0L) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1), 1)
                 }
-            }
-            if (result.isFailure) {
-                Files.delete(path)
-            }
+                val result = kotlin.runCatching {
+                    for (i in 0 until frameCount) {
+                        val start = i * frameSize
+                        if (start >= fileSize) {
+                            break
+                        }
+                        val end = if (start + frameSize > fileSize) {
+                            fileSize
+                        } else {
+                            start + frameSize
+                        }
+                        val job = launch(Dispatchers.IO) { downloadFrame(start, end) }
+                        updateState { it + job }.await()
+                    }
+                }
+                if (result.isFailure) {
+                    Files.delete(path)
+                }
 
-        }
-    }
+            }
 
     /**
      * Write Sequence:
@@ -257,23 +255,34 @@ class MultiConnectionsFileTransferClient(
                 var offset: Long = start
                 var hasRead: Long = 0
                 val bufferSize = buffer.capacity()
-                val fileChannel = synchronized(fileData) {
-                    fileData.channel.map(FileChannel.MapMode.READ_WRITE, start, limitReadSize)
+                val file = RandomAccessFile(path.toFile(), "rw")
+                file.seek(start)
+                val fileChannel = file.channel
+                val result = kotlin.runCatching {
+                    file.use {
+                        fileChannel.use {
+                            val fileLock = fileChannel.lock(start, limitReadSize, true)
+                            while (true) {
+                                val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
+                                    (limitReadSize - hasRead).toInt()
+                                } else {
+                                    bufferSize
+                                }
+                                sc.readSuspendSize(buffer, thisTimeRead)
+                                fileChannel.writeSuspendSize(buffer)
+                                offset += thisTimeRead
+                                hasRead += thisTimeRead
+                                progress(progressLong.addAndGet(thisTimeRead.toLong()), fileSize)
+                                if (hasRead >= limitReadSize) {
+                                    break
+                                }
+                            }
+                            // fileLock.release()
+                        }
+                    }
                 }
-                while (true) {
-                    val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
-                        (limitReadSize - hasRead).toInt()
-                    } else {
-                        bufferSize
-                    }
-                    sc.readSuspendSize(buffer, thisTimeRead)
-                    fileChannel.put(buffer.copyAvailableBytes())
-                    offset += thisTimeRead
-                    hasRead += thisTimeRead
-                    progress(progressLong.addAndGet(thisTimeRead.toLong()), fileSize)
-                    if (hasRead >= limitReadSize) {
-                        break
-                    }
+                if (result.isFailure) {
+                    throw result.exceptionOrNull()!!
                 }
             }
         }
