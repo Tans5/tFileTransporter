@@ -4,6 +4,7 @@ import android.os.Environment
 import android.util.Log
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
@@ -14,7 +15,6 @@ import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
-import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.file.Files
@@ -32,24 +32,10 @@ private const val MULTI_CONNECTIONS_FILES_TRANSFER_PORT = 6669
 
 private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
-private object FilesTransferBufferPool {
-    private val pools = Channel<ByteBuffer>(Channel.UNLIMITED)
-    init {
-        // Init Pool
-        runBlocking {
-            for (i in 0 until MULTI_CONNECTIONS_MAX * 2) {
-                pools.send(ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE))
-            }
-        }
-    }
-
-    suspend fun requestBuffer() = pools.receive()
-
-    suspend fun recycleBuffer(buffer: ByteBuffer) {
-        buffer.clear()
-        pools.send(buffer)
-    }
-}
+private val fileTransporterPool = NetBufferPool(
+        poolSize = MULTI_CONNECTIONS_MAX * 2,
+        bufferSize = MULTI_CONNECTIONS_BUFFER_SIZE
+)
 
 @Throws(IOException::class)
 suspend fun startMultiConnectionsFileServer(
@@ -130,7 +116,7 @@ class MultiConnectionsFileServer(
             client.close()
             return
         }
-        val buffer = FilesTransferBufferPool.requestBuffer()
+        val buffer = fileTransporterPool.requestBuffer()
         var hasRead: Long = 0
         val result = kotlin.runCatching {
             client.readSuspendSize(buffer, 16)
@@ -179,7 +165,7 @@ class MultiConnectionsFileServer(
                 }
             }
         }
-        FilesTransferBufferPool.recycleBuffer(buffer)
+        fileTransporterPool.recycleBuffer(buffer)
         if (result.isFailure) {
             progressLong.set(progressLong.get() - hasRead)
             throw result.exceptionOrNull()!!
@@ -260,7 +246,7 @@ class MultiConnectionsFileTransferClient(
      * File's frame.
      */
     private suspend fun downloadFrame(start: Long, end: Long, retry: Boolean = true) {
-        val buffer = FilesTransferBufferPool.requestBuffer()
+        val buffer = fileTransporterPool.requestBuffer()
         var hasRead: Long = 0
         val result = kotlin.runCatching {
             val sc = openAsynchronousSocketChannel()
@@ -300,7 +286,7 @@ class MultiConnectionsFileTransferClient(
                 }
             }
         }
-        FilesTransferBufferPool.recycleBuffer(buffer)
+        fileTransporterPool.recycleBuffer(buffer)
         if (result.isFailure) {
             progressLong.set(progressLong.get() - hasRead)
             if (retry) {
