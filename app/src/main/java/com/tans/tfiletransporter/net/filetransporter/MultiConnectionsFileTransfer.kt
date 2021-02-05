@@ -32,6 +32,25 @@ private const val MULTI_CONNECTIONS_FILES_TRANSFER_PORT = 6669
 
 private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
+private object FilesTransferBufferPool {
+    private val pools = Channel<ByteBuffer>(Channel.UNLIMITED)
+    init {
+        // Init Pool
+        runBlocking {
+            for (i in 0 until MULTI_CONNECTIONS_MAX) {
+                pools.send(ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE))
+            }
+        }
+    }
+
+    suspend fun requestBuffer() = pools.receive()
+
+    suspend fun recycleBuffer(buffer: ByteBuffer) {
+        buffer.clear()
+        pools.send(buffer)
+    }
+}
+
 @Throws(IOException::class)
 suspend fun startMultiConnectionsFileServer(
         fileMd5: FileMd5,
@@ -94,6 +113,10 @@ class MultiConnectionsFileServer(
         }
     }
 
+    suspend fun cancel() {
+        if (ssc.isOpen) ssc.close()
+    }
+
     /**
      * Read Sequence:
      * 1. File's MD5 16 bytes.
@@ -107,29 +130,29 @@ class MultiConnectionsFileServer(
             client.close()
             return
         }
-        val buffer = ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE)
-        client.readSuspendSize(buffer, 16)
-        val remoteMd5 = buffer.copyAvailableBytes()
-        if (!md5.contentEquals(remoteMd5)) {
-            client.close()
-            return
-        }
-        client.readSuspendSize(buffer, 8)
-        val start = buffer.asLongBuffer().get()
-        client.readSuspendSize(buffer, 8)
-        val end = buffer.asLongBuffer().get()
-        if (start >= end || end > file.size) {
-            client.close()
-            return
-        }
-        val limitReadSize = end - start
-        var offset: Long = start
+        val buffer = FilesTransferBufferPool.requestBuffer()
         var hasRead: Long = 0
-        val bufferSize = buffer.capacity()
-        val file = RandomAccessFile(path.toFile(), "r")
-        file.seek(start)
-        val fileChannel = file.channel
         val result = kotlin.runCatching {
+            client.readSuspendSize(buffer, 16)
+            val remoteMd5 = buffer.copyAvailableBytes()
+            if (!md5.contentEquals(remoteMd5)) {
+                client.close()
+                return
+            }
+            client.readSuspendSize(buffer, 8)
+            val start = buffer.asLongBuffer().get()
+            client.readSuspendSize(buffer, 8)
+            val end = buffer.asLongBuffer().get()
+            if (start >= end || end > file.size) {
+                client.close()
+                return
+            }
+            val limitReadSize = end - start
+            var offset: Long = start
+            val bufferSize = buffer.capacity()
+            val file = RandomAccessFile(path.toFile(), "r")
+            file.seek(start)
+            val fileChannel = file.channel
             file.use {
                 fileChannel.use {
                     val fileLock = fileChannel.lock(start, limitReadSize, true)
@@ -156,16 +179,12 @@ class MultiConnectionsFileServer(
                 }
             }
         }
+        FilesTransferBufferPool.recycleBuffer(buffer)
         if (result.isFailure) {
             progressLong.set(progressLong.get() - hasRead)
             throw result.exceptionOrNull()!!
         }
     }
-
-    suspend fun cancel() {
-        if (ssc.isOpen) ssc.close()
-    }
-
 }
 
 
@@ -241,52 +260,49 @@ class MultiConnectionsFileTransferClient(
      * File's frame.
      */
     private suspend fun downloadFrame(start: Long, end: Long, retry: Boolean = true) {
+        val buffer = FilesTransferBufferPool.requestBuffer()
+        var hasRead: Long = 0
         val result = kotlin.runCatching {
             val sc = openAsynchronousSocketChannel()
             sc.use {
                 sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                 sc.setOptionSuspend(StandardSocketOptions.TCP_NODELAY, true)
                 sc.connectSuspend(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT))
-                val buffer = ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE)
                 sc.writeSuspendSize(buffer, md5)
                 sc.writeSuspendSize(buffer, start.toBytes())
                 sc.writeSuspendSize(buffer, end.toBytes())
                 val limitReadSize = end - start
                 var offset: Long = start
-                var hasRead: Long = 0
                 val bufferSize = buffer.capacity()
                 val file = RandomAccessFile(path.toFile(), "rw")
                 file.seek(start)
                 val fileChannel = file.channel
-                val result = kotlin.runCatching {
-                    file.use {
-                        fileChannel.use {
-                            val fileLock = fileChannel.lock(start, limitReadSize, true)
-                            while (true) {
-                                val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
-                                    (limitReadSize - hasRead).toInt()
-                                } else {
-                                    bufferSize
-                                }
-                                sc.readSuspendSize(buffer, thisTimeRead)
-                                fileChannel.writeSuspendSize(buffer)
-                                offset += thisTimeRead
-                                hasRead += thisTimeRead
-                                progress(progressLong.addAndGet(thisTimeRead.toLong()), fileSize)
-                                if (hasRead >= limitReadSize) {
-                                    break
-                                }
+                file.use {
+                    fileChannel.use {
+                        val fileLock = fileChannel.lock(start, limitReadSize, true)
+                        while (true) {
+                            val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
+                                (limitReadSize - hasRead).toInt()
+                            } else {
+                                bufferSize
                             }
-                            // fileLock.release()
+                            sc.readSuspendSize(buffer, thisTimeRead)
+                            fileChannel.writeSuspendSize(buffer)
+                            offset += thisTimeRead
+                            hasRead += thisTimeRead
+                            progress(progressLong.addAndGet(thisTimeRead.toLong()), fileSize)
+                            if (hasRead >= limitReadSize) {
+                                break
+                            }
                         }
+                        // fileLock.release()
                     }
-                }
-                if (result.isFailure) {
-                    throw result.exceptionOrNull()!!
                 }
             }
         }
+        FilesTransferBufferPool.recycleBuffer(buffer)
         if (result.isFailure) {
+            progressLong.set(progressLong.get() - hasRead)
             if (retry) {
                 Log.e("startMultiConnectionsFileClient", "startMultiConnectionsFileClient", result.exceptionOrNull())
                 downloadFrame(start, end, false)
