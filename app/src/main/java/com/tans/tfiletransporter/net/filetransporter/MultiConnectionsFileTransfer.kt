@@ -37,7 +37,7 @@ private object FilesTransferBufferPool {
     init {
         // Init Pool
         runBlocking {
-            for (i in 0 until MULTI_CONNECTIONS_MAX) {
+            for (i in 0 until MULTI_CONNECTIONS_MAX * 2) {
                 pools.send(ByteBuffer.allocate(MULTI_CONNECTIONS_BUFFER_SIZE))
             }
         }
