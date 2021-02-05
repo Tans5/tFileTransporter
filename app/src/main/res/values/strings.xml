@@ -18,6 +18,7 @@
     <string name="downloading_files_dialog_title">Downloading Files (%d/%d)</string>
     <string name="sending_files_dialog_title">Sending Files (%d/%d)</string>
     <string name="file_deal_progress">%s/%s</string>
+    <string name="app_version">Ver: %s</string>
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->

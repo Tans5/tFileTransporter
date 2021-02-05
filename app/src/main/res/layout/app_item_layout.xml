@@ -7,6 +7,10 @@
     <data>
 
         <variable
+            name="app"
+            type="com.tans.tfiletransporter.ui.activity.filetransport.AppInfo" />
+
+        <variable
             name="isSelect"
             type="Boolean" />
 
@@ -24,9 +28,10 @@
 
             <ImageView
                 android:id="@+id/app_icon_iv"
-                android:layout_width="25dp"
-                android:layout_height="25dp"
-                android:layout_marginStart="20dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="15dp"
+                android:background="@{app.icon}"
                 tools:src="@mipmap/ic_launcher"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -36,41 +41,31 @@
                 android:id="@+id/app_name_tv"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:ellipsize="middle"
+                android:layout_marginStart="15dp"
+                android:ellipsize="end"
                 android:singleLine="true"
                 android:textColor="@color/black_1"
                 android:textSize="17sp"
+                android:text="@{app.name}"
+                android:layout_marginEnd="10dp"
                 app:layout_constraintBottom_toTopOf="@id/app_id_tv"
-                app:layout_constraintEnd_toStartOf="@id/version_tv"
+                app:layout_constraintEnd_toStartOf="@id/app_cb"
                 app:layout_constraintStart_toEndOf="@id/app_icon_iv"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintVertical_chainStyle="packed"
                 tools:text="tAdapter" />
 
             <TextView
-                android:id="@+id/version_tv"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="5dp"
-                android:layout_marginEnd="10dp"
-                android:textSize="14sp"
-                android:textColor="@color/black_1"
-                app:layout_constraintEnd_toStartOf="@id/app_cb"
-                app:layout_constraintTop_toTopOf="@id/app_name_tv"
-                app:layout_constraintBottom_toBottomOf="@id/app_name_tv"
-                app:layout_constraintStart_toEndOf="@id/app_name_tv"
-                app:layout_constrainedWidth="true"
-                tools:text="Ver: 1.0.0"/>
-
-            <TextView
                 android:id="@+id/app_id_tv"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
+                android:layout_marginStart="15dp"
                 android:layout_marginTop="5dp"
                 android:textColor="@color/gray_1"
                 android:textSize="14sp"
+                android:text="@{app.packageName}"
+                android:singleLine="true"
+                android:ellipsize="end"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/app_size_tv"
                 app:layout_constraintStart_toEndOf="@id/app_icon_iv"
@@ -83,7 +78,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginEnd="10dp"
-                app:fileSizeText="@{9999}"
+                app:fileSizeText="@{app.appSize}"
                 app:layout_constraintBottom_toBottomOf="@id/app_id_tv"
                 app:layout_constraintEnd_toStartOf="@id/app_cb"
                 app:layout_constraintStart_toEndOf="@id/app_id_tv"

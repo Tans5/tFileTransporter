@@ -1,22 +1,144 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.annotation.SuppressLint
+import android.content.pm.ApplicationInfo
+import android.graphics.drawable.Drawable
+import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
+import com.tans.tadapter.adapter.DifferHandler
+import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import io.reactivex.Observable
+import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.utils.dp2px
+import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
+import org.kodein.di.instance
+import java.nio.file.Files
+import java.nio.file.Paths
 
-class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, Unit>(
+
+data class AppInfo(
+        val name: String,
+        val sourceDir: String,
+        val packageName: String,
+        val icon: Drawable,
+        val appSize: Long
+)
+
+data class MyAppsState(
+        val apps: List<AppInfo> = emptyList(),
+        val selected: Set<AppInfo> = emptySet()
+)
+
+object AppSelectChange
+
+class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
         layoutId = R.layout.my_apps_fragment_layout,
-        default = Unit
+        default = MyAppsState()
 ) {
+
+    private val scopeData: FileTransportScopeData by instance()
+
     override fun onInit() {
-        binding.myAppsRv.adapter = SimpleAdapterSpec<Unit, AppItemLayoutBinding>(
+
+        refreshApps()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .loadingDialog(requireActivity())
+                .bindLife()
+
+        binding.appsRefreshLayout.refreshes()
+                .switchMapSingle {
+                    refreshApps()
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .doFinally {
+                                if (binding.appsRefreshLayout.isRefreshing) { binding.appsRefreshLayout.isRefreshing = false }
+                            }
+                }
+                .bindLife()
+
+        binding.myAppsRv.adapter = SimpleAdapterSpec<Pair<AppInfo, Boolean>, AppItemLayoutBinding>(
                 layoutId = R.layout.app_item_layout,
-                dataUpdater = Observable.just(emptyList())
+                dataUpdater = bindState().map { state -> state.apps.map { it to state.selected.contains(it) } },
+                bindData = { _, (app, select), lBinding ->
+                    lBinding.app = app
+                    lBinding.isSelect = select
+                },
+                differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.packageName == d2.first.packageName },
+                        contentTheSame = { d1, d2 -> d1.first.packageName == d2.first.packageName && d1.second == d2.second },
+                        changePayLoad = { d1, d2 ->
+                            if (d1.first.packageName == d2.first.packageName && d1.second != d2.second) {
+                                AppSelectChange
+                            } else {
+                                null
+                            }
+                        }),
+                bindDataPayload = { _, (_, isSelect), lBinding, payloads ->
+                    if (payloads.contains(AppSelectChange)) {
+                        lBinding.isSelect = isSelect
+                        true
+                    } else {
+                        false
+                    }
+                },
+                itemClicks = listOf { binding, _ ->
+                    binding.root to { _, (app, isSelect) ->
+                        updateState { oldState ->
+                            val oldSelect = oldState.selected
+                            val newSelect = if (isSelect) oldSelect - app else oldSelect + app
+                            oldState.copy(selected = newSelect)
+                        }.map { }
+                    }
+                }
         ).toAdapter()
+
+        binding.myAppsRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
+                .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
+                        requireContext().dp2px(1)))
+                .marginStart(requireContext().dp2px(70))
+                .build()
+        )
+
+        scopeData.floatBtnEvent
+                .filter { !isHidden }
+                .switchMapSingle {
+                    rxSingle {
+                        updateState { it.copy(selected = emptySet()) }.await()
+                        Unit
+                    }.onErrorResumeNext {
+                        Single.just(Unit)
+                    }
+                }
+                .bindLife()
+    }
+
+    @SuppressLint("QueryPermissionsNeeded")
+    fun refreshApps() = updateState {
+        val apps = requireActivity().packageManager.getInstalledApplications(0)
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+                .map {
+                    AppInfo(
+                            name = it.loadLabel(requireActivity().packageManager).toString(),
+                            sourceDir = it.sourceDir,
+                            packageName = it.packageName,
+                            icon = it.loadIcon(requireActivity().packageManager),
+                            appSize = Files.size(Paths.get(it.sourceDir))
+                    )
+                }
+                .sortedBy { it.name }
+        MyAppsState(
+                apps = apps,
+                selected = emptySet()
+        )
     }
 
     companion object {
