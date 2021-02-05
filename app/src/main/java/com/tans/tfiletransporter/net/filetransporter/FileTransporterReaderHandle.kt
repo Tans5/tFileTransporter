@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.net.filetransporter
 import com.squareup.moshi.Types
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.readDataLimit
@@ -66,13 +67,19 @@ sealed class FileTransporterReaderHandle {
     abstract suspend fun handle(readChannel: AsynchronousSocketChannel)
 
     suspend fun AsynchronousSocketChannel.simpleSizeDeal(chains: ReaderHandleChains<Unit>) {
-        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        readSuspendSize(buffer, 4)
-        val limit = buffer.asIntBuffer().get()
-        readDataLimit(
-                limit = limit.toLong(),
-                buffer = buffer
-        ) { inputStream -> chains.process(Unit, inputStream, limit.toLong()) }
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            readSuspendSize(buffer, 4)
+            val limit = buffer.asIntBuffer().get()
+            readDataLimit(
+                    limit = limit.toLong(),
+                    buffer = buffer
+            ) { inputStream -> chains.process(Unit, inputStream, limit.toLong()) }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            throw result.exceptionOrNull()!!
+        }
     }
 }
 
@@ -107,27 +114,33 @@ typealias FileDownloader = suspend (files: List<FileMd5>, remoteAddress: InetAdd
 class FilesShareReaderHandle : FileTransporterReaderHandle() {
     var downloaders: List<FileDownloader> = emptyList()
     override suspend fun handle(readChannel: AsynchronousSocketChannel) {
-        val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-        readChannel.readSuspendSize(buffer, 4)
-        val limit = buffer.asIntBuffer().get()
-        val files = readChannel.readDataLimit(
-                limit = limit.toLong(),
-                buffer = buffer
-        ) { inputStream ->
-            val filesJson = inputStream.readString(limit.toLong())
-            val moshiType = Types.newParameterizedType(List::class.java, FileMd5::class.java)
-            val files: List<FileMd5>? = moshi.adapter<List<FileMd5>>(moshiType).fromJson(filesJson)
-            if (files.isNullOrEmpty()) {
-                throw error("FilesShareReaderHandle, wrong files string: $filesJson")
-            } else {
-                files
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            readChannel.readSuspendSize(buffer, 4)
+            val limit = buffer.asIntBuffer().get()
+            val files = readChannel.readDataLimit(
+                    limit = limit.toLong(),
+                    buffer = buffer
+            ) { inputStream ->
+                val filesJson = inputStream.readString(limit.toLong())
+                val moshiType = Types.newParameterizedType(List::class.java, FileMd5::class.java)
+                val files: List<FileMd5>? = moshi.adapter<List<FileMd5>>(moshiType).fromJson(filesJson)
+                if (files.isNullOrEmpty()) {
+                    error("FilesShareReaderHandle, wrong files string: $filesJson")
+                } else {
+                    files
+                }
+            }
+            val downloaders = this.downloaders
+            for (d in downloaders) {
+                if (d(files, (readChannel.remoteAddress as InetSocketAddress).address)) {
+                    break
+                }
             }
         }
-        val downloaders = this.downloaders
-        for (d in downloaders) {
-            if (d(files, (readChannel.remoteAddress as InetSocketAddress).address)) {
-                break
-            }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            throw result.exceptionOrNull()!!
         }
     }
 

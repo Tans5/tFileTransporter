@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import com.tans.tfiletransporter.file.CommonFileLeaf
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.filetransporter.*
 import com.tans.tfiletransporter.net.filetransporter.RequestFilesShareWriterHandle.Companion.getJsonString
 import com.tans.tfiletransporter.net.model.File
@@ -31,8 +32,12 @@ suspend fun newRequestFolderChildrenShareWriterHandle(
         pathSize = pathData.size
     ) { outputStream ->
         val writer = Channels.newChannel(outputStream)
-        val buffer = ByteBuffer.allocate(pathData.size)
-        writer.writeSuspendSize(buffer, pathData)
+        val buffer = commonNetBufferPool.requestBuffer()
+        try {
+            writer.writeSuspendSize(buffer, pathData)
+        } finally {
+            commonNetBufferPool.recycleBuffer(buffer)
+        }
     }
 }
 
@@ -79,8 +84,12 @@ suspend fun newFolderChildrenShareWriterHandle(
         filesJsonSize = jsonData.size
     ) { outputStream ->
         val writer = Channels.newChannel(outputStream)
-        val byteBuffer = ByteBuffer.allocate(jsonData.size)
-        writer.writeSuspendSize(byteBuffer, jsonData)
+        val byteBuffer = commonNetBufferPool.requestBuffer()
+        try {
+            writer.writeSuspendSize(byteBuffer, jsonData)
+        } finally {
+            commonNetBufferPool.recycleBuffer(byteBuffer)
+        }
     }
 }
 
@@ -92,8 +101,12 @@ suspend fun newRequestFilesShareWriterHandle(
         filesJsonDataSize = jsonData.size
     ) { outputStream ->
         val writer = Channels.newChannel(outputStream)
-        val byteBuffer = ByteBuffer.allocate(jsonData.size)
-        writer.writeSuspendSize(byteBuffer, jsonData)
+        val byteBuffer = commonNetBufferPool.requestBuffer()
+        try {
+            writer.writeSuspendSize(byteBuffer, jsonData)
+        } finally {
+            commonNetBufferPool.recycleBuffer(byteBuffer)
+        }
     }
 }
 
@@ -129,7 +142,12 @@ suspend fun newSendMessageShareWriterHandle(
         messageSize = messageData.size
     ) { outputStream ->
         val writer = Channels.newChannel(outputStream)
-        writer.writeSuspend(ByteBuffer.wrap(messageData))
+        val buffer = commonNetBufferPool.requestBuffer()
+        try {
+            writer.writeSuspendSize(buffer, messageData)
+        } finally {
+            commonNetBufferPool.recycleBuffer(buffer)
+        }
     }
 }
 

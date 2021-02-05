@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.net.filetransporter
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
+import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
@@ -53,12 +54,12 @@ class FileTransporter(private val localAddress: InetAddress,
     internal suspend fun startAsClient() {
         val sc = openAsynchronousSocketChannel()
         delay(500)
-        sc.use {
-            try {
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            sc.use {
                 sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                 sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
                 sc.connectSuspend(InetSocketAddress(remoteAddress, FILE_TRANSPORT_LISTEN_PORT))
-                val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
                 sc.readSuspendSize(buffer, 1)
                 if (buffer.get() == VERSION_INT) {
                     val separatorBytes = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
@@ -72,23 +73,25 @@ class FileTransporter(private val localAddress: InetAddress,
                 } else {
                     throw VersionCheckError
                 }
-            } catch (e: Exception) {
-                stateStore.onError(e)
-                throw e
             }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            stateStore.onError(result.exceptionOrNull()!!)
+            throw result.exceptionOrNull()!!
         }
     }
 
     @Throws(IOException::class)
     internal suspend fun startAsServer() {
         val ssc = openAsynchronousServerSocketChannelSuspend()
-        ssc.use {
-            try {
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            ssc.use {
                 ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                 ssc.bindSuspend(InetSocketAddress(localAddress, FILE_TRANSPORT_LISTEN_PORT), 1)
                 val sc = ssc.acceptSuspend()
                 sc.use {
-                    val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
                     sc.writeSuspendSize(buffer, arrayOf(VERSION_INT).toByteArray())
                     sc.readSuspendSize(buffer, 4)
                     val size = buffer.asIntBuffer().get()
@@ -99,10 +102,12 @@ class FileTransporter(private val localAddress: InetAddress,
                     updateState { remoteSeparator }.await()
                     handleAction(sc, remoteSeparator)
                 }
-            } catch (e: Exception) {
-                stateStore.onError(e)
-                throw e
             }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            stateStore.onError(result.exceptionOrNull()!!)
+            throw result.exceptionOrNull()!!
         }
     }
 
@@ -145,17 +150,23 @@ class FileTransporter(private val localAddress: InetAddress,
 
         // Read
         launch {
-            val actionBuffer = ByteBuffer.allocate(1)
-            while (true) {
-                sc.readSuspendSize(actionBuffer, 1)
-                when (val actionCode = actionBuffer.get()) {
-                    FileNetAction.RequestFolderChildrenShare.actionCode -> requestFolderChildrenShareReaderHandle.handle(sc)
-                    FileNetAction.FolderChildrenShare.actionCode -> folderChildrenShareReaderHandle.handle(sc)
-                    FileNetAction.RequestFilesShare.actionCode -> requestFileShareReaderHandle.handle(sc)
-                    FileNetAction.FilesShare.actionCode -> fileShareReaderHandle.handle(sc)
-                    FileNetAction.SendMessage.actionCode -> sendMessageReaderHandle.handle(sc)
-                    else -> error("Unknown Action Code: $actionCode")
+            val actionBuffer = commonNetBufferPool.requestBuffer()
+            val result = kotlin.runCatching {
+                while (true) {
+                    sc.readSuspendSize(actionBuffer, 1)
+                    when (val actionCode = actionBuffer.get()) {
+                        FileNetAction.RequestFolderChildrenShare.actionCode -> requestFolderChildrenShareReaderHandle.handle(sc)
+                        FileNetAction.FolderChildrenShare.actionCode -> folderChildrenShareReaderHandle.handle(sc)
+                        FileNetAction.RequestFilesShare.actionCode -> requestFileShareReaderHandle.handle(sc)
+                        FileNetAction.FilesShare.actionCode -> fileShareReaderHandle.handle(sc)
+                        FileNetAction.SendMessage.actionCode -> sendMessageReaderHandle.handle(sc)
+                        else -> error("Unknown Action Code: $actionCode")
+                    }
                 }
+            }
+            commonNetBufferPool.recycleBuffer(actionBuffer)
+            if (result.isFailure) {
+                throw result.exceptionOrNull()!!
             }
         }
 

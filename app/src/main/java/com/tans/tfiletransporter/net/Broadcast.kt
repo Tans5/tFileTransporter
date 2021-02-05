@@ -26,9 +26,13 @@ const val BROADCAST_SERVER_DENY: Byte = 0x01
 
 val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
 
-// 1 MB
-const val NET_BUFFER_SIZE = 1024 * 1024
+// 512 KB
+const val NET_BUFFER_SIZE = 1024 * 512
 
+val commonNetBufferPool = NetBufferPool(
+        poolSize = 100,
+        bufferSize = NET_BUFFER_SIZE
+)
 
 typealias RemoteDevice = Pair<SocketAddress, String>
 
@@ -63,21 +67,27 @@ class BroadcastSender(
     @Throws(IOException::class)
     internal suspend fun startBroadcastSender() {
         val dc = openDatagramChannel()
-        dc.use {
-            dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
-            val dataBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-            dataBuffer.put(broadMessage.toByteArray(Charsets.UTF_8).let {
-                if (it.size > NET_BUFFER_SIZE) {
-                    it.take(NET_BUFFER_SIZE).toByteArray()
-                } else {
-                    it
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            dc.use {
+                dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
+                buffer.put(broadMessage.toByteArray(Charsets.UTF_8).let {
+                    if (it.size > NET_BUFFER_SIZE) {
+                        it.take(NET_BUFFER_SIZE).toByteArray()
+                    } else {
+                        it
+                    }
+                })
+                while (true) {
+                    buffer.flip()
+                    dc.sendSuspend(buffer, InetSocketAddress(broadcastAddress, BROADCAST_RECEIVER_PORT))
+                    delay(broadcastDelay)
                 }
-            })
-            while (true) {
-                dataBuffer.flip()
-                dc.sendSuspend(dataBuffer, InetSocketAddress(broadcastAddress, BROADCAST_RECEIVER_PORT))
-                delay(broadcastDelay)
             }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            throw result.exceptionOrNull()!!
         }
     }
 
@@ -93,32 +103,38 @@ class BroadcastSender(
     internal suspend fun startBroadcastListener(acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice {
         val ssc = openAsynchronousServerSocketChannelSuspend()
         var result: RemoteDevice? = null
-        ssc.use {
-            ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-            ssc.bindSuspend(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
-            while (true) {
-                val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-                val isAccept = ssc.acceptSuspend().use { clientSsc ->
-                    clientSsc.readSuspendSize(byteBuffer, 4)
-                    // 1. Get message size
-                    val remoteDeviceInfoSize = min(max(byteBuffer.asIntBuffer().get(), 0), NET_BUFFER_SIZE)
+        val buffer = commonNetBufferPool.requestBuffer()
+        val runResult = kotlin.runCatching {
+            ssc.use {
+                ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                ssc.bindSuspend(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
+                while (true) {
+                    val isAccept = ssc.acceptSuspend().use { clientSsc ->
+                        clientSsc.readSuspendSize(buffer, 4)
+                        // 1. Get message size
+                        val remoteDeviceInfoSize = min(max(buffer.asIntBuffer().get(), 0), NET_BUFFER_SIZE)
 
-                    // 2. Get remote device info.
-                    clientSsc.readSuspendSize(byteBuffer, remoteDeviceInfoSize)
-                    val remoteInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
+                        // 2. Get remote device info.
+                        clientSsc.readSuspendSize(buffer, remoteDeviceInfoSize)
+                        val remoteInfo = String(buffer.copyAvailableBytes(), Charsets.UTF_8)
 
-                    // 3. Accept or deny.
-                    if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
-                        clientSsc.writeSuspendSize(byteBuffer, ByteArray(1) { BROADCAST_SERVER_ACCEPT })
-                        result = clientSsc.remoteAddress to remoteInfo
-                        true
-                    } else {
-                        clientSsc.writeSuspendSize(byteBuffer, ByteArray(1) { BROADCAST_SERVER_DENY })
-                        false
+                        // 3. Accept or deny.
+                        if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
+                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { BROADCAST_SERVER_ACCEPT })
+                            result = clientSsc.remoteAddress to remoteInfo
+                            true
+                        } else {
+                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { BROADCAST_SERVER_DENY })
+                            false
+                        }
                     }
+                    if (isAccept) { break }
                 }
-                if (isAccept) { break }
             }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (runResult.isFailure) {
+            throw runResult.exceptionOrNull()!!
         }
         return result ?: error("Unknown error!!")
     }
