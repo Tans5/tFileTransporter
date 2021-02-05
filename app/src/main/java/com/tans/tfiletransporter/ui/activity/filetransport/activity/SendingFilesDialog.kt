@@ -6,6 +6,8 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileServer
+import com.tans.tfiletransporter.net.filetransporter.PathConverter
+import com.tans.tfiletransporter.net.filetransporter.defaultPathConverter
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileServer
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
@@ -20,7 +22,7 @@ import java.net.InetAddress
 import java.util.*
 
 
-fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress): Single<Unit> {
+fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, pathConverter: PathConverter = defaultPathConverter): Single<Unit> {
     var dialog: Dialog? = null
     return Single.create<Unit> { emitter ->
         val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileServer>>(
@@ -46,6 +48,7 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress):
                             startMultiConnectionsFileServer(
                                     fileMd5 = f,
                                     localAddress = localAddress,
+                                    pathConverter = pathConverter,
                                     serverInstance = { server -> updateState { Optional.of(server) }.await() }) { hasSend, limit ->
                                 withContext(Dispatchers.Main) {
                                     binding.filePb.progress = ((hasSend.toDouble() / limit.toDouble()) * 100.0).toInt()

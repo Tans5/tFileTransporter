@@ -5,6 +5,7 @@ import android.util.Log
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.NetBufferPool
+import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
@@ -41,30 +42,37 @@ private val fileTransporterPool = NetBufferPool(
 suspend fun startMultiConnectionsFileServer(
         fileMd5: FileMd5,
         localAddress: InetAddress,
+        pathConverter: PathConverter = defaultPathConverter,
         serverInstance: suspend (server: MultiConnectionsFileServer) -> Unit = {},
         progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
 ) {
-    val server = MultiConnectionsFileServer(fileMd5, localAddress, progress)
+    val server = MultiConnectionsFileServer(fileMd5 = fileMd5, localAddress = localAddress, progress = progress, pathConverter = pathConverter)
     serverInstance(server)
     server.start()
+}
+
+typealias PathConverter = (file: File) -> Path
+
+val defaultPathConverter: PathConverter = { file ->
+    Paths.get(FileConstants.homePathString, file.path).let {
+        if (file.size <= 0 || !Files.exists(it) || Files.isDirectory(it)) {
+            error("Wrong File: $file")
+        } else {
+            it
+        }
+    }
 }
 
 class MultiConnectionsFileServer(
         fileMd5: FileMd5,
         private val localAddress: InetAddress,
+        pathConverter: PathConverter = defaultPathConverter,
         private val progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
 ) {
 
     private val file = fileMd5.file
     private val md5 = fileMd5.md5
-    private val fileSize = file.size
-    private val path: Path? = Paths.get(FileConstants.homePathString, file.path).let {
-        if (fileSize <= 0 || !Files.exists(it) || Files.isDirectory(it)) {
-            null
-        } else {
-            it
-        }
-    }
+    private val path: Path = pathConverter(file)
 
     private val ssc: AsynchronousServerSocketChannel by lazy { AsynchronousServerSocketChannel.open() }
 
@@ -112,10 +120,6 @@ class MultiConnectionsFileServer(
      * File's frame.
      */
     private suspend fun newClient(client: AsynchronousSocketChannel) {
-        if (path == null) {
-            client.close()
-            return
-        }
         val buffer = fileTransporterPool.requestBuffer()
         var hasRead: Long = 0
         val result = kotlin.runCatching {

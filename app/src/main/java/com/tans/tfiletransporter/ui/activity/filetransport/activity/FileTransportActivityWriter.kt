@@ -111,7 +111,8 @@ suspend fun newRequestFilesShareWriterHandle(
 }
 
 suspend fun Activity.newFilesShareWriterHandle(
-    files: List<File>
+    files: List<File>,
+    pathConverter: PathConverter = defaultPathConverter
 ): FilesShareWriterHandle {
 
     val dialog = withContext(Dispatchers.Main) {
@@ -125,7 +126,11 @@ suspend fun Activity.newFilesShareWriterHandle(
         withContext(Dispatchers.Main) {
             dialog.cancel()
             val result = kotlin.runCatching {
-                startSendingFiles(filesMd5, localAddress).await()
+                startSendingFiles(
+                        files = filesMd5,
+                        localAddress = localAddress,
+                        pathConverter = pathConverter
+                ).await()
             }
             if (result.isFailure) {
                 Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
