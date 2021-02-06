@@ -47,6 +47,12 @@
                     android:text="@string/file_transport_activity_tab_my_apps"/>
 
                 <com.google.android.material.tabs.TabItem
+                    android:id="@+id/my_images_tab_item"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/file_transport_activity_tab_my_images"/>
+
+                <com.google.android.material.tabs.TabItem
                     android:id="@+id/my_dir_tab_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

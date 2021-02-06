@@ -21,10 +21,7 @@ import com.tans.tfiletransporter.net.model.ResponseFolderModelJsonAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.MessageFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.MyAppsFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.RemoteDirFragment
+import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -141,6 +138,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     override fun onTabSelected(tab: TabLayout.Tab?) {
                         when (tab?.position) {
                             DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
+                            DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
                             DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
                             DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
                             DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
@@ -162,7 +160,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 render({ it.selectedTabType }) {
 
                     when (it) {
-                        DirTabType.MyApps, DirTabType.MyDir, DirTabType.RemoteDir -> {
+                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
                             val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
                             lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
                             binding.collapsingLayout.layoutParams = lpCollapsing
@@ -181,7 +179,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
 
                     when (it) {
-                        DirTabType.MyApps, DirTabType.MyDir -> {
+                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
                             binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
                             binding.floatingActionBt.visibility = View.VISIBLE
                         }
@@ -209,6 +207,15 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 if (fragment == null) {
                     fragment = MyAppsFragment()
                     transaction.add(R.id.fragment_container_layout, fragment, MyAppsFragment.FRAGMENT_TAG)
+                }
+                fragment
+            }
+
+            DirTabType.MyImages -> {
+                var fragment = supportFragmentManager.findFragmentByTag(MyImagesFragment.FRAGMENT_TAG)
+                if (fragment == null) {
+                    fragment = MyImagesFragment()
+                    transaction.add(R.id.fragment_container_layout, fragment, MyImagesFragment.FRAGMENT_TAG)
                 }
                 fragment
             }
@@ -281,4 +288,4 @@ data class FileTransportActivityState(
     val selectedTabType: DirTabType = DirTabType.MyApps
 )
 
-enum class DirTabType { MyApps, MyDir, RemoteDir, Message }
+enum class DirTabType { MyApps, MyImages, MyDir, RemoteDir, Message }
