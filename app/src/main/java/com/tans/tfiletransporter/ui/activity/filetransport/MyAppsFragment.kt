@@ -11,9 +11,11 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
+import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -21,6 +23,7 @@ import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import org.kodein.di.instance
+import org.threeten.bp.OffsetDateTime
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -110,10 +113,25 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
 
         scopeData.floatBtnEvent
                 .filter { !isHidden }
+                .observeOn(Schedulers.io())
                 .switchMapSingle {
                     rxSingle {
-                        updateState { it.copy(selected = emptySet()) }.await()
-                        Unit
+                        val selectedApps = bindState().firstOrError().map { it.selected }.await()
+                        val files = selectedApps.filter { Files.isReadable(Paths.get(it.sourceDir)) }.map {
+                            File(name = "${it.name}_${it.packageName}.apk",
+                                    path = it.sourceDir,
+                                    size = it.appSize,
+                                    lastModify = OffsetDateTime.now())
+                        }
+                        if (selectedApps.isNotEmpty()) {
+                            scopeData.fileTransporter.startWriterHandleWhenFinish(
+                                    requireActivity().newFilesShareWriterHandle(
+                                            files = files,
+                                            pathConverter = { file -> Paths.get(file.path) }
+                                    )
+                            )
+                            updateState { it.copy(selected = emptySet()) }.await()
+                        }
                     }.onErrorResumeNext {
                         Single.just(Unit)
                     }
