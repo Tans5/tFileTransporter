@@ -22,6 +22,10 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:scaleType="centerCrop"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
             app:imageUrl="@{image.uri.toString()}"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -30,16 +34,6 @@
             app:layout_constraintDimensionRatio="1:1"
             tools:src="@mipmap/ic_launcher"
             tools:ignore="ContentDescription" />
-
-        <androidx.appcompat.widget.AppCompatRadioButton
-            android:id="@+id/photo_select_rb"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:layout_marginEnd="5dp"
-            android:checked="@{select}"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

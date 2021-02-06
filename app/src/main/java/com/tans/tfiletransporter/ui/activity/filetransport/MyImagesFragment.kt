@@ -1,20 +1,18 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.graphics.Color
 import androidx.recyclerview.widget.GridLayoutManager
+import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.tans.rxutils.QueryMediaItem
 import com.tans.rxutils.QueryMediaType
 import com.tans.rxutils.getMedia
 import com.tans.rxutils.switchThread
-import com.tans.tadapter.recyclerviewutils.IgnoreGridLastRowVerticalDividerController
-import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
+import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.utils.dp2px
 
 data class MyImagesState(
     val images: List<QueryMediaItem.Image> = emptyList(),
@@ -31,22 +29,35 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
         binding.myImagesRv.adapter = SimpleAdapterSpec<Pair<QueryMediaItem.Image, Boolean>, ImageItemLayoutBinding>(
             layoutId = R.layout.image_item_layout,
             bindData = { _, (image, select), lBinding -> lBinding.image = image; lBinding.select = select },
-            dataUpdater = bindState().map { state -> state.images.map { it to state.selectedImages.contains(it) } }
+            dataUpdater = bindState().map { state -> state.images.map { it to state.selectedImages.contains(it) } },
+            differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.uri == d2.first.uri },
+            contentTheSame = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second })
         ).toAdapter()
 
-        val horizontalDivider = MarginDividerItemDecoration.Companion.Builder()
-            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, requireContext().dp2px(6)))
-            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Horizontal)
-            .build()
+//        val horizontalDivider = MarginDividerItemDecoration.Companion.Builder()
+//            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, size = requireContext().dp2px(6)))
+//            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Horizontal)
+//            .build()
+//
+//        val verticalDivider = MarginDividerItemDecoration.Companion.Builder()
+//            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, size = requireContext().dp2px(6)))
+//            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Vertical)
+//            .dividerController(IgnoreGridLastRowVerticalDividerController(rowSize = 2))
+//            .build()
+//
+//        binding.myImagesRv.addItemDecoration(horizontalDivider)
+//        binding.myImagesRv.addItemDecoration(verticalDivider)
 
-        val verticalDivider = MarginDividerItemDecoration.Companion.Builder()
-            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, requireContext().dp2px(6)))
-            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Vertical)
-            .dividerController(IgnoreGridLastRowVerticalDividerController(rowSize = 2))
-            .build()
-
-        binding.myImagesRv.addItemDecoration(horizontalDivider)
-        binding.myImagesRv.addItemDecoration(verticalDivider)
+        binding.imagesRefreshLayout.refreshes()
+            .switchMapSingle {
+                refreshImages()
+                    .switchThread()
+                    .doFinally {
+                        if (binding.imagesRefreshLayout.isRefreshing)
+                            binding.imagesRefreshLayout.isRefreshing = false
+                    }
+            }
+            .bindLife()
     }
 
     private fun refreshImages() = getMedia(
@@ -54,7 +65,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
         queryMediaType = QueryMediaType.Image)
         .flatMap { media ->
             updateState {
-                val images = media.filterIsInstance<QueryMediaItem.Image>()
+                val images = media.filterIsInstance<QueryMediaItem.Image>().sortedByDescending { it.dateModify }
                 MyImagesState(images = images)
             }
         }
