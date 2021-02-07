@@ -8,13 +8,15 @@
         android:id="@+id/coordinator_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         android:keepScreenOn="true">
 
         <com.google.android.material.appbar.AppBarLayout
             android:id="@+id/appbar_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/white">
+            android:background="@color/white"
+            app:elevation="0dp">
 
             <com.google.android.material.appbar.CollapsingToolbarLayout
                 android:id="@+id/collapsing_layout"
@@ -35,39 +37,42 @@
 
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/tab_layout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:tabMode="scrollable"
-                app:layout_scrollFlags="enterAlways|scroll">
+                style="@style/MainTabLayoutStyle"
+                app:tabMode="scrollable">
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/my_apps_tab_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="@color/white"
                     android:text="@string/file_transport_activity_tab_my_apps"/>
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/my_images_tab_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="@color/white"
                     android:text="@string/file_transport_activity_tab_my_images"/>
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/my_dir_tab_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="@color/white"
                     android:text="@string/file_transport_activity_tab_my_dir"/>
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/remote_dir_tab_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="@color/white"
                     android:text="@string/file_transport_activity_tab_remote_dir"/>
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/message_item"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:background="@color/white"
                     android:text="@string/file_transport_activity_tab_message"/>
 
             </com.google.android.material.tabs.TabLayout>

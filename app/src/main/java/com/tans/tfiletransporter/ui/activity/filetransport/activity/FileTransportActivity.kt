@@ -164,17 +164,17 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
                             lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
                             binding.collapsingLayout.layoutParams = lpCollapsing
-                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
-                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
-                            binding.tabLayout.layoutParams = lpTab
+//                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
+//                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+//                            binding.tabLayout.layoutParams = lpTab
                         }
                         DirTabType.Message -> {
                             val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
                             lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
                             binding.collapsingLayout.layoutParams = lpCollapsing
-                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
-                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
-                            binding.tabLayout.layoutParams = lpTab
+//                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
+//                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
+//                            binding.tabLayout.layoutParams = lpTab
                         }
                     }
 
