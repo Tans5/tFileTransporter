@@ -65,7 +65,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
         queryMediaType = QueryMediaType.Image)
         .flatMap { media ->
             updateState {
-                val images = media.filterIsInstance<QueryMediaItem.Image>().sortedByDescending { it.dateModify }
+                val images = media.filterIsInstance<QueryMediaItem.Image>().filter { it.size > 1024 }.sortedByDescending { it.dateModify }
                 MyImagesState(images = images)
             }
         }

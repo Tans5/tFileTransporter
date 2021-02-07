@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui
 
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.widget.ImageView
 import android.widget.TextView
@@ -48,8 +49,11 @@ object DataBindingAdapter {
     @JvmStatic
     @BindingAdapter("app:imageUrl")
     fun imageUrl(image: ImageView, url: String?) {
+        val emptyErrorDrawable = ColorDrawable(image.context.getColor(R.color.gray_2))
         Glide.with(image)
             .load(Uri.parse(url))
+            .error(emptyErrorDrawable)
+            .placeholder(emptyErrorDrawable)
             .into(image)
     }
 }
