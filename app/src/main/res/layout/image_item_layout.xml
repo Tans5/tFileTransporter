@@ -35,6 +35,19 @@
             tools:src="@mipmap/ic_launcher"
             tools:ignore="ContentDescription" />
 
+        <CheckBox
+            android:id="@+id/image_cb"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginTop="7dp"
+            android:layout_marginEnd="7dp"
+            android:button="@null"
+            android:background="@drawable/image_checkbox_bg"
+            android:checked="@{select}"
+            android:clickable="false"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </layout>
