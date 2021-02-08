@@ -10,7 +10,6 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.squareup.moshi.Types
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
-import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
@@ -22,6 +21,7 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.utils.*
+import io.reactivex.rxkotlin.cast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -41,23 +41,29 @@ data class FileTransportActivityState(
 )
 
 enum class DirTabType { MyApps, MyImages, MyDir, RemoteDir, Message }
-enum class ConnectionStatus {
-    Connecting,
-    Connected
+
+
+sealed class ConnectionStatus {
+    object Connecting : ConnectionStatus()
+    data class Connected(
+        val remoteAddress: InetAddress,
+        val remoteDeviceInfo: String,
+        val remoteFileSeparator: String,
+        val fileTransporter: FileTransporter
+    ) : ConnectionStatus()
 }
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
-
-    var remoteSeparator: String? = null
-    var fileTransporter: FileTransporter? = null
 
     private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     override fun DI.MainBuilder.addDIInstance() {
         bind<FileTransportScopeData>() with singleton {
-            val remoteSeparator = this@FileTransportActivity.remoteSeparator
-            val fileTransporter = this@FileTransportActivity.fileTransporter
-            FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, fileTransporter!!)
+            val connected = bindState().firstOrError().map { it.connectionStatus as ConnectionStatus.Connected }.blockingGet()
+            FileTransportScopeData(
+                remoteDirSeparator = connected.remoteFileSeparator,
+                fileTransporter = connected.fileTransporter
+            )
         }
     }
 
@@ -68,8 +74,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 localAddress = localAddress,
                 remoteAddress = remoteAddress
         )
-        this@FileTransportActivity.fileTransporter = fileTransporter
-
         launch(Dispatchers.IO) {
             val result = runCatching {
 
@@ -128,8 +132,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
 
         launch(Dispatchers.IO) {
-            remoteSeparator = fileTransporter.whenConnectReady()
-            updateState { oldState -> oldState.copy(connectionStatus = ConnectionStatus.Connected) }.await()
+            val remoteSeparator = fileTransporter.whenConnectReady()
+            val remoteDeviceInfo = intent.getRemoteInfo()
+            updateState { oldState -> oldState.copy(connectionStatus = ConnectionStatus.Connected(
+                remoteAddress = remoteAddress,
+                remoteDeviceInfo = remoteDeviceInfo,
+                remoteFileSeparator = remoteSeparator,
+                fileTransporter = fileTransporter
+            )) }.await()
         }
     }
 
@@ -141,7 +151,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             binding.toolBar.subtitle = remoteAddress.hostAddress
 
             val loadingDialog = showLoadingDialog(cancelable = false)
-            withContext(Dispatchers.IO) { bindState().filter { it.connectionStatus == ConnectionStatus.Connected }.firstOrError().await() }
+            withContext(Dispatchers.IO) {
+                bindState()
+                .map { it.connectionStatus }
+                .filter { it is ConnectionStatus.Connected }
+                .cast<ConnectionStatus.Connected>()
+                .firstOrError()
+                .await()
+            }
             loadingDialog.cancel()
 
             binding.tabLayout.addOnTabSelectedListener(object :
@@ -166,7 +183,18 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             binding.floatingActionBt.clicks()
                     .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
                     .bindLife()
-
+            render({ it.connectionStatus }) {
+                when (it) {
+                    ConnectionStatus.Connecting -> {
+                        binding.toolBar.title = ""
+                        binding.toolBar.subtitle = ""
+                    }
+                    is ConnectionStatus.Connected -> {
+                        binding.toolBar.title = it.remoteDeviceInfo
+                        binding.toolBar.subtitle = it.remoteAddress.hostAddress
+                    }
+                }
+            }.bindLife()
 
             render({ it.selectedTabType }) {
 
