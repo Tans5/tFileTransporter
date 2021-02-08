@@ -25,15 +25,15 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     override val coroutineContext = lifecycleScope.coroutineContext
 
-    override val stateStore: Subject<State> by instance()
+//    override val di: DI by retainedSubDI(di()) {
+//        bind<Subject<State>>() with singleton { BehaviorSubject.createDefault(defaultState).toSerialized() }
+//        addDIInstance()
+//    }
+//
+//    override val stateStore: Subject<State> by instance()
 
-    override val di: DI by retainedSubDI(di()) {
-        bind<Subject<State>>() with singleton { BehaviorSubject.createDefault(defaultState).toSerialized() }
-        addDIInstance()
-    }
-
-    open fun DI.MainBuilder.addDIInstance() {
-    }
+//    open fun DI.MainBuilder.addDIInstance() {
+//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

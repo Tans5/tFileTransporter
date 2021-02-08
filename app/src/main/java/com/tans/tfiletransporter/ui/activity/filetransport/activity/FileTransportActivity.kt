@@ -2,7 +2,6 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
 import android.util.Log
 import android.view.View
 import com.google.android.material.appbar.AppBarLayout
@@ -23,6 +22,8 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.utils.*
+import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -39,37 +40,43 @@ import java.util.*
 import kotlin.runCatching
 
 data class FileTransportActivityState(
-        val selectedTabType: DirTabType = DirTabType.MyApps
+        val selectedTabType: DirTabType = DirTabType.MyApps,
+        val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting
 )
 
 enum class DirTabType { MyApps, MyImages, MyDir, RemoteDir, Message }
+enum class ConnectionStatus {
+    Connecting,
+    Connected
+}
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
-    var remoteSeparator: String? = null
-    var fileTransporter: FileTransporter? = null
-
+    // TODO: Fix ugly code.
+    override val stateStore: Subject<FileTransportActivityState> by instance()
     override val di: DI by retainedSubDI(di()) {
-        // bind<FileTransportScopeData>() with scoped(AndroidLifecycleScope).singleton { FileTransportScopeData() }
+        bind<Subject<FileTransportActivityState>>() with singleton { BehaviorSubject.createDefault(FileTransportActivityState()).toSerialized() }
         bind<FileTransportScopeData>() with singleton {
             val remoteSeparator = this@FileTransportActivity.remoteSeparator
             val fileTransporter = this@FileTransportActivity.fileTransporter
             FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, fileTransporter!!)
         }
     }
+
+    var remoteSeparator: String? = null
+    var fileTransporter: FileTransporter? = null
+
     private val fileTransportScopeData by instance<FileTransportScopeData>()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
+    override fun firstLaunchInitData() {
         val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
         val localAddress = intent.getLocalAddress()
         binding.toolBar.title = remoteInfo
         binding.toolBar.subtitle = remoteAddress.hostAddress
 
         val fileTransporter = FileTransporter(
-            localAddress = localAddress,
-            remoteAddress = remoteAddress
+                localAddress = localAddress,
+                remoteAddress = remoteAddress
         )
         this@FileTransportActivity.fileTransporter = fileTransporter
 
@@ -122,86 +129,86 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             Log.e(this@FileTransportActivity::javaClass.name,"FileConnectionBreak", result.exceptionOrNull())
             withContext(Dispatchers.Main) {
                 showNoOptionalDialog(
-                    title = getString(R.string.connection_error_title),
-                    message = getString(R.string.connection_error_message),
-                    cancelable = true
+                        title = getString(R.string.connection_error_title),
+                        message = getString(R.string.connection_error_message),
+                        cancelable = true
                 ).await()
                 finish()
             }
         }
 
+        launch(Dispatchers.IO) {
+            remoteSeparator = fileTransporter.whenConnectReady()
+            updateState { oldState -> oldState.copy(connectionStatus = ConnectionStatus.Connected) }.await()
+        }
+    }
+
+    override fun initViews(binding: FileTransportActivityBinding) {
         launch {
 
-
             val loadingDialog = showLoadingDialog(cancelable = false)
-            val result = withContext(Dispatchers.IO) { runCatching { fileTransporter.whenConnectReady() } }
+            withContext(Dispatchers.IO) { bindState().filter { it.connectionStatus == ConnectionStatus.Connected }.firstOrError().await() }
             loadingDialog.cancel()
-            this@FileTransportActivity.remoteSeparator = result.getOrNull()
 
-            if (result.isSuccess) {
-                binding.tabLayout.addOnTabSelectedListener(object :
+            binding.tabLayout.addOnTabSelectedListener(object :
                     TabLayout.OnTabSelectedListener {
-                    override fun onTabSelected(tab: TabLayout.Tab?) {
-                        when (tab?.position) {
-                            DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
-                            DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
-                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
-                            DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
-                            DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
-                        }
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    when (tab?.position) {
+                        DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
+                        DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
+                        DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
+                        DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
+                        DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
                     }
+                }
 
-                    override fun onTabUnselected(tab: TabLayout.Tab?) {
-                    }
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+                }
 
-                    override fun onTabReselected(tab: TabLayout.Tab?) {
-                    }
-                })
+                override fun onTabReselected(tab: TabLayout.Tab?) {
+                }
+            })
 
-                binding.floatingActionBt.clicks()
+            binding.floatingActionBt.clicks()
                     .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
                     .bindLife()
 
 
-                render({ it.selectedTabType }) {
+            render({ it.selectedTabType }) {
 
-                    when (it) {
-                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
-                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
-                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
-                            binding.collapsingLayout.layoutParams = lpCollapsing
-//                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
-//                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
-//                            binding.tabLayout.layoutParams = lpTab
-                        }
-                        DirTabType.Message -> {
-                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
-                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
-                            binding.collapsingLayout.layoutParams = lpCollapsing
-//                            val lpTab = (binding.tabLayout.layoutParams as? AppBarLayout.LayoutParams)
-//                            lpTab?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
-//                            binding.tabLayout.layoutParams = lpTab
-                        }
-                    }
+                if (binding.tabLayout.selectedTabPosition != it.ordinal) {
+                    binding.tabLayout.selectTab(binding.tabLayout.getTabAt(it.ordinal))
+                }
 
-                    when (it) {
-                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
-                            binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
-                            binding.floatingActionBt.visibility = View.VISIBLE
-                        }
-                        DirTabType.RemoteDir -> {
-                            binding.floatingActionBt.setImageResource(R.drawable.download_outline)
-                            binding.floatingActionBt.visibility = View.VISIBLE
-                        }
-                        DirTabType.Message -> {
-                            binding.floatingActionBt.visibility = View.GONE
-                        }
+                when (it) {
+                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
+                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
+                        binding.collapsingLayout.layoutParams = lpCollapsing
                     }
-                    changeDirFragment(it)
-                }.bindLife()
-            }
+                    DirTabType.Message -> {
+                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
+                        binding.collapsingLayout.layoutParams = lpCollapsing
+                    }
+                }
+
+                when (it) {
+                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
+                        binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
+                        binding.floatingActionBt.visibility = View.VISIBLE
+                    }
+                    DirTabType.RemoteDir -> {
+                        binding.floatingActionBt.setImageResource(R.drawable.download_outline)
+                        binding.floatingActionBt.visibility = View.VISIBLE
+                    }
+                    DirTabType.Message -> {
+                        binding.floatingActionBt.visibility = View.GONE
+                    }
+                }
+                changeDirFragment(it)
+            }.bindLife()
         }
-
     }
 
     private fun changeDirFragment(dirTabType: DirTabType) {
