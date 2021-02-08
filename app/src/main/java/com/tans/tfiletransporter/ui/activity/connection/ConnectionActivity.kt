@@ -15,8 +15,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     defaultState = Unit
 ) {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun firstLaunchInitData() {
         launch {
             val grant = RxPermissions(this@ConnectionActivity).let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

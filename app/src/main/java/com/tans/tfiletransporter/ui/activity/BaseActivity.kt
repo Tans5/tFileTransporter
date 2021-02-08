@@ -5,29 +5,50 @@ import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
+import androidx.lifecycle.lifecycleScope
 import com.tans.tfiletransporter.core.BindLife
 import com.tans.tfiletransporter.core.Stateable
+import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.Subject
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import org.kodein.di.DI
-import org.kodein.di.DIAware
+import org.kodein.di.*
 import org.kodein.di.android.di
 import org.kodein.di.android.retainedSubDI
 
 abstract class BaseActivity<Binding : ViewDataBinding, State>(
     @LayoutRes
     layoutId: Int,
-    defaultState: State
-) : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispatchers.Main), Stateable<State> by Stateable(defaultState), BindLife by BindLife(), DIAware {
+    val defaultState: State
+) : AppCompatActivity(), CoroutineScope, Stateable<State>, BindLife by BindLife(), DIAware {
 
     protected val binding: Binding by lazy { DataBindingUtil.setContentView(this, layoutId) }
 
-    override val di: DI by retainedSubDI(di()) {  }
+    override val coroutineContext = lifecycleScope.coroutineContext
+
+    override val stateStore: Subject<State> by instance()
+
+    override val di: DI by retainedSubDI(di()) {
+        bind<Subject<State>>() with singleton { BehaviorSubject.createDefault(defaultState).toSerialized() }
+        addDIInstance()
+    }
+
+    open fun DI.MainBuilder.addDIInstance() {
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding
+        if (savedInstanceState == null) {
+            firstLaunchInitData()
+        }
+        initViews(binding)
+    }
+
+    open fun firstLaunchInitData() {
+
+    }
+
+    open fun initViews(binding: Binding) {
+
     }
 
     override fun onBackPressed() {
@@ -41,7 +62,6 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     override fun onDestroy() {
         super.onDestroy()
-        cancel("Activity ${this::class.java.name} Closed.")
         lifeCompositeDisposable.clear()
     }
 }

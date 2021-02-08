@@ -28,6 +28,11 @@ abstract class BaseFragment<Binding: ViewDataBinding, State>(
 
     override val di: DI by subDI(di()) {}
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        retainInstance = true
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,

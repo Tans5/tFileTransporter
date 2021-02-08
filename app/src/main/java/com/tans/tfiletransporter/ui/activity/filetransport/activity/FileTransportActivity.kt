@@ -38,6 +38,12 @@ import java.net.InetSocketAddress
 import java.util.*
 import kotlin.runCatching
 
+data class FileTransportActivityState(
+        val selectedTabType: DirTabType = DirTabType.MyApps
+)
+
+enum class DirTabType { MyApps, MyImages, MyDir, RemoteDir, Message }
+
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
     var remoteSeparator: String? = null
@@ -283,9 +289,3 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
     }
 
 }
-
-data class FileTransportActivityState(
-    val selectedTabType: DirTabType = DirTabType.MyApps
-)
-
-enum class DirTabType { MyApps, MyImages, MyDir, RemoteDir, Message }
