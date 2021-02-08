@@ -269,10 +269,6 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
                         }.await()
                     }
-                    // below code useless.
-//                    if (state.sortType != newState.sortType) {
-//                        withContext(Dispatchers.Main) { binding.fileFolderRv.scrollToPosition(0) }
-//                    }
                 }
             }
             .bindLife()

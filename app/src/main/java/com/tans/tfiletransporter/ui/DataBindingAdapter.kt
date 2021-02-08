@@ -49,8 +49,8 @@ object DataBindingAdapter {
     @JvmStatic
     @BindingAdapter("app:imageUrl")
     fun imageUrl(image: ImageView, url: String?) {
-        val emptyErrorDrawable = ColorDrawable(image.context.getColor(R.color.gray_2))
-        Glide.with(image)
+        val emptyErrorDrawable = ColorDrawable(image.context.applicationContext.getColor(R.color.gray_2))
+        Glide.with(image.context.applicationContext)
             .load(Uri.parse(url))
             .error(emptyErrorDrawable)
             .placeholder(emptyErrorDrawable)

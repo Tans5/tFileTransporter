@@ -96,7 +96,6 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
 //            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Vertical)
 //            .dividerController(IgnoreGridLastRowVerticalDividerController(rowSize = 2))
 //            .build()
-//
 //        binding.myImagesRv.addItemDecoration(horizontalDivider)
 //        binding.myImagesRv.addItemDecoration(verticalDivider)
 
