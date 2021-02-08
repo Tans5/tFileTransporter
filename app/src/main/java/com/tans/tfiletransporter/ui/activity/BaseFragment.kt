@@ -33,17 +33,24 @@ abstract class BaseFragment<Binding: ViewDataBinding, State>(
         retainInstance = true
     }
 
+    var rootView: View? = null
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        binding = DataBindingUtil.inflate(inflater, layoutId, container, false)
-        onInit()
-        return binding.root
+        val rootView = this.rootView
+        return if (rootView == null) {
+            binding = DataBindingUtil.inflate(inflater, layoutId, container, false)
+            initViews(binding)
+            this.rootView = binding.root
+            binding.root
+        } else {
+            rootView
+        }
     }
 
-    open fun onInit() {
+    open fun initViews(binding: Binding) {
 
     }
 

@@ -11,6 +11,7 @@ import com.tans.tfiletransporter.core.Stateable
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.Subject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import org.kodein.di.*
 import org.kodein.di.android.di
 import org.kodein.di.android.retainedSubDI
@@ -19,11 +20,9 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
     @LayoutRes
     layoutId: Int,
     val defaultState: State
-) : AppCompatActivity(), CoroutineScope, Stateable<State>, BindLife by BindLife(), DIAware {
+) : AppCompatActivity(), CoroutineScope by MainScope(), Stateable<State>, BindLife by BindLife(), DIAware {
 
     protected val binding: Binding by lazy { DataBindingUtil.setContentView(this, layoutId) }
-
-    override val coroutineContext = lifecycleScope.coroutineContext
 
 //    override val di: DI by retainedSubDI(di()) {
 //        bind<Subject<State>>() with singleton { BehaviorSubject.createDefault(defaultState).toSerialized() }

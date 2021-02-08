@@ -49,7 +49,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
-    override fun onInit() {
+    override fun initViews(binding: RemoteDirFragmentBinding) {
 
         updateState {
             RemoteDirState(Optional.of(newRootFileTree(path = fileTransportScopeData.remoteDirSeparator)), emptySet())

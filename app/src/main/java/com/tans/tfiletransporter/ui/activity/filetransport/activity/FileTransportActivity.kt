@@ -69,10 +69,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
     private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     override fun firstLaunchInitData() {
-        val (remoteAddress, remoteInfo, isServer) = with(intent) { Triple(getRemoteAddress(), getRemoteInfo(), getIsServer()) }
-        val localAddress = intent.getLocalAddress()
-        binding.toolBar.title = remoteInfo
-        binding.toolBar.subtitle = remoteAddress.hostAddress
+        val (remoteAddress, isServer, localAddress) = with(intent) { Triple(getRemoteAddress(), getIsServer(), getLocalAddress()) }
 
         val fileTransporter = FileTransporter(
                 localAddress = localAddress,
@@ -145,6 +142,10 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     override fun initViews(binding: FileTransportActivityBinding) {
         launch {
+            val (remoteInfo, remoteAddress) = with(intent) { getRemoteInfo() to getRemoteAddress() }
+
+            binding.toolBar.title = remoteInfo
+            binding.toolBar.subtitle = remoteAddress.hostAddress
 
             val loadingDialog = showLoadingDialog(cancelable = false)
             withContext(Dispatchers.IO) { bindState().filter { it.connectionStatus == ConnectionStatus.Connected }.firstOrError().await() }

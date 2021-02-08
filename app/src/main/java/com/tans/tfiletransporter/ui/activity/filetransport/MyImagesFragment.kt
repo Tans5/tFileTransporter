@@ -35,7 +35,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
     private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
-    override fun onInit() {
+    override fun initViews(binding: MyImagesFragmentLayoutBinding) {
         refreshImages().switchThread().bindLife()
         binding.myImagesRv.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.myImagesRv.adapter =

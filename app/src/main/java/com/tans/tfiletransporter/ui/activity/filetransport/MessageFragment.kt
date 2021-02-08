@@ -35,7 +35,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
 
     private val inputMethodManager: InputMethodManager by instance()
 
-    override fun onInit() {
+    override fun initViews(binding: MessageFragmentBinding) {
 
         binding.messageRv.adapter = SimpleAdapterSpec<Message, MessageItemLayoutBinding>(
             layoutId = R.layout.message_item_layout,

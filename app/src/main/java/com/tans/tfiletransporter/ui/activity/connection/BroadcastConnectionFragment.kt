@@ -60,7 +60,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
         }
     }
 
-    override fun onInit() {
+    override fun initViews(binding: BroadcastConnectionFragmentBinding) {
 
         updateState {
             // to deal as hotspot host situation, ugly code.

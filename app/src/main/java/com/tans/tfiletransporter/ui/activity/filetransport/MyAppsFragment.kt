@@ -50,7 +50,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
 
     private val scopeData: FileTransportScopeData by instance()
 
-    override fun onInit() {
+    override fun initViews(binding: MyAppsFragmentLayoutBinding) {
 
         refreshApps()
                 .subscribeOn(Schedulers.io())

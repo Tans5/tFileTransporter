@@ -78,7 +78,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
-    override fun onInit() {
+    override fun initViews(binding: MyDirFragmentBinding) {
         bindState()
             .map { it.fileTree }
             .distinctUntilChanged()
