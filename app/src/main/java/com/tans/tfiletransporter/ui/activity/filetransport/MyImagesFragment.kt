@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.util.Log
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
@@ -18,8 +19,10 @@ import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
 import com.tans.tfiletransporter.utils.getFilePathMd5
 import com.tans.tfiletransporter.utils.readFrom
+import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
@@ -130,15 +133,18 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                 rxSingle {
                     val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
                     if (selectImages.isNotEmpty()) {
-//                        clearImageCaches()
-//                        val files = selectImages.createCatches()
-//                        scopeData.fileTransporter.startWriterHandleWhenFinish(
-//
-//                        )
+                        clearImageCaches()
+                        val files = selectImages.createCatches()
+                        scopeData.fileTransporter.startWriterHandleWhenFinish(
+                                requireActivity().newFilesShareWriterHandle(files = files) { file -> Paths.get(file.path) }
+                        )
                         updateState {
                             it.selectedImages
                             it.copy(selectedImages = emptySet()) }.await()
                     }
+                }.onErrorResumeNext {
+                    Log.e("Send Images", "Send Images Error", it)
+                    Single.just(Unit)
                 }
             }
             .bindLife()
@@ -154,7 +160,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
             }
         }
 
-    private suspend fun Set<QueryMediaItem.Image>.createCatches(): List<FileMd5> {
+    private suspend fun Set<QueryMediaItem.Image>.createCatches(): List<File> {
         val catchDirPath = Paths.get(requireActivity().cacheDir.toString(), IMAGE_CACHE_DIR).toAbsolutePath()
         if (!Files.exists(catchDirPath)) {
             Files.createDirectory(catchDirPath)
@@ -162,7 +168,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
         val buffer = commonNetBufferPool.requestBuffer()
         return try {
             filter { it.size > 1024 }
-                .map<QueryMediaItem.Image, FileMd5> { image ->
+                .map { image ->
                     val filePath = Paths.get(catchDirPath.toString(), image.displayName)
                     if (Files.exists(filePath)) {
                         Files.delete(filePath)
@@ -179,16 +185,10 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                             )
                         }
                     }
-                    val pathMd5 = filePath.getFilePathMd5()
-                    FileMd5(
-                        md5 = pathMd5,
-                        file = File(
-                            name = image.displayName,
+                    File(name = image.displayName,
                             path = filePath.toAbsolutePath().toString(),
                             size = image.size.toLong(),
-                            lastModify = OffsetDateTime.now()
-                        )
-                    )
+                            lastModify = OffsetDateTime.now())
                 }.toList()
         } finally {
             commonNetBufferPool.recycleBuffer(buffer)
