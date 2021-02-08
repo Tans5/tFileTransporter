@@ -180,14 +180,14 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                         readerChannel.use {
                             writerChannel.readFrom(
                                 readable = readerChannel,
-                                limit = image.size.toLong(),
+                                limit = image.size,
                                 buffer = buffer
                             )
                         }
                     }
                     File(name = image.displayName,
                             path = filePath.toAbsolutePath().toString(),
-                            size = image.size.toLong(),
+                            size = image.size,
                             lastModify = OffsetDateTime.now())
                 }.toList()
         } finally {
