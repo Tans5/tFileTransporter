@@ -13,12 +13,22 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
+import com.tans.tfiletransporter.net.commonNetBufferPool
+import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
+import com.tans.tfiletransporter.utils.getFilePathMd5
+import com.tans.tfiletransporter.utils.readFrom
+import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import org.kodein.di.instance
+import org.threeten.bp.OffsetDateTime
+import java.nio.channels.Channels
+import java.nio.file.Files
+import java.nio.file.Paths
 
 data class MyImagesState(
     val images: List<QueryMediaItem.Image> = emptyList(),
@@ -26,6 +36,8 @@ data class MyImagesState(
 )
 
 object ImageSelectChange
+
+const val IMAGE_CACHE_DIR = "image_cache"
 
 class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesState>(
     layoutId = R.layout.my_images_fragment_layout,
@@ -112,9 +124,21 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
             .bindLife()
 
         scopeData.floatBtnEvent
+            .filter { !isHidden }
+            .observeOn(Schedulers.io())
             .switchMapSingle {
                 rxSingle {
-                    updateState { it.copy(selectedImages = emptySet()) }.await()
+                    val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
+                    if (selectImages.isNotEmpty()) {
+//                        clearImageCaches()
+//                        val files = selectImages.createCatches()
+//                        scopeData.fileTransporter.startWriterHandleWhenFinish(
+//
+//                        )
+                        updateState {
+                            it.selectedImages
+                            it.copy(selectedImages = emptySet()) }.await()
+                    }
                 }
             }
             .bindLife()
@@ -129,6 +153,57 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                 MyImagesState(images = images)
             }
         }
+
+    private suspend fun Set<QueryMediaItem.Image>.createCatches(): List<FileMd5> {
+        val catchDirPath = Paths.get(requireActivity().cacheDir.toString(), IMAGE_CACHE_DIR).toAbsolutePath()
+        if (!Files.exists(catchDirPath)) {
+            Files.createDirectory(catchDirPath)
+        }
+        val buffer = commonNetBufferPool.requestBuffer()
+        return try {
+            filter { it.size > 1024 }
+                .map<QueryMediaItem.Image, FileMd5> { image ->
+                    val filePath = Paths.get(catchDirPath.toString(), image.displayName)
+                    if (Files.exists(filePath)) {
+                        Files.delete(filePath)
+                    }
+                    Files.createFile(filePath)
+                    val writerChannel = Channels.newChannel(Files.newOutputStream(filePath))
+                    val readerChannel = Channels.newChannel(requireActivity().contentResolver.openInputStream(image.uri))
+                    writerChannel.use {
+                        readerChannel.use {
+                            writerChannel.readFrom(
+                                readable = readerChannel,
+                                limit = image.size.toLong(),
+                                buffer = buffer
+                            )
+                        }
+                    }
+                    val pathMd5 = filePath.getFilePathMd5()
+                    FileMd5(
+                        md5 = pathMd5,
+                        file = File(
+                            name = image.displayName,
+                            path = filePath.toAbsolutePath().toString(),
+                            size = image.size.toLong(),
+                            lastModify = OffsetDateTime.now()
+                        )
+                    )
+                }.toList()
+        } finally {
+            commonNetBufferPool.recycleBuffer(buffer)
+        }
+    }
+
+    private fun clearImageCaches() {
+        val cachePath = Paths.get(requireActivity().cacheDir.toString(), IMAGE_CACHE_DIR)
+        if (Files.exists(cachePath) && Files.isDirectory(cachePath)) {
+            Files.list(cachePath)
+                .forEach { child ->
+                    if (!Files.isDirectory(child)) { Files.delete(child) }
+                }
+        }
+    }
 
     companion object {
         const val FRAGMENT_TAG = "my_images_fragment_tag"
