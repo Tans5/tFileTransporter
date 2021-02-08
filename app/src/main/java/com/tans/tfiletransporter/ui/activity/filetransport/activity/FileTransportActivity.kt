@@ -22,15 +22,11 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.utils.*
-import io.reactivex.subjects.BehaviorSubject
-import io.reactivex.subjects.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.withContext
 import org.kodein.di.DI
-import org.kodein.di.android.di
-import org.kodein.di.android.retainedSubDI
 import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
@@ -52,21 +48,18 @@ enum class ConnectionStatus {
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivityState>(R.layout.file_transport_activity, FileTransportActivityState()) {
 
-    // TODO: Fix ugly code.
-    override val stateStore: Subject<FileTransportActivityState> by instance()
-    override val di: DI by retainedSubDI(di()) {
-        bind<Subject<FileTransportActivityState>>() with singleton { BehaviorSubject.createDefault(FileTransportActivityState()).toSerialized() }
+    var remoteSeparator: String? = null
+    var fileTransporter: FileTransporter? = null
+
+    private val fileTransportScopeData by instance<FileTransportScopeData>()
+
+    override fun DI.MainBuilder.addDIInstance() {
         bind<FileTransportScopeData>() with singleton {
             val remoteSeparator = this@FileTransportActivity.remoteSeparator
             val fileTransporter = this@FileTransportActivity.fileTransporter
             FileTransportScopeData(remoteSeparator ?: FileConstants.FILE_SEPARATOR, fileTransporter!!)
         }
     }
-
-    var remoteSeparator: String? = null
-    var fileTransporter: FileTransporter? = null
-
-    private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     override fun firstLaunchInitData() {
         val (remoteAddress, isServer, localAddress) = with(intent) { Triple(getRemoteAddress(), getIsServer(), getLocalAddress()) }
