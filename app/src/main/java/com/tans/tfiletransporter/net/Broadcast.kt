@@ -45,12 +45,13 @@ suspend fun launchBroadcastSender(
         broadcastDelay: Long = 300,
         broadMessage: String = LOCAL_DEVICE,
         localAddress: InetAddress,
+        noneBroadcast: Boolean = false,
         acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice = coroutineScope {
         val broadcastSender = BroadcastSender(
                 broadcastDelay = broadcastDelay,
                 broadMessage = broadMessage,
                 localAddress = localAddress)
-        val broadcastJob = launch(context = Dispatchers.IO) { broadcastSender.startBroadcastSender() }
+        val broadcastJob = launch(context = Dispatchers.IO) { if (noneBroadcast) broadcastSender.startNoneBroadcastSender() else broadcastSender.startBroadcastSender() }
         val result = withContext(context = Dispatchers.IO) { broadcastSender.startBroadcastListener(acceptRequest) }
         broadcastJob.cancel()
         result
@@ -62,10 +63,10 @@ class BroadcastSender(
         val broadMessage: String = LOCAL_DEVICE,
         val localAddress: InetAddress) {
 
-    private val broadcastAddress = localAddress.getBroadcastAddress().first
 
     @Throws(IOException::class)
     internal suspend fun startBroadcastSender() {
+        val broadcastAddress = localAddress.getBroadcastAddress().first
         val dc = openDatagramChannel()
         val buffer = commonNetBufferPool.requestBuffer()
         val result = kotlin.runCatching {
@@ -81,6 +82,36 @@ class BroadcastSender(
                 while (true) {
                     buffer.flip()
                     dc.sendSuspend(buffer, InetSocketAddress(broadcastAddress, BROADCAST_RECEIVER_PORT))
+                    delay(broadcastDelay)
+                }
+            }
+        }
+        commonNetBufferPool.recycleBuffer(buffer)
+        if (result.isFailure) {
+            throw result.exceptionOrNull()!!
+        }
+    }
+
+    @Throws(IOException::class)
+    internal suspend fun startNoneBroadcastSender() {
+        val subInt = localAddress.getBroadcastAddress().second.toInt()
+        val subNets = localAddress.getSubNetAllAddress(subInt)
+        val dc = openDatagramChannel()
+        val buffer = commonNetBufferPool.requestBuffer()
+        val result = kotlin.runCatching {
+            dc.use {
+                buffer.put(broadMessage.toByteArray(Charsets.UTF_8).let {
+                    if (it.size > NET_BUFFER_SIZE) {
+                        it.take(NET_BUFFER_SIZE).toByteArray()
+                    } else {
+                        it
+                    }
+                })
+                while (true) {
+                    for (subNet in subNets) {
+                        buffer.flip()
+                        dc.sendSuspend(buffer, InetSocketAddress(subNet, BROADCAST_RECEIVER_PORT))
+                    }
                     delay(broadcastDelay)
                 }
             }
@@ -142,14 +173,15 @@ class BroadcastSender(
 
 @Throws(IOException::class)
 suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long = 5000, checkDuration: Long = 2000,
+                                    noneBroadcast: Boolean = false,
                                     handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
     val broadcastReceiver = BroadcastReceiver(localAddress, timeoutRemove,checkDuration)
-    val receiverJob: Job = launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver() }
+    val receiverJob: Job = launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver(noneBroadcast) }
     handle(broadcastReceiver, receiverJob)
 }
 
 class BroadcastReceiver(
-        localAddress: InetAddress,
+        val localAddress: InetAddress,
         // TimeUnit: milli seconds
         private val timeoutRemove: Long = 5000,
         // TimeUnit: milli seconds
@@ -158,7 +190,7 @@ class BroadcastReceiver(
     private val broadcast = localAddress.getBroadcastAddress().first
 
     @Throws(IOException::class)
-    internal suspend fun startBroadcastReceiver() {
+    internal suspend fun startBroadcastReceiver(noneBroadcast: Boolean = false) {
 
         coroutineScope {
             // Remote out of date devices.
@@ -182,7 +214,7 @@ class BroadcastReceiver(
                 val dc = openDatagramChannel()
                 dc.socket().soTimeout = Int.MAX_VALUE
                 dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
-                dc.bindSuspend(InetSocketAddress(broadcast, BROADCAST_RECEIVER_PORT))
+                dc.bindSuspend(InetSocketAddress(if (noneBroadcast) localAddress else broadcast, BROADCAST_RECEIVER_PORT))
                 val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
                 while (true) {
                     byteBuffer.clear()

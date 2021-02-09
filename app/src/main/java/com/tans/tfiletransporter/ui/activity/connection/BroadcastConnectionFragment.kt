@@ -105,7 +105,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                 .filter { it.second.isPresent }
                 .map { it.second.get() }
                 .switchMapSingle { localAddress ->
-                    requireActivity().showBroadcastReceiverDialog(localAddress)
+                    requireActivity().showBroadcastReceiverDialog(localAddress, true)
                             .doOnSuccess {
                                 if (it.isPresent) {
                                     startActivity(FileTransportActivity.getIntent(
@@ -127,7 +127,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                 .filter { it.second.isPresent }
                 .map { it.second.get() }
                 .switchMapSingle { localAddress ->
-                    requireActivity().showBroadcastSenderDialog(localAddress)
+                    requireActivity().showBroadcastSenderDialog(localAddress, true)
                             .doOnSuccess {
                                 if (it.isPresent) {
                                     startActivity(FileTransportActivity.getIntent(

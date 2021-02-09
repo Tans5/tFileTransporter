@@ -19,7 +19,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.*
 
-fun Activity.showBroadcastSenderDialog(localAddress: InetAddress): Single<Optional<RemoteDevice>> {
+fun Activity.showBroadcastSenderDialog(localAddress: InetAddress, noneBroadcast: Boolean = false): Single<Optional<RemoteDevice>> {
     var dialog: Dialog? = null
     return Single.create<Optional<RemoteDevice>> { emitter ->
         val dialogInternal = object : BaseCustomDialog<BroadcastSenderDialogLayoutBinding, Unit>(
@@ -32,7 +32,7 @@ fun Activity.showBroadcastSenderDialog(localAddress: InetAddress): Single<Option
             override fun bindingStart(binding: BroadcastSenderDialogLayoutBinding) {
                 launch {
                     val result = runCatching {
-                        launchBroadcastSender(localAddress = localAddress) { remoteAddress, remoteDevice ->
+                        launchBroadcastSender(localAddress = localAddress, noneBroadcast = noneBroadcast) { remoteAddress, remoteDevice ->
                             val result = withContext(Dispatchers.Main) {
                                 showOptionalDialog(
                                     title = getString(R.string.broadcast_request_connect),

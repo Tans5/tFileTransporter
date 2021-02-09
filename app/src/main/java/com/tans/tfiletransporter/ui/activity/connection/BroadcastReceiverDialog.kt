@@ -27,7 +27,7 @@ import java.net.InetSocketAddress
 import java.util.*
 
 
-fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress): Single<Optional<RemoteDevice>> {
+fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress, noneBroadcast: Boolean = false): Single<Optional<RemoteDevice>> {
     var dialog: Dialog? = null
     return Single.create<Optional<RemoteDevice>> { emitter ->
 
@@ -51,7 +51,7 @@ fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress): Single<Opti
                         .bindLife()
                 launch {
                     val result = runCatching {
-                        launchBroadcastReceiver(localAddress = localAddress) { receiverJob: Job ->
+                        launchBroadcastReceiver(localAddress = localAddress, noneBroadcast = noneBroadcast) { receiverJob: Job ->
                             withContext(Dispatchers.Main) {
                                 binding.serversRv.adapter = SimpleAdapterSpec<RemoteDevice, RemoteServerItemLayoutBinding>(
                                         layoutId = R.layout.remote_server_item_layout,

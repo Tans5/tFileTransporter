@@ -108,6 +108,24 @@ fun Int.toBytes(isRevert: Boolean = false): ByteArray {
     }
 }
 
+fun ByteArray.toInt(): Int {
+    if (size != 4)
+        throw Exception("The length of the byte array must be at least 4 bytes long.")
+
+    return 0xff and get(0).toInt() shl 56 or (0xff and get(1).toInt() shl 48) or (0xff and get(2).toInt() shl 40) or (0xff and get(3).toInt() shl 32)
+}
+
+fun InetAddress.getSubNetAllAddress(subNet: Int): List<InetAddress> {
+    val meInt = address.toInt()
+    val startNet = meInt and (-1 shl (32 - subNet))
+    val subNetsSize = -1 ushr subNet
+    return (1 until subNetsSize).map { startNet or it }
+            .filter { it != meInt }
+            .map {
+                InetAddress.getByAddress(it.toBytes())
+            }
+}
+
 fun Long.toBytes(): ByteArray = ByteArray(8) { index ->
     val slide = (7 - index) * 8
     (this and ((0x00_00_00_00_00_00_00_FF).toLong() shl slide) ushr slide).toByte()
