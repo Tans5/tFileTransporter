@@ -44,6 +44,29 @@
             android:textColor="@color/gray_1"
             tools:text="@string/broadcast_connection_local_ip_address" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="@color/gray_1"
+                android:text="@string/broadcast_connection_use_system_broadcast" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/system_broadcast_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:checked="false" />
+
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/search_server_layout"
             android:layout_width="match_parent"
