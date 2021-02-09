@@ -3,9 +3,12 @@ package com.tans.tfiletransporter
 import com.tans.tfiletransporter.net.launchBroadcastSender
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -217,4 +220,19 @@ class NetTest {
 //        job1.join()
 //        job2.join()
 //    }
+
+    @Test
+    fun sendMessage() = runBlocking {
+//        val dc = openDatagramChannel()
+//        val buffer = ByteBuffer.allocate(1024)
+//        val remoteAddress = arrayOf(192.toByte(), 168.toByte(), 106.toByte(), 181.toByte()).toByteArray()
+//        val remoteInet = InetSocketAddress(InetAddress.getByAddress(remoteAddress), 9999)
+//        while (true) {
+//            buffer.clear()
+//            buffer.put("Hello, World".toByteArray(Charsets.UTF_8))
+//            buffer.flip()
+//            dc.sendSuspend(buffer, remoteInet)
+//            delay(500)
+//        }
+    }
 }

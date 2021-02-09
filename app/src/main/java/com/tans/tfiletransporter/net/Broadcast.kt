@@ -62,7 +62,7 @@ class BroadcastSender(
         val broadMessage: String = LOCAL_DEVICE,
         val localAddress: InetAddress) {
 
-    private val broadcastAddress = localAddress.getBroadcastAddress()
+    private val broadcastAddress = localAddress.getBroadcastAddress().first
 
     @Throws(IOException::class)
     internal suspend fun startBroadcastSender() {
@@ -155,7 +155,7 @@ class BroadcastReceiver(
         // TimeUnit: milli seconds
         private val checkDuration: Long = 2000
 ) : Stateable<List<Pair<RemoteDevice, Long>>> by Stateable(emptyList()) {
-    private val broadcast = localAddress.getBroadcastAddress()
+    private val broadcast = localAddress.getBroadcastAddress().first
 
     @Throws(IOException::class)
     internal suspend fun startBroadcastReceiver() {

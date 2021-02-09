@@ -8,15 +8,18 @@ import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.utils.findLocalAddressV4
+import com.tans.tfiletransporter.utils.*
 import io.reactivex.rxkotlin.withLatestFrom
-import com.tans.tfiletransporter.utils.toBytes
 import io.reactivex.Single
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import org.kodein.di.instance
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.StandardSocketOptions
+import java.nio.ByteBuffer
 import java.util.*
 
 class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBinding, Optional<InetAddress>>(
@@ -71,6 +74,22 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                 Optional.empty()
             }
         }.bindLife()
+
+//        launch(Dispatchers.IO) {
+//            val localAddress = bindState().firstOrError().filter { it.isPresent }.map { it.get() }.await()
+//            val (broadcast, sub) = localAddress!!.getBroadcastAddress()
+//            println("Broadcast: ${broadcast.hostAddress}, Sub: $sub")
+//            val dc = openDatagramChannel()
+//            dc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+//            dc.bindSuspend(InetSocketAddress(localAddress, 9999))
+//            val buffer = ByteBuffer.allocate(1024)
+//            while (true) {
+//                buffer.clear()
+//                dc.receiveSuspend(buffer)
+//                buffer.flip()
+//                println("Remote Message Size: ${buffer.limit()}")
+//            }
+//        }
 
         connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
 
