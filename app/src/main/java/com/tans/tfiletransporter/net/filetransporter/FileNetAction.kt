@@ -39,8 +39,6 @@ enum class FileNetAction(
      * example:
      * the list of
      * @see com.tans.tfiletransporter.net.model.File
-     *
-     * - (length + 4)-(length + 4 + files' size) (file's data): The files' data.
      */
     FilesShare(0x03),
 

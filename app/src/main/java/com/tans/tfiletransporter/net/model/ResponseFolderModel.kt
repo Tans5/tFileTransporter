@@ -29,9 +29,12 @@ data class File(
 
 @JsonClass(generateAdapter = true)
 data class FileMd5(
-    val md5: ByteArray,
-    val file: File
-    ) {
+        /**
+         * This is not file's md5, and use path of file calculate md5, because calculate big files' md5 too slow.
+         */
+        val md5: ByteArray,
+        val file: File
+) {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
