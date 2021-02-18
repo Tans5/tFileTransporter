@@ -158,7 +158,7 @@ Download remote devices' files.
     
     ```
     
-And then download files, see `Files Transfer`
+And then download files, see `Files Transfer`.
 
 ##### Send Message Action
 
@@ -167,7 +167,19 @@ Receive remote devices' message.
 - Action Code: `0x04`
 - Data Read
   - message size (4 bytes)
-  - message (message size bytes, type: text)
+  - message (message size bytes, type: text)   
+    Example: `Hello, World.`
 
 ### Files Transfer
+
+Use TCP protocol to transfer files. Servers send files and clients downloads files. A TCP connection transfer a file's frame. See `Files Share Action`.  
+Below introdution omits client deal process.
+
+- Server Listener Port: `6669`
+- Server Max Connnection: 30
+- Send File's Frame Data  
+  - Read: File's MD5 (16 bytes)  
+  - Read: File's Frame Start (8 bytes)
+  - Read: File's Frame End (8 bytes)
+  - Write: File's Frame data (`Frame End` - `Frame Start` bytes)
 
