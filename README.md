@@ -6,4 +6,4 @@ Use TCP protocol to transfer infomation. This program builds with RxJava and Kot
 
 ## Screenshots
 
-<img src="https://github.com/Tans5/tFileTransporter/tree/master/screenshots/screenshot_2.png"/>
+<img src="screenshots/screenshot_2.png"height="40%"/>
