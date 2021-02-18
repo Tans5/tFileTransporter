@@ -45,8 +45,8 @@ Broadcast Sender will create a TCP listener to accecpt client's connection reque
 
 - Write: If accept client's connection request (1 byte)
  
- - Accept: `0x00`
- - Deny: `0x01`
+	- Accept: `0x00`
+	- Deny: `0x01`
 
  
 ### Infomation Transfer
