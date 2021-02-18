@@ -16,11 +16,9 @@ import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.File
-import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
-import com.tans.tfiletransporter.utils.getFilePathMd5
 import com.tans.tfiletransporter.utils.readFrom
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers

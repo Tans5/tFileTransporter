@@ -4,9 +4,7 @@ import com.squareup.moshi.Types
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.moshi
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.commonNetBufferPool
-import com.tans.tfiletransporter.net.filetransporter.FolderChildrenShareWriterHandle.Companion.getJsonString
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
@@ -16,7 +14,6 @@ import kotlinx.coroutines.rx2.await
 import java.io.OutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
 import java.nio.file.Paths

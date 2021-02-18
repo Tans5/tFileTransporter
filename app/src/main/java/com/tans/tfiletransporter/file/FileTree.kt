@@ -1,5 +1,8 @@
 package com.tans.tfiletransporter.file
 
+import androidx.annotation.Keep
+
+@Keep
 data class FileTree(
     val leafs: List<FileLeaf>,
     val dirLeafs: List<DirectoryFileLeaf>,
@@ -33,7 +36,10 @@ fun DirectoryFileLeaf.newSubTree(parentTree: FileTree): FileTree {
 
 sealed class YoungLeaf
 
+@Keep
 data class DirectoryYoungLeaf(val name: String, val childrenCount: Long, val lastModified: Long) : YoungLeaf()
+
+@Keep
 data class FileYoungLeaf(val name: String, val size: Long, val lastModified: Long) : YoungLeaf()
 
 fun List<YoungLeaf>.generateNewFileTree(parentTree: FileTree, targetDir: DirectoryFileLeaf, dirSeparator: String = FileConstants.FILE_SEPARATOR): FileTree {

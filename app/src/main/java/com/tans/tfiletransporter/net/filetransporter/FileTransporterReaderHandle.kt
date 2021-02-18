@@ -4,7 +4,6 @@ import com.squareup.moshi.Types
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.commonNetBufferPool
-import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.readDataLimit
 import com.tans.tfiletransporter.utils.readString

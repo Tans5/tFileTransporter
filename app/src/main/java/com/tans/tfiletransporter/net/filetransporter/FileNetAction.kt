@@ -38,7 +38,7 @@ enum class FileNetAction(
      * - 4-(length + 4) (Json): The files' information.
      * example:
      * the list of
-     * @see com.tans.tfiletransporter.net.model.File
+     * @see com.tans.tfiletransporter.net.model.FileMd5
      */
     FilesShare(0x03),
 

@@ -1,9 +1,11 @@
 package com.tans.tfiletransporter.net.model
 
+import androidx.annotation.Keep
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import org.threeten.bp.OffsetDateTime
 
+@Keep
 @JsonClass(generateAdapter = true)
 data class ResponseFolderModel(
     val path: String,
@@ -11,6 +13,7 @@ data class ResponseFolderModel(
     @Json(name = "children_files") val childrenFiles: List<File>
 )
 
+@Keep
 @JsonClass(generateAdapter = true)
 data class Folder(
     val name: String,
@@ -19,6 +22,7 @@ data class Folder(
     @Json(name = "last_modify") val lastModify: OffsetDateTime
 )
 
+@Keep
 @JsonClass(generateAdapter = true)
 data class File(
     val name: String,
@@ -27,6 +31,7 @@ data class File(
     @Json(name = "last_modify") val lastModify: OffsetDateTime
 )
 
+@Keep
 @JsonClass(generateAdapter = true)
 data class FileMd5(
         /**

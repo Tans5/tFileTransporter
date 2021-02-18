@@ -2,19 +2,15 @@ package com.tans.tfiletransporter.net.filetransporter
 
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.commonNetBufferPool
-import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import java.io.IOException
-import java.lang.Exception
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
-import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 
 const val FILE_TRANSPORT_LISTEN_PORT = 6668
