@@ -6,7 +6,7 @@ Use TCP protocol to transfer infomation. This program builds with RxJava and Kot
 
 ## Screenshots
 
-![](screenshots/screenshot_1.png){:witdh="40%" height="40%"}
+![](screenshots/screenshot_1.png){:width="40%" height="40%"}
 
 <img src="screenshots/screenshot_1.png" width="40%", height="40%"/>
 
