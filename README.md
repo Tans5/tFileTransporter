@@ -62,21 +62,21 @@ Below introdution omits write Action process and client connecting process. TCP 
 - Write: Server Files' Separator (Separator Size bytes)
 
 
-#### Read Action
+#### Read Actions
 
 Each Actions first byte is Action Code.
 
-##### Request Folder Children
+##### Request Folder Children Action
 
 Remote device request folder's chidren.
 
 - Action Code: `0x00`
 - Data Read
- - folder size (4 bytes)
- - folder (folder size bytes, type: text)  
+	- folder size (4 bytes)
+	- folder (folder size bytes, type: text)  
    Example: `/home/user/downloads`
    
-##### Folder Children Share
+##### Folder Children Share Action
 
 Get remote device folder's children.
 
@@ -110,7 +110,7 @@ Get remote device folder's children.
     
     ```
 
-##### Request Files Share
+##### Request Files Share Action
 
 Remote device request download files.
 
