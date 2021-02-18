@@ -125,14 +125,49 @@ Remote device request download files.
       [{
       	"md5": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
       	"file": {
-            		"name":"test_file",
-            		"path":"/home/user/downloads/test_file",
-            		"size":10000000,
-            		"last_modify":"2021-01-01T00:00:00+08:00"
-        		}
+            	"name":"test_file",
+            	"path":"/home/user/downloads/test_file",
+            	"size":10000000,
+            	"last_modify":"2021-01-01T00:00:00+08:00"
+        	}
       }]
     
     ```
+    
+##### Files Share Action
 
-### Files Transfer 
+Download remote devices' files.
+
+- Action Code: `0x03`  
+- Data Read
+  - files' data size (4 bytes)
+  - files' data (data size: bytes, type: json)   
+    Example: 
+    
+    ```json
+      
+      [{
+      	"md5": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      	"file": {
+            	"name":"test_file",
+            	"path":"/home/user/downloads/test_file",
+            	"size":10000000,
+            	"last_modify":"2021-01-01T00:00:00+08:00"
+        	}
+      }]
+    
+    ```
+    
+And then download files, see `Files Transfer`
+
+##### Send Message Action
+
+Receive remote devices' message.
+
+- Action Code: `0x04`
+- Data Read
+  - message size (4 bytes)
+  - message (message size bytes, type: text)
+
+### Files Transfer
 
