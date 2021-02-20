@@ -49,9 +49,9 @@ Broadcast Sender will create a TCP listener to accecpt client's connection reque
 	- Deny: `0x01`
 
  
-### Infomation Transfer
+### Information Transfer
 
-Below introdution omits write Action process and client connecting process. TCP Server and TCP Client all need handle write and read process. The Server's max connection is 1.
+Below introduction omits write Action process and client connecting process. TCP Server and TCP Client all need handle write and read process. The Server's max connection is 1.
 
 #### Server Listen and Exchange Info with Client
 - Server Listen Port: `6668`
@@ -173,10 +173,10 @@ Receive remote devices' message.
 ### Files Transfer
 
 Use TCP protocol to transfer files. Servers send files and clients downloads files. A TCP connection transfer a file's frame. See `Files Share Action`.  
-Below introdution omits client deal process.
+Below introduction omits client deal process.
 
 - Server Listener Port: `6669`
-- Server Max Connnection: 30
+- Server Max Connection: 30
 - Send File's Frame Data  
   - Read: File's MD5 (16 bytes)  
   - Read: File's Frame Start (8 bytes)
