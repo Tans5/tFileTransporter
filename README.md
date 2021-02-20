@@ -4,7 +4,7 @@
 Use TCP protocol to transfer infomation. This program builds with RxJava and Kotlin Coroutines.
 
 Apks:  
-[v1.0.1](https://github.com/Tans5/tFileTransporter/blob/master/apks/tFileTransfer_v1.0.1.apk)
+[v1.0.1](https://raw.githubusercontent.com/Tans5/tFileTransporter/master/apks/tFileTransfer_v1.0.1.apk)
 
 ## Screenshots
 
