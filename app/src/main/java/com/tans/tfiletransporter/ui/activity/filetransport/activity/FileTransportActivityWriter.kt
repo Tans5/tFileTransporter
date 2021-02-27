@@ -45,32 +45,37 @@ suspend fun newFolderChildrenShareWriterHandle(
 ): FolderChildrenShareWriterHandle {
     val jsonData = withContext(Dispatchers.IO) {
         val path = Paths.get(FileConstants.homePathString + parentPath)
-        val children = Files.list(path)
-            .map { p ->
-                val name = p.fileName.toString()
-                val lastModify = OffsetDateTime.ofInstant(Instant.ofEpochMilli(Files.getLastModifiedTime(p).toMillis()), ZoneId.systemDefault())
-                val pathString = if (parentPath.endsWith(FileConstants.FILE_SEPARATOR)) parentPath + name else parentPath + FileConstants.FILE_SEPARATOR + name
-                if (Files.isDirectory(p)) {
-                    Folder(
-                        name = name,
-                        path = pathString,
-                        childCount = p.let {
-                            val s = Files.list(it)
-                            val size = s.count()
-                            s.close()
-                            size
-                        },
-                        lastModify = lastModify
-                    )
-                } else {
-                    File(
-                        name = name,
-                        path = pathString,
-                        size = Files.size(p),
-                        lastModify = lastModify
-                    )
-                }
-            }.toList()
+        val children = if (Files.isReadable(path)) {
+            Files.list(path)
+                    .filter { Files.isReadable(it) }
+                    .map<Any> { p ->
+                        val name = p.fileName.toString()
+                        val lastModify = OffsetDateTime.ofInstant(Instant.ofEpochMilli(Files.getLastModifiedTime(p).toMillis()), ZoneId.systemDefault())
+                        val pathString = if (parentPath.endsWith(FileConstants.FILE_SEPARATOR)) parentPath + name else parentPath + FileConstants.FILE_SEPARATOR + name
+                        if (Files.isDirectory(p)) {
+                            Folder(
+                                    name = name,
+                                    path = pathString,
+                                    childCount = p.let {
+                                        val s = Files.list(it)
+                                        val size = s.count()
+                                        s.close()
+                                        size
+                                    },
+                                    lastModify = lastModify
+                            )
+                        } else {
+                            File(
+                                    name = name,
+                                    path = pathString,
+                                    size = Files.size(p),
+                                    lastModify = lastModify
+                            )
+                        }
+                    }.toList()
+        } else {
+            emptyList()
+        }
         val responseFolder = ResponseFolderModel(
             path = parentPath,
             childrenFiles = children.filterIsInstance<File>(),

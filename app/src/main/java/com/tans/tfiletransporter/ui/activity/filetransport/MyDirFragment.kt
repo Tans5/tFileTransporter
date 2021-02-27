@@ -86,27 +86,30 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             .flatMapSingle { oldTree ->
                 if (!oldTree.notNeedRefresh) {
                     updateState { oldState ->
-                        val path =
-                            if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
-                        val children = Files.list(path).map { p ->
-                            if (Files.isDirectory(p)) {
-                                DirectoryYoungLeaf(
-                                    name = p.fileName.toString(),
-                                    childrenCount = Files.list(p).let { s ->
-                                        val size = s.count()
-                                        s.close()
-                                        size
-                                    },
-                                    lastModified = Files.getLastModifiedTime(p).toMillis()
-                                )
-                            } else {
-                                FileYoungLeaf(
-                                    name = p.fileName.toString(),
-                                    size = Files.size(p),
-                                    lastModified = Files.getLastModifiedTime(p).toMillis()
-                                )
-                            }
-                        }.toList()
+                        val path = if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
+                        val children = if (Files.isReadable(path)) {
+                            Files.list(path).filter { Files.isReadable(it) }.map { p ->
+                                if (Files.isDirectory(p)) {
+                                    DirectoryYoungLeaf(
+                                            name = p.fileName.toString(),
+                                            childrenCount = Files.list(p).let { s ->
+                                                val size = s.count()
+                                                s.close()
+                                                size
+                                            },
+                                            lastModified = Files.getLastModifiedTime(p).toMillis()
+                                    )
+                                } else {
+                                    FileYoungLeaf(
+                                            name = p.fileName.toString(),
+                                            size = Files.size(p),
+                                            lastModified = Files.getLastModifiedTime(p).toMillis()
+                                    )
+                                }
+                            }.toList()
+                        } else {
+                            emptyList()
+                        }
                         oldState.copy(
                             fileTree = children.refreshFileTree(oldTree),
                             selectedFiles = emptySet()

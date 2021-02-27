@@ -90,9 +90,10 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                                             }
                                         oldState.copy(
                                             fileTree = Optional.of(
-                                                children.refreshFileTree(
-                                                    oldTree
-                                                )
+                                                    children.refreshFileTree(
+                                                            parentTree = oldTree,
+                                                            dirSeparator = fileTransportScopeData.remoteDirSeparator
+                                                    )
                                             ), selectedFiles = emptySet()
                                         )
                                     }.map {
