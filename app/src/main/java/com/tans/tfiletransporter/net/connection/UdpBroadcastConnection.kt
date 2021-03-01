@@ -26,7 +26,7 @@ typealias RemoteDevice = Pair<SocketAddress, String>
  */
 @Throws(IOException::class)
 suspend fun launchUdpBroadcastSender(
-        // Unit: milli second
+    // Unit: milli second
     broadcastDelay: Long = 300,
     broadMessage: String = LOCAL_DEVICE,
     localAddress: InetAddress,
@@ -43,7 +43,7 @@ suspend fun launchUdpBroadcastSender(
 }
 
 class UdpBroadcastSender(
-        // Unit: milli second
+    // Unit: milli second
     val broadcastDelay: Long = 300,
     val broadMessage: String = LOCAL_DEVICE,
     val localAddress: InetAddress) {
