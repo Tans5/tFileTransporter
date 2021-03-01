@@ -4,6 +4,7 @@ import android.os.Environment
 import android.util.Log
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
@@ -29,8 +30,6 @@ private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024 + 1024 * 512
 private const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
 private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
-private const val MULTI_CONNECTIONS_FILES_TRANSFER_PORT = 6669
-
 private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
 private val fileTransporterPool = NetBufferPool(
@@ -83,7 +82,7 @@ class MultiConnectionsFileServer(
     internal suspend fun start() = coroutineScope {
         ssc.use {
             ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-            ssc.bindSuspend(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT), MULTI_CONNECTIONS_MAX)
+            ssc.bindSuspend(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT), MULTI_CONNECTIONS_MAX)
             val job = launch(Dispatchers.IO) {
                 var errorTimes: Int = 0
                 while (true) {
@@ -257,7 +256,7 @@ class MultiConnectionsFileTransferClient(
             sc.use {
                 sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                 sc.setOptionSuspend(StandardSocketOptions.TCP_NODELAY, true)
-                sc.connectSuspend(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_PORT))
+                sc.connectSuspend(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT))
                 sc.writeSuspendSize(buffer, md5)
                 sc.writeSuspendSize(buffer, start.toBytes())
                 sc.writeSuspendSize(buffer, end.toBytes())

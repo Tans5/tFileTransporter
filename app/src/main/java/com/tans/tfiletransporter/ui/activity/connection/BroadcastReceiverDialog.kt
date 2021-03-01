@@ -12,8 +12,8 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastReceiverDialogLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
-import com.tans.tfiletransporter.net.RemoteDevice
-import com.tans.tfiletransporter.net.launchBroadcastReceiver
+import com.tans.tfiletransporter.net.connection.RemoteDevice
+import com.tans.tfiletransporter.net.connection.launchUdpBroadcastReceiver
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import io.reactivex.Single
@@ -51,7 +51,7 @@ fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress, noneBroadcas
                         .bindLife()
                 launch {
                     val result = runCatching {
-                        launchBroadcastReceiver(localAddress = localAddress, noneBroadcast = noneBroadcast) { receiverJob: Job ->
+                        launchUdpBroadcastReceiver(localAddress = localAddress, noneBroadcast = noneBroadcast) { receiverJob: Job ->
                             withContext(Dispatchers.Main) {
                                 binding.serversRv.adapter = SimpleAdapterSpec<RemoteDevice, RemoteServerItemLayoutBinding>(
                                         layoutId = R.layout.remote_server_item_layout,

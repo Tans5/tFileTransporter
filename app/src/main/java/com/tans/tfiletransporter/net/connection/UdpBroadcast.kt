@@ -1,8 +1,8 @@
-package com.tans.tfiletransporter.net
+package com.tans.tfiletransporter.net.connection
 
-import android.os.Build
 import android.os.SystemClock
 import com.tans.tfiletransporter.core.Stateable
+import com.tans.tfiletransporter.net.*
 import com.tans.tfiletransporter.utils.*
 import io.reactivex.Observable
 import kotlinx.coroutines.*
@@ -18,21 +18,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-const val BROADCAST_RECEIVER_PORT = 6666
-const val BROADCAST_LISTENER_PORT = 6667
-
-const val BROADCAST_SERVER_ACCEPT: Byte = 0x00
-const val BROADCAST_SERVER_DENY: Byte = 0x01
-
-val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
-
-// 512 KB
-const val NET_BUFFER_SIZE = 1024 * 512
-
-val commonNetBufferPool = NetBufferPool(
-        poolSize = 100,
-        bufferSize = NET_BUFFER_SIZE
-)
 
 typealias RemoteDevice = Pair<SocketAddress, String>
 
@@ -40,14 +25,14 @@ typealias RemoteDevice = Pair<SocketAddress, String>
  * if this method return without error, it means the user accept connect request.
  */
 @Throws(IOException::class)
-suspend fun launchBroadcastSender(
+suspend fun launchUdpBroadcastSender(
         // Unit: milli second
-        broadcastDelay: Long = 300,
-        broadMessage: String = LOCAL_DEVICE,
-        localAddress: InetAddress,
-        noneBroadcast: Boolean = false,
-        acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice = coroutineScope {
-        val broadcastSender = BroadcastSender(
+    broadcastDelay: Long = 300,
+    broadMessage: String = LOCAL_DEVICE,
+    localAddress: InetAddress,
+    noneBroadcast: Boolean = false,
+    acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean): RemoteDevice = coroutineScope {
+        val broadcastSender = UdpBroadcastSender(
                 broadcastDelay = broadcastDelay,
                 broadMessage = broadMessage,
                 localAddress = localAddress)
@@ -57,11 +42,11 @@ suspend fun launchBroadcastSender(
         result
 }
 
-class BroadcastSender(
+class UdpBroadcastSender(
         // Unit: milli second
-        val broadcastDelay: Long = 300,
-        val broadMessage: String = LOCAL_DEVICE,
-        val localAddress: InetAddress) {
+    val broadcastDelay: Long = 300,
+    val broadMessage: String = LOCAL_DEVICE,
+    val localAddress: InetAddress) {
 
 
     @Throws(IOException::class)
@@ -81,7 +66,7 @@ class BroadcastSender(
                 })
                 while (true) {
                     buffer.flip()
-                    dc.sendSuspend(buffer, InetSocketAddress(broadcastAddress, BROADCAST_RECEIVER_PORT))
+                    dc.sendSuspend(buffer, InetSocketAddress(broadcastAddress, UDP_BROADCAST_RECEIVER_PORT))
                     delay(broadcastDelay)
                 }
             }
@@ -110,7 +95,7 @@ class BroadcastSender(
                 while (true) {
                     for (subNet in subNets) {
                         buffer.flip()
-                        dc.sendSuspend(buffer, InetSocketAddress(subNet, BROADCAST_RECEIVER_PORT))
+                        dc.sendSuspend(buffer, InetSocketAddress(subNet, UDP_BROADCAST_RECEIVER_PORT))
                     }
                     delay(broadcastDelay)
                 }
@@ -138,7 +123,7 @@ class BroadcastSender(
         val runResult = kotlin.runCatching {
             ssc.use {
                 ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-                ssc.bindSuspend(InetSocketAddress(localAddress, BROADCAST_LISTENER_PORT), 1)
+                ssc.bindSuspend(InetSocketAddress(localAddress, UDP_BROADCAST_LISTENER_PORT), 1)
                 while (true) {
                     val isAccept = ssc.acceptSuspend().use { clientSsc ->
                         clientSsc.readSuspendSize(buffer, 4)
@@ -151,11 +136,11 @@ class BroadcastSender(
 
                         // 3. Accept or deny.
                         if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
-                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { BROADCAST_SERVER_ACCEPT })
+                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { UDP_BROADCAST_SERVER_ACCEPT })
                             result = clientSsc.remoteAddress to remoteInfo
                             true
                         } else {
-                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { BROADCAST_SERVER_DENY })
+                            clientSsc.writeSuspendSize(buffer, ByteArray(1) { UDP_BROADCAST_SERVER_DENY })
                             false
                         }
                     }
@@ -172,15 +157,15 @@ class BroadcastSender(
 }
 
 @Throws(IOException::class)
-suspend fun launchBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long = 5000, checkDuration: Long = 2000,
-                                    noneBroadcast: Boolean = false,
-                                    handle: suspend BroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
-    val broadcastReceiver = BroadcastReceiver(localAddress, timeoutRemove,checkDuration)
+suspend fun launchUdpBroadcastReceiver(localAddress: InetAddress, timeoutRemove: Long = 5000, checkDuration: Long = 2000,
+                                       noneBroadcast: Boolean = false,
+                                       handle: suspend UdpBroadcastReceiver.(receiverJob: Job) -> Unit) = coroutineScope {
+    val broadcastReceiver = UdpBroadcastReceiver(localAddress, timeoutRemove,checkDuration)
     val receiverJob: Job = launch (Dispatchers.IO) { broadcastReceiver.startBroadcastReceiver(noneBroadcast) }
     handle(broadcastReceiver, receiverJob)
 }
 
-class BroadcastReceiver(
+class UdpBroadcastReceiver(
         val localAddress: InetAddress,
         // TimeUnit: milli seconds
         private val timeoutRemove: Long = 5000,
@@ -214,7 +199,7 @@ class BroadcastReceiver(
                 val dc = openDatagramChannel()
                 dc.socket().soTimeout = Int.MAX_VALUE
                 dc.setOptionSuspend(StandardSocketOptions.SO_BROADCAST, true)
-                dc.bindSuspend(InetSocketAddress(if (noneBroadcast) localAddress else broadcast, BROADCAST_RECEIVER_PORT))
+                dc.bindSuspend(InetSocketAddress(if (noneBroadcast) localAddress else broadcast, UDP_BROADCAST_RECEIVER_PORT))
                 val byteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
                 while (true) {
                     byteBuffer.clear()
@@ -232,7 +217,7 @@ class BroadcastReceiver(
             .distinctUntilChanged()
 
     /**
-     * @see BroadcastSender startBroadcastListener method.
+     * @see UdpBroadcastSender startBroadcastListener method.
      */
     @Throws(IOException::class)
     suspend fun connectTo(address: InetAddress, yourDeviceInfo: String = LOCAL_DEVICE): Boolean {
@@ -240,7 +225,7 @@ class BroadcastReceiver(
         return sc.use {
             sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
             sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
-            sc.connectSuspend(InetSocketAddress(address, BROADCAST_LISTENER_PORT))
+            sc.connectSuspend(InetSocketAddress(address, UDP_BROADCAST_LISTENER_PORT))
             val sendData = yourDeviceInfo.toByteArray(Charsets.UTF_8).let {
                 if (it.size > NET_BUFFER_SIZE) {
                     it.take(NET_BUFFER_SIZE).toByteArray()
@@ -252,7 +237,7 @@ class BroadcastReceiver(
             sc.writeSuspendSize(buffer, sendData.size.toBytes() + sendData)
             sc.readSuspendSize(buffer, 1)
             val result = buffer.get()
-            result == BROADCAST_SERVER_ACCEPT
+            result == UDP_BROADCAST_SERVER_ACCEPT
         }
     }
 

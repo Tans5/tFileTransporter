@@ -2,7 +2,6 @@ package com.tans.tfiletransporter.net.filetransporter
 
 import com.squareup.moshi.Types
 import com.tans.tfiletransporter.moshi
-import com.tans.tfiletransporter.net.NET_BUFFER_SIZE
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.utils.readDataLimit
@@ -11,7 +10,6 @@ import com.tans.tfiletransporter.utils.readSuspendSize
 import java.io.InputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
 
@@ -42,21 +40,25 @@ typealias ReaderHandleChain<T> = suspend (data: T, inputStream: InputStream, lim
 
 fun <T> ReaderHandleChains(defaultChain: ReaderHandleChain<T> = { _, inputStream, limit, _ ->
     val c = Channels.newChannel(inputStream)
-    val buffer = ByteBuffer.allocate(NET_BUFFER_SIZE)
-    val bufferSize = NET_BUFFER_SIZE
-    var read = 0L
-    while (true) {
-        val thisTimeRead = if (read + bufferSize >= limit) {
-            (limit - read).toInt()
-        } else {
-            bufferSize
-        }
-        c.readSuspendSize(buffer, thisTimeRead)
-        read += thisTimeRead
-        if (read >= limit) {
-            break
+    val buffer = commonNetBufferPool.requestBuffer()
+    val bufferSize = buffer.capacity()
+    val result = runCatching {
+        var read = 0L
+        while (true) {
+            val thisTimeRead = if (read + bufferSize >= limit) {
+                (limit - read).toInt()
+            } else {
+                bufferSize
+            }
+            c.readSuspendSize(buffer, thisTimeRead)
+            read += thisTimeRead
+            if (read >= limit) {
+                break
+            }
         }
     }
+    commonNetBufferPool.recycleBuffer(buffer)
+    result.exceptionOrNull()?.printStackTrace()
 }) = object : ReaderHandleChains<T> {
     override var chains: List<ReaderHandleChain<T>> = listOf(defaultChain)
 }

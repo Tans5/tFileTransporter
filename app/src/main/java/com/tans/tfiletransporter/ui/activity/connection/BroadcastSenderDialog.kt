@@ -6,8 +6,8 @@ import android.util.Log
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
-import com.tans.tfiletransporter.net.RemoteDevice
-import com.tans.tfiletransporter.net.launchBroadcastSender
+import com.tans.tfiletransporter.net.connection.RemoteDevice
+import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
 import io.reactivex.Single
@@ -32,7 +32,7 @@ fun Activity.showBroadcastSenderDialog(localAddress: InetAddress, noneBroadcast:
             override fun bindingStart(binding: BroadcastSenderDialogLayoutBinding) {
                 launch {
                     val result = runCatching {
-                        launchBroadcastSender(localAddress = localAddress, noneBroadcast = noneBroadcast) { remoteAddress, remoteDevice ->
+                        launchUdpBroadcastSender(localAddress = localAddress, noneBroadcast = noneBroadcast) { remoteAddress, remoteDevice ->
                             val result = withContext(Dispatchers.Main) {
                                 showOptionalDialog(
                                     title = getString(R.string.broadcast_request_connect),

@@ -2,6 +2,8 @@ package com.tans.tfiletransporter.net.filetransporter
 
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.net.FILE_TRANSPORTER_VERSION_INT
+import com.tans.tfiletransporter.net.FILE_TRANSPORT_LISTEN_PORT
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
@@ -12,10 +14,6 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousSocketChannel
-
-const val FILE_TRANSPORT_LISTEN_PORT = 6668
-
-const val VERSION_INT: Byte = 0x01
 
 
 @Throws(IOException::class)
@@ -57,7 +55,7 @@ class FileTransporter(private val localAddress: InetAddress,
                 sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
                 sc.connectSuspend(InetSocketAddress(remoteAddress, FILE_TRANSPORT_LISTEN_PORT))
                 sc.readSuspendSize(buffer, 1)
-                if (buffer.get() == VERSION_INT) {
+                if (buffer.get() == FILE_TRANSPORTER_VERSION_INT) {
                     val separatorBytes = localFileSystemSeparator.toByteArray(Charsets.UTF_8)
                     sc.writeSuspendSize(buffer, separatorBytes.size.toBytes() + separatorBytes)
                     sc.readSuspendSize(buffer, 4)
@@ -88,7 +86,7 @@ class FileTransporter(private val localAddress: InetAddress,
                 ssc.bindSuspend(InetSocketAddress(localAddress, FILE_TRANSPORT_LISTEN_PORT), 1)
                 val sc = ssc.acceptSuspend()
                 sc.use {
-                    sc.writeSuspendSize(buffer, arrayOf(VERSION_INT).toByteArray())
+                    sc.writeSuspendSize(buffer, arrayOf(FILE_TRANSPORTER_VERSION_INT).toByteArray())
                     sc.readSuspendSize(buffer, 4)
                     val size = buffer.asIntBuffer().get()
                     sc.readSuspendSize(buffer, size)

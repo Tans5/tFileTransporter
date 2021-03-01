@@ -11,7 +11,7 @@ import com.squareup.moshi.Types
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.moshi
-import com.tans.tfiletransporter.net.RemoteDevice
+import com.tans.tfiletransporter.net.connection.RemoteDevice
 import com.tans.tfiletransporter.net.filetransporter.FileTransporter
 import com.tans.tfiletransporter.net.filetransporter.launchFileTransport
 import com.tans.tfiletransporter.net.model.File

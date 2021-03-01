@@ -216,9 +216,9 @@ suspend fun AsynchronousSocketChannel.writeSuspendSize(byteBuffer: ByteBuffer) {
 }
 
 suspend fun <T> AsynchronousSocketChannel.readDataLimit(
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        handle: suspend (inputStream: InputStream) -> T): T = coroutineScope {
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    handle: suspend (inputStream: InputStream) -> T): T = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val outputStream = PipedOutputStream()
     val inputStream = PipedInputStream(outputStream)
@@ -253,9 +253,9 @@ suspend fun <T> AsynchronousSocketChannel.readDataLimit(
 }
 
 suspend fun AsynchronousSocketChannel.writeDataLimit(
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        handle: suspend (outputStream: OutputStream) -> Unit
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    handle: suspend (outputStream: OutputStream) -> Unit
 ) = coroutineScope {
     if (limit <= 0) error("Wrong limit size: $limit")
     val inputStream = PipedInputStream()
@@ -344,10 +344,10 @@ suspend fun WritableByteChannel.writeSuspendSize(byteBuffer: ByteBuffer) {
 }
 
 suspend fun ReadableByteChannel.writeTo(
-        writeable: WritableByteChannel,
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        progress: suspend (writeSize: Long, limit: Long) -> Unit = { _, _ ->}) {
+    writeable: WritableByteChannel,
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    progress: suspend (writeSize: Long, limit: Long) -> Unit = { _, _ ->}) {
     var writeSize = 0L
     val bufferSize = buffer.capacity()
     while (true) {
@@ -368,10 +368,10 @@ suspend fun ReadableByteChannel.writeTo(
 }
 
 suspend fun ReadableByteChannel.writeTo(
-        writeable: AsynchronousSocketChannel,
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        progress: suspend (writeSize: Long, limit: Long) -> Unit = { _, _ ->}) {
+    writeable: AsynchronousSocketChannel,
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    progress: suspend (writeSize: Long, limit: Long) -> Unit = { _, _ ->}) {
     var writeSize = 0L
     val bufferSize = buffer.capacity()
     while (true) {
@@ -392,10 +392,10 @@ suspend fun ReadableByteChannel.writeTo(
 }
 
 suspend fun WritableByteChannel.readFrom(
-        readable: ReadableByteChannel,
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        progress: suspend (hasWrite: Long, limit: Long) -> Unit = { _, _ -> }) {
+    readable: ReadableByteChannel,
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    progress: suspend (hasWrite: Long, limit: Long) -> Unit = { _, _ -> }) {
     var readSize = 0L
     val bufferSize = buffer.capacity()
     while (true) {
@@ -416,10 +416,10 @@ suspend fun WritableByteChannel.readFrom(
 }
 
 suspend fun WritableByteChannel.readFrom(
-        readable: AsynchronousSocketChannel,
-        limit: Long,
-        buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
-        progress: suspend (hasWrite: Long, limit: Long) -> Unit = { _, _ -> }) {
+    readable: AsynchronousSocketChannel,
+    limit: Long,
+    buffer: ByteBuffer = ByteBuffer.allocate(NET_BUFFER_SIZE),
+    progress: suspend (hasWrite: Long, limit: Long) -> Unit = { _, _ -> }) {
     var readSize = 0L
     val bufferSize = buffer.capacity()
     while (true) {

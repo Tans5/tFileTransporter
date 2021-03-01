@@ -1,14 +1,11 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.net.launchBroadcastSender
+import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -28,7 +25,7 @@ class NetTest {
         val broadcast = local.getBroadcastAddress()
         val job = launch {
             kotlin.runCatching {
-                launchBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local) { remoteAddress, remoteDevice ->
+                launchUdpBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local) { remoteAddress, remoteDevice ->
                     println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
                     false
                 }
