@@ -149,7 +149,7 @@ fun findLocalAddressV4(): List<InetAddress> {
 fun InetAddress.getBroadcastAddress()
         : Pair<InetAddress, Short> = NetworkInterface.getByInetAddress(this).interfaceAddresses
         .mapNotNull { it.broadcast to it.networkPrefixLength }
-        .lastOrNull() ?: (InetAddress.getByAddress((-1).toBytes()) to 24.toShort())
+        .firstOrNull() ?: (InetAddress.getByAddress((-1).toBytes()) to 24.toShort())
 
 fun ByteBuffer.copyAvailableBytes(): ByteArray {
     val position = position()
