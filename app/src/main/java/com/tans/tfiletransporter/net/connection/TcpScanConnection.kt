@@ -48,7 +48,7 @@ class TcpScanConnectionServer(
                         while (true) {
                             val client = ssc.acceptSuspend()
                             launch {
-                                kotlin.runCatching { newClient(client) }
+                                kotlin.runCatching { client.use { newClient(client) } }
                             }
                         }
                     }
@@ -150,14 +150,14 @@ class TcpScanConnectionClient(
                 val (_, subNetPort) = localAddress.getBroadcastAddress()
                 val nets = localAddress.getSubNetAllAddress(subNet = subNetPort.toInt())
 
-                while (true) {
-                    val jobs = nets.map { net ->
-                        launch {
-                            val buffer = commonNetBufferPool.requestBuffer()
+                val sc = openAsynchronousSocketChannel()
+                sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                sc.use {
+                    while (true) {
+                        val buffer = commonNetBufferPool.requestBuffer()
+                        for (net in nets) {
                             kotlin.runCatching {
-                                val sc = openAsynchronousSocketChannel()
                                 sc.use {
-                                    sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                                     sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
                                     sc.readSuspendSize(byteBuffer = buffer, 4)
                                     val deviceSize = buffer.asIntBuffer().get()
@@ -168,12 +168,8 @@ class TcpScanConnectionClient(
                                     }
                                 }
                             }
-                            commonNetBufferPool.recycleBuffer(buffer)
                         }
-                    }
-                    delay(1000)
-                    for (job in jobs) {
-                        job.cancel("Timeout")
+                        commonNetBufferPool.recycleBuffer(buffer)
                     }
                 }
             }
@@ -182,27 +178,29 @@ class TcpScanConnectionClient(
 
     suspend fun connectTo(remoteAddress: InetAddress): Boolean {
         val sc = openAsynchronousSocketChannel()
-        sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-        sc.connectSuspend(InetSocketAddress(remoteAddress, TCP_SCAN_CONNECT_LISTEN_PORTER))
-        val buffer = commonNetBufferPool.requestBuffer()
-        try {
-            sc.readSuspendSize(byteBuffer = buffer, 4)
-            val deviceSize = buffer.asIntBuffer().get()
-            sc.readSuspendSize(byteBuffer = buffer, deviceSize)
-            val deviceBytes = localDevice.toByteArray(Charsets.UTF_8)
-            buffer.clear()
-            buffer.put(deviceBytes.size.toBytes())
-            buffer.flip()
-            sc.writeSuspendSize(buffer)
-            buffer.clear()
-            buffer.put(deviceBytes)
-            buffer.flip()
-            sc.writeSuspendSize(buffer)
-            sc.readSuspendSize(buffer, 1)
-            val result: Byte = buffer.get()
-            return result == UDP_BROADCAST_SERVER_ACCEPT
-        } finally {
-            commonNetBufferPool.recycleBuffer(buffer)
+        sc.use {
+            sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+            sc.connectSuspend(InetSocketAddress(remoteAddress, TCP_SCAN_CONNECT_LISTEN_PORTER))
+            val buffer = commonNetBufferPool.requestBuffer()
+            try {
+                sc.readSuspendSize(byteBuffer = buffer, 4)
+                val deviceSize = buffer.asIntBuffer().get()
+                sc.readSuspendSize(byteBuffer = buffer, deviceSize)
+                val deviceBytes = localDevice.toByteArray(Charsets.UTF_8)
+                buffer.clear()
+                buffer.put(deviceBytes.size.toBytes())
+                buffer.flip()
+                sc.writeSuspendSize(buffer)
+                buffer.clear()
+                buffer.put(deviceBytes)
+                buffer.flip()
+                sc.writeSuspendSize(buffer)
+                sc.readSuspendSize(buffer, 1)
+                val result: Byte = buffer.get()
+                return result == UDP_BROADCAST_SERVER_ACCEPT
+            } finally {
+                commonNetBufferPool.recycleBuffer(buffer)
+            }
         }
 
     }
