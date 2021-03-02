@@ -47,7 +47,9 @@ class TcpScanConnectionServer(
                         ssc.bindSuspend(InetSocketAddress(localAddress, TCP_SCAN_CONNECT_LISTEN_PORTER), Int.MAX_VALUE)
                         while (true) {
                             val client = ssc.acceptSuspend()
-                            launch { newClient(client) }
+                            launch {
+                                kotlin.runCatching { newClient(client) }
+                            }
                         }
                     }
                 }
