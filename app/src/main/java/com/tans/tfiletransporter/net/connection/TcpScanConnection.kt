@@ -81,19 +81,21 @@ class TcpScanConnectionServer(
 
             client.readSuspendSize(buffer, 4)
             val remoteDeviceInfoSize = buffer.asIntBuffer().get()
-            client.readSuspendSize(buffer, remoteDeviceInfoSize)
-            val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+            if (remoteDeviceInfoSize > 0) {
+                client.readSuspendSize(buffer, remoteDeviceInfoSize)
+                val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
 
-            buffer.clear()
-            if (acceptRequest((client.remoteAddress as InetSocketAddress).address, remoteDeviceInfo)) {
-                buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
-                buffer.flip()
-                client.writeSuspendSize(buffer)
-                updateState { Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo) }.await()
-            } else {
-                buffer.put(UDP_BROADCAST_SERVER_DENY)
-                buffer.flip()
-                client.writeSuspendSize(buffer)
+                buffer.clear()
+                if (acceptRequest((client.remoteAddress as InetSocketAddress).address, remoteDeviceInfo)) {
+                    buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
+                    buffer.flip()
+                    client.writeSuspendSize(buffer)
+                    updateState { Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo) }.await()
+                } else {
+                    buffer.put(UDP_BROADCAST_SERVER_DENY)
+                    buffer.flip()
+                    client.writeSuspendSize(buffer)
+                }
             }
         }
         commonNetBufferPool.recycleBuffer(buffer)
@@ -159,9 +161,11 @@ class TcpScanConnectionClient(
                                     sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
                                     sc.readSuspendSize(byteBuffer = buffer, 4)
                                     val deviceSize = buffer.asIntBuffer().get()
-                                    sc.readSuspendSize(byteBuffer = buffer, deviceSize)
-                                    val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-                                    newRemoteDeviceComing(net to remoteDeviceInfo)
+                                    if (deviceSize > 0) {
+                                        sc.readSuspendSize(byteBuffer = buffer, deviceSize)
+                                        val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+                                        newRemoteDeviceComing(net to remoteDeviceInfo)
+                                    }
                                 }
                             }
                             commonNetBufferPool.recycleBuffer(buffer)
