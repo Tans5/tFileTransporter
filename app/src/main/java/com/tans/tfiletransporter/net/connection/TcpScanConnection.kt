@@ -87,10 +87,12 @@ class TcpScanConnectionServer(
             buffer.clear()
             if (acceptRequest((client.remoteAddress as InetSocketAddress).address, remoteDeviceInfo)) {
                 buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
+                buffer.flip()
                 client.writeSuspendSize(buffer)
                 updateState { Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo) }.await()
             } else {
                 buffer.put(UDP_BROADCAST_SERVER_DENY)
+                buffer.flip()
                 client.writeSuspendSize(buffer)
             }
         }
