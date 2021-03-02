@@ -12,8 +12,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.rx2.await
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousSocketChannel
+import java.nio.channels.Channels
 import java.util.*
 import kotlin.math.abs
 import kotlin.runCatching
@@ -150,24 +152,30 @@ class TcpScanConnectionClient(
                 val (_, subNetPort) = localAddress.getBroadcastAddress()
                 val nets = localAddress.getSubNetAllAddress(subNet = subNetPort.toInt())
 
-                val sc = openAsynchronousSocketChannel()
-                sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-                sc.use {
-                    while (true) {
-                        val buffer = commonNetBufferPool.requestBuffer()
-                        for (net in nets) {
+
+
+                while (true) {
+                    nets.map { net ->
+                        launch {
+                            val buffer = commonNetBufferPool.requestBuffer()
                             kotlin.runCatching {
-                                sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
-                                sc.readSuspendSize(byteBuffer = buffer, 4)
-                                val deviceSize = buffer.asIntBuffer().get()
-                                if (deviceSize > 0) {
-                                    sc.readSuspendSize(byteBuffer = buffer, deviceSize)
-                                    val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-                                    newRemoteDeviceComing(net to remoteDeviceInfo)
+                                val socket = Socket()
+                                socket.use {
+                                    socket.connect(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER), 100)
+                                    val readChannel = Channels.newChannel(socket.getInputStream())
+                                    readChannel.readSuspendSize(byteBuffer = buffer, 4)
+                                    val deviceSize = buffer.asIntBuffer().get()
+                                    if (deviceSize > 0) {
+                                        readChannel.readSuspendSize(byteBuffer = buffer, deviceSize)
+                                        val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+                                        newRemoteDeviceComing(net to remoteDeviceInfo)
+                                    }
                                 }
                             }
+                            commonNetBufferPool.recycleBuffer(buffer)
                         }
-                        commonNetBufferPool.recycleBuffer(buffer)
+                    }.map {
+                        it.join()
                     }
                 }
             }
