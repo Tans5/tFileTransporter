@@ -11,10 +11,13 @@ import android.os.Bundle
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
+import com.tans.tfiletransporter.net.connection.launchTcpScanConnectionServer
+import com.tans.tfiletransporter.net.connection.launchTopScanConnectionClient
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.utils.findLocalAddressV4
 import com.tans.tfiletransporter.utils.toBytes
 import com.tbruyelle.rxpermissions2.RxPermissions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -90,6 +93,30 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                 })
             }.await()
         }
+//
+//        launch(Dispatchers.IO) {
+//            val localAddress = bindState().filter { it.address.isPresent }.map { it.address.get() }.firstOrError().await()
+//            launch {
+//                launchTopScanConnectionClient(
+//                        localAddress = localAddress,
+//                        localDevice = LOCAL_DEVICE
+//                ) {
+//                    bindRemoteDevice()
+//                            .map {
+//                                println("Devices: $it")
+//                            }
+//                            .bindLife()
+//                }
+//            }
+//            launch {
+//                launchTcpScanConnectionServer(
+//                        localAddress = localAddress,
+//                        localDevice = LOCAL_DEVICE
+//                ) { address, info ->
+//                    false
+//                }
+//            }
+//        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
