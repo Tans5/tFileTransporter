@@ -1,5 +1,7 @@
 package com.tans.tfiletransporter
 
+import com.tans.tfiletransporter.net.connection.launchTcpScanConnectionServer
+import com.tans.tfiletransporter.net.connection.launchTopScanConnectionClient
 import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
@@ -232,4 +234,34 @@ class NetTest {
 //            delay(500)
 //        }
     }
+
+//    @Test
+//    fun tcpScanTest() = runBlocking {
+//        val localAddress = findLocalAddressV4()[0]
+//        val jobServer = launch {
+//            launchTcpScanConnectionServer(
+//                    localDevice = "Server",
+//                    localAddress = localAddress
+//            ) { remoteAddress, remoteDevice ->
+//                println("Remote Device: $remoteDevice")
+//                false
+//            }
+//        }
+//
+//        val jobClient = launch {
+//            launchTopScanConnectionClient(
+//                    localAddress = localAddress,
+//                    localDevice = "Client"
+//            ) {
+//                bindRemoteDevice()
+//                        .map {
+//                            println(it.toString())
+//                        }
+//                        .subscribe()
+//            }
+//        }
+//
+//        jobClient.join()
+//        jobServer.join()
+//    }
 }

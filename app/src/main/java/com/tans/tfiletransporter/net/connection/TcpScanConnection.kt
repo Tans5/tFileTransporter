@@ -12,7 +12,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.rx2.await
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.SocketAddress
 import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousSocketChannel
 import java.util.*
@@ -22,7 +21,7 @@ import kotlin.runCatching
 suspend fun launchTcpScanConnectionServer(
     localDevice: String,
     localAddress: InetAddress,
-    acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean
+    acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
 ): RemoteDevice {
     val server = TcpScanConnectionServer(
         localDevice = localDevice,
@@ -35,7 +34,7 @@ suspend fun launchTcpScanConnectionServer(
 class TcpScanConnectionServer(
     val localDevice: String,
     val localAddress: InetAddress,
-    val acceptRequest: suspend (remoteAddress: SocketAddress, remoteDevice: String) -> Boolean
+    val acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
 ) : Stateable<Optional<RemoteDevice>> by Stateable(Optional.empty()) {
 
     internal suspend fun startTcpScanConnectionServer(): RemoteDevice {
@@ -82,7 +81,7 @@ class TcpScanConnectionServer(
             val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
 
             buffer.clear()
-            if (acceptRequest(client.remoteAddress, remoteDeviceInfo)) {
+            if (acceptRequest((client.remoteAddress as InetSocketAddress).address, remoteDeviceInfo)) {
                 buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
                 client.writeSuspendSize(buffer)
                 updateState { Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo) }.await()
