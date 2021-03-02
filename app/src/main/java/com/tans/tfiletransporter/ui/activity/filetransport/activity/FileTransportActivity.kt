@@ -310,7 +310,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                       asServer: Boolean): Intent {
             val i = Intent(context, FileTransportActivity::class.java)
             i.putExtra(LOCAL_ADDRESS_EXTRA_KEY, localAddress)
-            i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, (remoteDevice.first as InetSocketAddress).address)
+            i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, remoteDevice.first)
             i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDevice.second)
             i.putExtra(IS_SERVER_EXTRA_KEY, asServer)
             return i

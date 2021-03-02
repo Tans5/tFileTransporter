@@ -59,7 +59,7 @@ fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress, noneBroadcas
                                             binding.ipAddress = (data.first as InetSocketAddress).address.hostAddress
                                             binding.device = data.second
                                         },
-                                        dataUpdater = bindRemoveDevice(),
+                                        dataUpdater = bindRemoteDevice(),
                                         differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first == d2.first }),
                                         itemClicks = listOf { binding, _ ->
                                             binding.root to { _, data ->

@@ -19,7 +19,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 
-typealias RemoteDevice = Pair<SocketAddress, String>
+typealias RemoteDevice = Pair<InetAddress, String>
 
 /**
  * if this method return without error, it means the user accept connect request.
@@ -137,7 +137,7 @@ class UdpBroadcastSender(
                         // 3. Accept or deny.
                         if (acceptRequest(clientSsc.remoteAddress, remoteInfo)) {
                             clientSsc.writeSuspendSize(buffer, ByteArray(1) { UDP_BROADCAST_SERVER_ACCEPT })
-                            result = clientSsc.remoteAddress to remoteInfo
+                            result = (clientSsc.remoteAddress as InetSocketAddress).address to remoteInfo
                             true
                         } else {
                             clientSsc.writeSuspendSize(buffer, ByteArray(1) { UDP_BROADCAST_SERVER_DENY })
@@ -178,7 +178,7 @@ class UdpBroadcastReceiver(
     internal suspend fun startBroadcastReceiver(noneBroadcast: Boolean = false) {
 
         coroutineScope {
-            // Remote out of date devices.
+            // Remove out of date devices.
             launch {
                 while (true) {
                     val oldState = bindState().firstOrError().await()
@@ -206,13 +206,13 @@ class UdpBroadcastReceiver(
                     val remoteAddress = dc.receiveSuspend(byteBuffer)
                     byteBuffer.flip()
                     val remoteDeviceInfo = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
-                    newRemoteDeviceComing(remoteAddress to remoteDeviceInfo)
+                    newRemoteDeviceComing((remoteAddress as InetSocketAddress).address to remoteDeviceInfo)
                 }
             }
         }
     }
 
-    fun bindRemoveDevice(): Observable<List<RemoteDevice>> = bindState()
+    fun bindRemoteDevice(): Observable<List<RemoteDevice>> = bindState()
             .map { s -> s.map { it.first } }
             .distinctUntilChanged()
 
