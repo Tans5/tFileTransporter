@@ -145,23 +145,27 @@ class TcpScanConnectionClient(
             launch {
                 val (_, subNetPort) = localAddress.getBroadcastAddress()
                 val nets = localAddress.getSubNetAllAddress(subNet = subNetPort.toInt())
+
                 while (true) {
-                    val buffer = commonNetBufferPool.requestBuffer()
-                    for (net in nets) {
-                        kotlin.runCatching {
-                            val sc = openAsynchronousSocketChannel()
-                            sc.use {
-                                sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-                                sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
-                                sc.readSuspendSize(byteBuffer = buffer, 4)
-                                val deviceSize = buffer.asIntBuffer().get()
-                                sc.readSuspendSize(byteBuffer = buffer, deviceSize)
-                                val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-                                newRemoteDeviceComing(net to remoteDeviceInfo)
+                    val jobs = nets.map { net ->
+                        launch {
+                            val buffer = commonNetBufferPool.requestBuffer()
+                            kotlin.runCatching {
+                                val sc = openAsynchronousSocketChannel()
+                                sc.use {
+                                    sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                                    sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
+                                    sc.readSuspendSize(byteBuffer = buffer, 4)
+                                    val deviceSize = buffer.asIntBuffer().get()
+                                    sc.readSuspendSize(byteBuffer = buffer, deviceSize)
+                                    val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+                                    newRemoteDeviceComing(net to remoteDeviceInfo)
+                                }
                             }
+                            commonNetBufferPool.recycleBuffer(buffer)
                         }
                     }
-                    commonNetBufferPool.recycleBuffer(buffer)
+                    for (job in jobs) { job.join() }
                 }
             }
         }
