@@ -157,15 +157,13 @@ class TcpScanConnectionClient(
                         val buffer = commonNetBufferPool.requestBuffer()
                         for (net in nets) {
                             kotlin.runCatching {
-                                sc.use {
-                                    sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
-                                    sc.readSuspendSize(byteBuffer = buffer, 4)
-                                    val deviceSize = buffer.asIntBuffer().get()
-                                    if (deviceSize > 0) {
-                                        sc.readSuspendSize(byteBuffer = buffer, deviceSize)
-                                        val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-                                        newRemoteDeviceComing(net to remoteDeviceInfo)
-                                    }
+                                sc.connectSuspend(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER))
+                                sc.readSuspendSize(byteBuffer = buffer, 4)
+                                val deviceSize = buffer.asIntBuffer().get()
+                                if (deviceSize > 0) {
+                                    sc.readSuspendSize(byteBuffer = buffer, deviceSize)
+                                    val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+                                    newRemoteDeviceComing(net to remoteDeviceInfo)
                                 }
                             }
                         }
