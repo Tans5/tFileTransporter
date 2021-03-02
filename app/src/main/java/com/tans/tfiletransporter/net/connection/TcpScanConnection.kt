@@ -165,7 +165,10 @@ class TcpScanConnectionClient(
                             commonNetBufferPool.recycleBuffer(buffer)
                         }
                     }
-                    for (job in jobs) { job.join() }
+                    delay(1000)
+                    for (job in jobs) {
+                        job.cancel("Timeout")
+                    }
                 }
             }
         }
