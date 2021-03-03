@@ -10,7 +10,7 @@ import io.reactivex.Single
 import io.reactivex.rxkotlin.withLatestFrom
 
 data class BroadcastState(
-        val useSystemBroadcast: Boolean = false
+        val useSystemBroadcast: Boolean = true
 )
 
 class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBinding, BroadcastState>(

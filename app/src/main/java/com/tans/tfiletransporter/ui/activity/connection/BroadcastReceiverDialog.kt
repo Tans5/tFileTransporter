@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.util.*
 
 
@@ -56,7 +55,7 @@ fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress, noneBroadcas
                                 binding.serversRv.adapter = SimpleAdapterSpec<RemoteDevice, RemoteServerItemLayoutBinding>(
                                         layoutId = R.layout.remote_server_item_layout,
                                         bindData = { _, data, binding ->
-                                            binding.ipAddress = (data.first as InetSocketAddress).address.hostAddress
+                                            binding.ipAddress = data.first.hostAddress
                                             binding.device = data.second
                                         },
                                         dataUpdater = bindRemoteDevice(),
@@ -66,7 +65,7 @@ fun Activity.showBroadcastReceiverDialog(localAddress: InetAddress, noneBroadcas
                                                 rxSingle {
                                                     val loadingDialog = withContext(Dispatchers.Main) { showLoadingDialog(cancelable = false) }
                                                     val result = withContext(Dispatchers.IO) {
-                                                        runCatching { connectTo((data.first as InetSocketAddress).address) }
+                                                        runCatching { connectTo(data.first) }
                                                     }
                                                     withContext(Dispatchers.Main) { loadingDialog.dismiss() }
                                                     if (result.getOrNull() == true) {

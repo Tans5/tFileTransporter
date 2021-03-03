@@ -93,30 +93,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                 })
             }.await()
         }
-//
-//        launch(Dispatchers.IO) {
-//            val localAddress = bindState().filter { it.address.isPresent }.map { it.address.get() }.firstOrError().await()
-//            launch {
-//                launchTopScanConnectionClient(
-//                        localAddress = localAddress,
-//                        localDevice = LOCAL_DEVICE
-//                ) {
-//                    bindRemoteDevice()
-//                            .map {
-//                                println("Devices: $it")
-//                            }
-//                            .bindLife()
-//                }
-//            }
-//            launch {
-//                launchTcpScanConnectionServer(
-//                        localAddress = localAddress,
-//                        localDevice = LOCAL_DEVICE
-//                ) { address, info ->
-//                    false
-//                }
-//            }
-//        }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
