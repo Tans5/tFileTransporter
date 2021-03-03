@@ -11,6 +11,7 @@ import com.tans.tfiletransporter.ui.activity.connection.ConnectionActivity
 import io.reactivex.Single
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import java.util.*
@@ -78,7 +79,7 @@ class TcpScanConnectionFragment : BaseFragment<TcpScanConnnectionFragmentBinding
 
         handleServerSubject
             .switchMapSingle { handle ->
-                rxSingle {
+                rxSingle(Dispatchers.IO) {
                     val server = bindState().filter { it.server.isPresent }.map { it.server.get() }.firstOrError().await()
                     if (handle == HandleServer.Start) {
                         server.runTcpScanConnectionServer { remoteAddress, deviceInfo ->
