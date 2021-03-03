@@ -1,14 +1,15 @@
 package com.tans.tfiletransporter.net.connection
 
-import android.os.SystemClock
 import com.tans.tfiletransporter.core.Stateable
 import com.tans.tfiletransporter.net.TCP_SCAN_CONNECT_LISTEN_PORTER
 import com.tans.tfiletransporter.net.UDP_BROADCAST_SERVER_ACCEPT
 import com.tans.tfiletransporter.net.UDP_BROADCAST_SERVER_DENY
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.utils.*
-import io.reactivex.Observable
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -17,51 +18,58 @@ import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channels
 import java.util.*
-import kotlin.math.abs
-import kotlin.runCatching
 
-suspend fun launchTcpScanConnectionServer(
-    localDevice: String,
-    localAddress: InetAddress,
-    acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
-): RemoteDevice {
-    val server = TcpScanConnectionServer(
-        localDevice = localDevice,
-        localAddress = localAddress,
-        acceptRequest = acceptRequest
-    )
-    return server.startTcpScanConnectionServer()
+
+enum class ServerStatus {
+    Start,
+    Stop
 }
+
+data class TcpScanConnectionServerState(
+    val serverStatus: ServerStatus = ServerStatus.Stop,
+    val acceptClient: Optional<RemoteDevice> = Optional.empty()
+)
 
 class TcpScanConnectionServer(
     val localDevice: String,
     val localAddress: InetAddress,
     val acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
-) : Stateable<Optional<RemoteDevice>> by Stateable(Optional.empty()) {
+) : Stateable<TcpScanConnectionServerState> by Stateable(TcpScanConnectionServerState()) {
 
-    internal suspend fun startTcpScanConnectionServer(): RemoteDevice {
-        return coroutineScope {
-            val listenJob = launch {
-                val ssc = openAsynchronousServerSocketChannelSuspend()
-                val result = kotlin.runCatching {
-                    ssc.use {
-                        ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-                        ssc.bindSuspend(InetSocketAddress(localAddress, TCP_SCAN_CONNECT_LISTEN_PORTER), Int.MAX_VALUE)
-                        while (true) {
-                            val client = ssc.acceptSuspend()
-                            launch {
-                                kotlin.runCatching { client.use { newClient(client) } }
+    suspend fun runTcpScanConnectionServer() {
+        val serverStatus = bindState().map { it.serverStatus }.firstOrError().await()
+        if (serverStatus == ServerStatus.Stop) {
+            updateState { it.copy(serverStatus = ServerStatus.Start) }.await()
+            coroutineScope {
+                val listenJob = launch {
+                    val ssc = openAsynchronousServerSocketChannelSuspend()
+                    val result = kotlin.runCatching {
+                        ssc.use {
+                            ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                            ssc.bindSuspend(InetSocketAddress(localAddress, TCP_SCAN_CONNECT_LISTEN_PORTER), Int.MAX_VALUE)
+                            while (true) {
+                                val client = ssc.acceptSuspend()
+                                launch {
+                                    kotlin.runCatching { client.use { newClient(client) } }
+                                }
                             }
                         }
                     }
+                    result.exceptionOrNull()?.printStackTrace()
                 }
-                result.exceptionOrNull()?.printStackTrace()
+                bindState().map { it.serverStatus }.filter { it == ServerStatus.Stop }.firstOrError().await()
+                listenJob.cancel("Connection Request Accepted")
             }
-            val remoteDeviceInfo = bindState().filter { it.isPresent }.firstOrError().map { it.get() }.await()
-            listenJob.cancel("Connection Request Accepted")
-            remoteDeviceInfo
         }
     }
+
+    suspend fun whenAcceptRequest(): RemoteDevice = bindState()
+        .map { it.acceptClient }
+        .skip(1)
+        .filter { it.isPresent }
+        .map { it.get() }
+        .firstOrError()
+        .await()
 
     /**
      * 1. Server Send Device Info.
@@ -70,115 +78,88 @@ class TcpScanConnectionServer(
      */
     private suspend fun newClient(client: AsynchronousSocketChannel) {
         val buffer = commonNetBufferPool.requestBuffer()
-        val result = runCatching {
-            val localDeviceBytes = localDevice.toByteArray(Charsets.UTF_8)
-            val localDeviceSizeBytes = localDeviceBytes.size.toBytes()
-            buffer.put(localDeviceSizeBytes)
-            buffer.flip()
-            client.writeSuspendSize(buffer)
+        val localDeviceBytes = localDevice.toByteArray(Charsets.UTF_8)
+        val localDeviceSizeBytes = localDeviceBytes.size.toBytes()
+        buffer.put(localDeviceSizeBytes)
+        buffer.flip()
+        client.writeSuspendSize(buffer)
+        buffer.clear()
+        buffer.put(localDeviceBytes)
+        buffer.flip()
+        client.writeSuspendSize(buffer)
+
+        client.readSuspendSize(buffer, 4)
+        val remoteDeviceInfoSize = buffer.asIntBuffer().get()
+        if (remoteDeviceInfoSize > 0) {
+            client.readSuspendSize(buffer, remoteDeviceInfoSize)
+            val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+
             buffer.clear()
-            buffer.put(localDeviceBytes)
-            buffer.flip()
-            client.writeSuspendSize(buffer)
-
-            client.readSuspendSize(buffer, 4)
-            val remoteDeviceInfoSize = buffer.asIntBuffer().get()
-            if (remoteDeviceInfoSize > 0) {
-                client.readSuspendSize(buffer, remoteDeviceInfoSize)
-                val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-
-                buffer.clear()
-                if (acceptRequest((client.remoteAddress as InetSocketAddress).address, remoteDeviceInfo)) {
-                    buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
-                    buffer.flip()
-                    client.writeSuspendSize(buffer)
-                    updateState { Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo) }.await()
-                } else {
-                    buffer.put(UDP_BROADCAST_SERVER_DENY)
-                    buffer.flip()
-                    client.writeSuspendSize(buffer)
-                }
+            if (acceptRequest(
+                    (client.remoteAddress as InetSocketAddress).address,
+                    remoteDeviceInfo
+                )
+            ) {
+                buffer.put(UDP_BROADCAST_SERVER_ACCEPT)
+                buffer.flip()
+                client.writeSuspendSize(buffer)
+                updateState { oldState ->
+                    oldState.copy(
+                        acceptClient = Optional.of((client.remoteAddress as InetSocketAddress).address to remoteDeviceInfo),
+                        serverStatus = ServerStatus.Stop
+                    )
+                }.await()
+            } else {
+                buffer.put(UDP_BROADCAST_SERVER_DENY)
+                buffer.flip()
+                client.writeSuspendSize(buffer)
             }
         }
         commonNetBufferPool.recycleBuffer(buffer)
-        result.exceptionOrNull()?.printStackTrace()
     }
 
 }
 
-suspend fun launchTopScanConnectionClient(
-        localAddress: InetAddress,
-        localDevice: String,
-        timeoutRemove: Long = 10_000,
-        checkDuration: Long = 2000,
-        handle: suspend TcpScanConnectionClient.(scanJob: Job) -> Unit) = coroutineScope {
-    val tcpScanConnectionClient = TcpScanConnectionClient(
-            localAddress = localAddress,
-            localDevice = localDevice,
-            timeoutRemove = timeoutRemove,
-            checkDuration = checkDuration
-    )
-    val job = launch { tcpScanConnectionClient.startTcpServerScan() }
-    handle(tcpScanConnectionClient, job)
-}
-
 class TcpScanConnectionClient(
         val localDevice: String,
-        val localAddress: InetAddress,
-        val timeoutRemove: Long = 5000,
-        val checkDuration: Long = 2000
-) : Stateable<List<Pair<RemoteDevice, Long>>> by Stateable(emptyList()) {
+        val localAddress: InetAddress
+) {
 
-    internal suspend fun startTcpServerScan() {
-        coroutineScope {
-
-            // Remove out of date devices.
-            launch {
-                while (true) {
-                    val oldState = bindState().firstOrError().await()
-                    val now = SystemClock.uptimeMillis()
-                    if (oldState.isNotEmpty() && oldState.any { abs(now - it.second) > timeoutRemove }) {
-                        updateState { state ->
-                            state.filter {
-                                abs(now - it.second) <= timeoutRemove
-                            }
-                        }.await()
-                    }
-                    delay(checkDuration)
-                }
-            }
-
-            launch {
-                val (_, subNetPort) = localAddress.getBroadcastAddress()
-                val nets = localAddress.getSubNetAllAddress(subNet = subNetPort.toInt())
-
-
-
-                while (true) {
-                    nets.map { net ->
-                        launch {
-                            val buffer = commonNetBufferPool.requestBuffer()
-                            kotlin.runCatching {
-                                val socket = Socket()
-                                socket.use {
-                                    socket.connect(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER), 20)
-                                    val readChannel = Channels.newChannel(socket.getInputStream())
-                                    readChannel.readSuspendSize(byteBuffer = buffer, 4)
-                                    val deviceSize = buffer.asIntBuffer().get()
-                                    if (deviceSize > 0) {
-                                        readChannel.readSuspendSize(byteBuffer = buffer, deviceSize)
-                                        val remoteDeviceInfo = buffer.copyAvailableBytes().toString(Charsets.UTF_8)
-                                        newRemoteDeviceComing(net to remoteDeviceInfo)
-                                    }
-                                }
-                            }
-                            commonNetBufferPool.recycleBuffer(buffer)
+    suspend fun scanServers(scanProgress: suspend (loadIndex: Int, size: Int) -> Unit = { _, _ -> }): List<RemoteDevice> {
+        return coroutineScope {
+            val (_, subNetPort) = localAddress.getBroadcastAddress()
+            val nets = localAddress.getSubNetAllAddress(subNet = subNetPort.toInt())
+            nets.map { net ->
+                async {
+                    val buffer = commonNetBufferPool.requestBuffer()
+                    val result = kotlin.runCatching {
+                        val socket = Socket()
+                        socket.use {
+                            socket.connect(
+                                InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER),
+                                20
+                            )
+                            val readChannel = Channels.newChannel(socket.getInputStream())
+                            readChannel.readSuspendSize(byteBuffer = buffer, 4)
+                            val deviceSize = buffer.asIntBuffer().get()
+                            if (deviceSize <= 0 || deviceSize > buffer.capacity()) error("Wrong device size: $deviceSize")
+                            readChannel.readSuspendSize(byteBuffer = buffer, deviceSize)
+                            val remoteDeviceInfo =
+                                buffer.copyAvailableBytes().toString(Charsets.UTF_8)
+                            net to remoteDeviceInfo
                         }
-                    }.map {
-                        it.join()
                     }
+                    commonNetBufferPool.recycleBuffer(buffer)
+                    Optional.ofNullable(result.getOrNull())
                 }
             }
+                .withIndex()
+                .map { (i, job) ->
+                    scanProgress(i, nets.size)
+                    job.await()
+                }
+                .filter { it.isPresent }
+                .map { it.get() }
         }
     }
 
@@ -209,26 +190,5 @@ class TcpScanConnectionClient(
             }
         }
 
-    }
-
-    fun bindRemoteDevice(): Observable<List<RemoteDevice>> = bindState()
-            .map { s -> s.map { it.first } }
-            .distinctUntilChanged()
-
-    private suspend fun newRemoteDeviceComing(device: RemoteDevice) {
-        updateState { oldState ->
-            val now = SystemClock.uptimeMillis()
-            if (!oldState.any { it.first.second == device.second }) {
-                oldState + (device to now)
-            } else {
-                oldState.map {
-                    if (it.first.second == device.second) {
-                        it.first to now
-                    } else {
-                        it
-                    }
-                }
-            }
-        }.await()
     }
 }
