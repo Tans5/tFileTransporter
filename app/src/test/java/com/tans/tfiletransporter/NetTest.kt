@@ -1,12 +1,16 @@
 package com.tans.tfiletransporter
 
+import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.connection.TcpScanConnectionClient
+import com.tans.tfiletransporter.net.connection.TcpScanConnectionServer
 import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -234,26 +238,35 @@ class NetTest {
 ////        }
 //    }
 
-    @Test
-    fun tcpScanTest() = runBlocking {
-        val localAddress = findLocalAddressV4()[0]
-        val jobServer = launch {
-
-        }
-
-        val jobClient = launch {
-            val client = TcpScanConnectionClient(
-                localDevice = "Client",
-                localAddress = localAddress
-            )
-
-            val result = client.scanServers { loadIndex, size ->
-                println("Load index: $loadIndex, size: $size")
-            }
-            println(result)
-        }
-
-        jobClient.join()
-        jobServer.join()
-    }
+//    @Test
+//    fun tcpScanTest() = runBlocking {
+//        commonNetBufferPool
+//        val localAddress = findLocalAddressV4()[0]
+//        val jobServer = launch(Dispatchers.IO) {
+//            val server = TcpScanConnectionServer(
+//                localDevice = "Server",
+//                localAddress = localAddress
+//            ) { remoteAddress: InetAddress, remoteDevice: String ->
+//                println("Remote device: $remoteDevice, address: ${remoteAddress.hostAddress}")
+//                false
+//            }
+//            server.runTcpScanConnectionServer()
+//        }
+//
+//        val jobClient = launch(Dispatchers.IO) {
+//            delay(1000)
+//            val client = TcpScanConnectionClient(
+//                localDevice = "Client",
+//                localAddress = localAddress
+//            )
+//            // println(client.connectTo(localAddress))
+//            val result = client.scanServers { loadIndex, size ->
+//                println("Load index: $loadIndex, size: $size")
+//            }
+//            println(result)
+//        }
+//
+//        jobClient.join()
+//        jobServer.join()
+//    }
 }
