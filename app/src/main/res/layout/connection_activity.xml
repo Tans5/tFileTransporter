@@ -75,10 +75,10 @@
                     android:background="@drawable/common_card_bg">
 
                     <fragment
-                        android:id="@+id/broadcast_fragment"
+                        android:id="@+id/scan_fragment"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:name="com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion.BroadcastConnectionFragment" />
+                        android:name="com.tans.tfiletransporter.ui.activity.connection.tcpscanconnection.TcpScanConnectionFragment" />
 
                 </FrameLayout>
 
@@ -92,10 +92,10 @@
                     android:background="@drawable/common_card_bg">
 
                     <fragment
-                        android:id="@+id/scan_fragment"
+                        android:id="@+id/broadcast_fragment"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:name="com.tans.tfiletransporter.ui.activity.connection.tcpscanconnection.TcpScanConnectionFragment" />
+                        android:name="com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion.BroadcastConnectionFragment" />
 
                 </FrameLayout>
 

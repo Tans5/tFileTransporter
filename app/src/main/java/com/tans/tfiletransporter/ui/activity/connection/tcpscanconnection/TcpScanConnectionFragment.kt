@@ -1,26 +1,37 @@
 package com.tans.tfiletransporter.ui.activity.connection.tcpscanconnection
 
+import com.jakewharton.rxbinding3.view.clicks
+import com.tans.tadapter.adapter.DifferHandler
+import com.tans.tadapter.spec.SimpleAdapterSpec
+import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.TcpScanConnnectionFragmentBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
+import com.tans.tfiletransporter.net.connection.RemoteDevice
 import com.tans.tfiletransporter.net.connection.ServerStatus
 import com.tans.tfiletransporter.net.connection.TcpScanConnectionClient
 import com.tans.tfiletransporter.net.connection.TcpScanConnectionServer
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
 import com.tans.tfiletransporter.ui.activity.connection.ConnectionActivity
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import io.reactivex.Single
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import java.util.*
 
 
 data class TcpScanConnectionState(
     val server: Optional<TcpScanConnectionServer> = Optional.empty(),
     val client: Optional<TcpScanConnectionClient> = Optional.empty(),
-    val serverStatus: ServerStatus = ServerStatus.Stop
+    val serverStatus: ServerStatus = ServerStatus.Stop,
+    val remoteDevices: List<RemoteDevice> = emptyList()
 )
 
 class TcpScanConnectionFragment : BaseFragment<TcpScanConnnectionFragmentBinding, TcpScanConnectionState>(
@@ -83,8 +94,28 @@ class TcpScanConnectionFragment : BaseFragment<TcpScanConnnectionFragmentBinding
                     val server = bindState().filter { it.server.isPresent }.map { it.server.get() }.firstOrError().await()
                     if (handle == HandleServer.Start) {
                         server.runTcpScanConnectionServer { remoteAddress, deviceInfo ->
-                            // TODO: Show option dialog.
-                            false
+                            val localAddress = (activity as ConnectionActivity).bindState().map { it.address }.firstOrError().await()
+                            val result = withContext(Dispatchers.Main) {
+                                val accept = requireActivity().showOptionalDialog(
+                                    title = getString(R.string.broadcast_request_connect),
+                                    message = getString(R.string.broadcast_remote_info, deviceInfo, remoteAddress.hostAddress),
+                                    cancelable = false,
+                                    positiveButtonText = getString(R.string.broadcast_request_accept),
+                                    negativeButtonText = getString(R.string.broadcast_request_deny)
+                                ).await().orElseGet { false }
+                                if (accept && localAddress.isPresent) {
+                                    requireActivity().startActivity(
+                                        FileTransportActivity.getIntent(
+                                            context = requireContext(),
+                                            localAddress = localAddress.get(),
+                                            remoteDevice = remoteAddress to deviceInfo,
+                                            asServer = true
+                                        )
+                                    )
+                                }
+                                accept
+                            }
+                            result
                         }
                     } else {
                         server.stop()
@@ -114,6 +145,61 @@ class TcpScanConnectionFragment : BaseFragment<TcpScanConnnectionFragmentBinding
                 }
             }
             .bindLife()
+
+        binding.scanLayout.clicks()
+            .switchMapSingle {
+                rxSingle(Dispatchers.IO) {
+                    val client = bindState().map { it.client}.firstOrError().await()
+                    if (client.isPresent) {
+                        val loadingDialog = withContext(Dispatchers.Main) {
+                            requireActivity().showLoadingDialog()
+                        }
+                        val result = runCatching { client.get().scanServers { _, _ ->  } }.getOrNull() ?: emptyList()
+                        updateState { oldState -> oldState.copy(remoteDevices = result) }.await()
+                        withContext(Dispatchers.Main) {
+                            loadingDialog.cancel()
+                        }
+                    }
+                }
+            }
+            .bindLife()
+
+        binding.remoteDevicesRv.adapter = SimpleAdapterSpec<RemoteDevice, RemoteServerItemLayoutBinding>(
+            layoutId = R.layout.remote_server_item_layout,
+            bindData = { _, data, lBinding ->
+                lBinding.device = data.second
+                lBinding.ipAddress = data.first.hostAddress
+            },
+            dataUpdater = bindState().map { it.remoteDevices },
+            differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.hostAddress == d2.first.hostAddress }),
+            itemClicks = listOf { lBinding, _ ->
+                lBinding.root to { _, data ->
+                    rxSingle(Dispatchers.IO) {
+                        val client = bindState().map { it.client }.firstOrError().await()
+                        val localAddress = (activity as ConnectionActivity).bindState().map { it.address }.firstOrError().await()
+                        if (client.isPresent && localAddress.isPresent) {
+                            val loadingDialog = withContext(Dispatchers.Main) {
+                                requireActivity().showLoadingDialog()
+                            }
+                            val result = runCatching { client.get().connectTo(data.first) }
+                            withContext(Dispatchers.Main) { loadingDialog.cancel() }
+                            if (result.getOrDefault(false)) {
+                                withContext(Dispatchers.Main) {
+                                    requireActivity().startActivity(
+                                        FileTransportActivity.getIntent(
+                                            context = requireContext(),
+                                            localAddress = localAddress.get(),
+                                            remoteDevice = data,
+                                            asServer = false
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ).toAdapter()
 
     }
 
