@@ -142,10 +142,7 @@ class TcpScanConnectionClient(
                     val result = kotlin.runCatching {
                         val socket = Socket()
                         socket.use {
-                            socket.connect(
-                                InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER),
-                                20
-                            )
+                            socket.connect(InetSocketAddress(net, TCP_SCAN_CONNECT_LISTEN_PORTER), 200)
                             val readChannel = Channels.newChannel(socket.getInputStream())
                             readChannel.readSuspendSize(byteBuffer = buffer, 4)
                             val deviceSize = buffer.asIntBuffer().get()
