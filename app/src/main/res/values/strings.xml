@@ -41,6 +41,12 @@
 
     <string name="broadcast_searching_server">Searching&#8230;</string>
     <string name="broadcast_searching_cancel">Cancel</string>
+
+    <string name="tcp_scan_title">Scan Devices</string>
+    <string name="tcp_scan_tips">You could scan other devices in the same network. When Server Status is working, your device could be scanned by others.</string>
+    <string name="tcp_scan_server_status_active">Server Status: Working</string>
+    <string name="tcp_scan_server_status_error">Server Status: Error</string>
+    <string name="tcp_scan_scan">Scan</string>
     <!-- Connection Activity End -->
 
     <string name="size_B">%dB</string>

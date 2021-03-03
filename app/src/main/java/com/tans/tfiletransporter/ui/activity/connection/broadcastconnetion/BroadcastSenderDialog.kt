@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.connection
+package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
 
 import android.app.Activity
 import android.app.Dialog

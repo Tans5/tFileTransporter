@@ -242,16 +242,16 @@ class NetTest {
 //    fun tcpScanTest() = runBlocking {
 //        commonNetBufferPool
 //        val localAddress = findLocalAddressV4()[0]
-//        val jobServer = launch(Dispatchers.IO) {
-//            val server = TcpScanConnectionServer(
-//                localDevice = "Server",
-//                localAddress = localAddress
-//            ) { remoteAddress: InetAddress, remoteDevice: String ->
-//                println("Remote device: $remoteDevice, address: ${remoteAddress.hostAddress}")
-//                false
-//            }
-//            server.runTcpScanConnectionServer()
-//        }
+////        val jobServer = launch(Dispatchers.IO) {
+////            val server = TcpScanConnectionServer(
+////                localDevice = "Server",
+////                localAddress = localAddress
+////            )
+////            server.runTcpScanConnectionServer { remoteAddress: InetAddress, remoteDevice: String ->
+////                println("Remote device: $remoteDevice, address: ${remoteAddress.hostAddress}")
+////                false
+////            }
+////        }
 //
 //        val jobClient = launch(Dispatchers.IO) {
 //            delay(1000)
@@ -267,6 +267,6 @@ class NetTest {
 //        }
 //
 //        jobClient.join()
-//        jobServer.join()
+//        //jobServer.join()
 //    }
 }

@@ -32,11 +32,10 @@ data class TcpScanConnectionServerState(
 
 class TcpScanConnectionServer(
     val localDevice: String,
-    val localAddress: InetAddress,
-    val acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
+    val localAddress: InetAddress
 ) : Stateable<TcpScanConnectionServerState> by Stateable(TcpScanConnectionServerState()) {
 
-    suspend fun runTcpScanConnectionServer() {
+    suspend fun runTcpScanConnectionServer(acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean) {
         val serverStatus = bindState().map { it.serverStatus }.firstOrError().await()
         if (serverStatus == ServerStatus.Stop) {
             updateState { it.copy(serverStatus = ServerStatus.Start) }.await()
@@ -50,12 +49,13 @@ class TcpScanConnectionServer(
                             while (true) {
                                 val client = ssc.acceptSuspend()
                                 launch {
-                                    kotlin.runCatching { client.use { newClient(client) } }
+                                    kotlin.runCatching { client.use { newClient(client, acceptRequest) } }
                                 }
                             }
                         }
                     }
                     result.exceptionOrNull()?.printStackTrace()
+                    stop()
                 }
                 bindState().map { it.serverStatus }.filter { it == ServerStatus.Stop }.firstOrError().await()
                 listenJob.cancel("Connection Request Accepted")
@@ -71,12 +71,19 @@ class TcpScanConnectionServer(
         .firstOrError()
         .await()
 
+    suspend fun stop(): Unit = updateState { oldState ->
+        oldState.copy(serverStatus = ServerStatus.Stop)
+    }.map {  }.await()
+
     /**
      * 1. Server Send Device Info.
      * 2. Client Send Device Info.
      * 3. Server Reply Request.
      */
-    private suspend fun newClient(client: AsynchronousSocketChannel) {
+    private suspend fun newClient(
+        client: AsynchronousSocketChannel,
+        acceptRequest: suspend (remoteAddress: InetAddress, remoteDevice: String) -> Boolean
+    ) {
         val buffer = commonNetBufferPool.requestBuffer()
         val localDeviceBytes = localDevice.toByteArray(Charsets.UTF_8)
         val localDeviceSizeBytes = localDeviceBytes.size.toBytes()

@@ -1,10 +1,11 @@
-package com.tans.tfiletransporter.ui.activity.connection
+package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
 
 import com.jakewharton.rxbinding3.view.clicks
 import com.jakewharton.rxbinding3.widget.checkedChanges
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.connection.ConnectionActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import io.reactivex.Single
 import io.reactivex.rxkotlin.withLatestFrom
