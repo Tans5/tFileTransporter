@@ -19,6 +19,7 @@ import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tbruyelle.rxpermissions2.RxPermissions
+import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -77,6 +78,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 }
 
                 WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
+                    // Android 10 can't get mac address.
                     val localDevice = intent.getParcelableExtra<WifiP2pDevice>(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE)
                     updateState { oldState ->
                         oldState.copy(localDevice = Optional.ofNullable(localDevice))
@@ -170,7 +172,11 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         itemClicks = listOf { binding, _ ->
                             binding.root to { _, data ->
                                 rxSingle {
-                                    // TODO: handle click.
+                                    val config = WifiP2pConfig()
+                                    config.deviceAddress = data.deviceAddress
+                                    val code = wifiP2pManager.connectSuspend(wifiChannel, config)
+                                    println("Connection code: $code")
+                                    Unit
                                 }
                             }
                         }
@@ -178,6 +184,30 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         emptyLayout = R.layout.remote_server_empty_item_layout,
                         initShowEmpty = true)
                         .toAdapter()
+
+                bindState()
+                        .map { it.currentConnection }
+                        .distinctUntilChanged()
+                        .switchMapSingle {
+                            rxSingle {
+                                if (it.isPresent) {
+                                    val wifiInfo = it.get()
+                                    updateState { oldState ->
+                                        oldState.copy(localAddress = if (wifiInfo.isGroupOwner) Optional.of(wifiInfo.groupOwnerAddress) else Optional.empty())
+                                    }.await()
+                                } else {
+                                    updateState { oldState ->
+                                        oldState.copy(localAddress = Optional.empty(), connectedRemoteDevice = Optional.empty())
+                                    }.await()
+                                }
+                                Unit
+                            }.onErrorResumeNext {
+                                it.printStackTrace()
+                                Single.just(Unit)
+                            }
+                        }
+                        .bindLife()
+
             }
         }
     }

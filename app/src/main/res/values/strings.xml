@@ -48,7 +48,7 @@
     <string name="tcp_scan_server_status_error">Server Status: Error</string>
     <string name="tcp_scan_scan">Scan</string>
 
-    <string name="wifi_p2p_connection_title">Connect via Wifi P2P</string>
+    <string name="wifi_p2p_connection_title">Connect via WiFi P2P</string>
     <string name="wifi_p2p_connection_tips">Just open the WiFi, close to the target device and system will find it. You need not keep two device in the same network.</string>
     <string name="wifi_p2p_connection_local_device">Local Device\n Name: %s\n Mac Address: %s</string>
     <string name="wifi_p2p_connection_remote_device">Connected Remote Device\n Name: %s\n Ip Address: %s\n Mac Address: %s</string>
