@@ -71,9 +71,9 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
         launch {
             val grant = RxPermissions(this@ConnectionActivity).let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION)
                 } else {
-                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION)
                 }
             }.firstOrError().await()
             if (!grant) {

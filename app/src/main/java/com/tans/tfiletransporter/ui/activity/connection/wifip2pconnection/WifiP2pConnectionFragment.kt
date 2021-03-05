@@ -142,11 +142,12 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                 launch(Dispatchers.IO) {
                     while (true) {
-                        if (wifiP2pManager.discoverPeersSuspend(wifiChannel) == WIFI_P2P_SUCCESS_CODE) {
+                        val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
+                        if ( state == WIFI_P2P_SUCCESS_CODE) {
                             val peers = wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
                             updateState { oldState -> oldState.copy(peers = peers) }.await()
                         }
-                        delay(1000)
+                        delay(1000 * 8)
                     }
                 }
 
