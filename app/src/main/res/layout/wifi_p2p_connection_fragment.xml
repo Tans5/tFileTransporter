@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/wifi_p2p_connection_title"
+            android:textSize="16sp"
+            android:textColor="@color/black_1"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:lineSpacingExtra="5dp"
+            android:text="@string/wifi_p2p_connection_tips"
+            android:textSize="14sp"
+            android:textColor="@color/gray_1"/>
+
+        <TextView
+            android:id="@+id/local_device_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="@color/gray_1"
+            tools:text="@string/wifi_p2p_connection_local_device" />
+
+        <TextView
+            android:id="@+id/local_address_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="@color/gray_1"
+            tools:text="@string/wifi_p2p_connection_local_address" />
+
+        <TextView
+            android:id="@+id/remote_connected_device_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="@color/gray_1"
+            tools:text="@string/wifi_p2p_connection_remote_device" />
+
+        <FrameLayout
+            android:id="@+id/close_current_connection_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="52dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/common_line_button_color_bg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/wifi_p2p_connection_close_current_connection"
+                android:layout_marginStart="15dp"
+                android:layout_marginEnd="15dp"
+                android:textSize="18sp"
+                android:textColor="@color/teal_200"/>
+
+        </FrameLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/remote_devices_rv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/remote_server_item_layout"/>
+
+    </LinearLayout>
+
+</layout>

@@ -82,23 +82,6 @@
 
                 </FrameLayout>
 
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="18dp"
-                    android:layout_marginStart="15dp"
-                    android:layout_marginEnd="15dp"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/common_card_bg">
-
-                    <fragment
-                        android:id="@+id/scan_fragment"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:name="com.tans.tfiletransporter.ui.activity.connection.tcpscanconnection.TcpScanConnectionFragment" />
-
-                </FrameLayout>
-
             </LinearLayout>
 
         </androidx.core.widget.NestedScrollView>
