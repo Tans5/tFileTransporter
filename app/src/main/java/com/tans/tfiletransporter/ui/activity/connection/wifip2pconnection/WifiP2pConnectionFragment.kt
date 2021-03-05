@@ -5,14 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pDeviceList
-import android.net.wifi.p2p.WifiP2pInfo
-import android.net.wifi.p2p.WifiP2pManager
+import android.net.wifi.p2p.*
 import android.os.Build
 import android.os.Bundle
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.tadapter.spec.SimpleAdapterSpec
+import com.tans.tadapter.spec.emptyView
+import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
+import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
@@ -97,6 +99,33 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
     override fun initViews(binding: WifiP2pConnectionFragmentBinding) {
         launch {
+
+            render({ it.localDevice }) {
+                if (it.isPresent) {
+                    binding.localDeviceTv.text = getString(R.string.wifi_p2p_connection_local_device, it.get().deviceName, it.get().deviceAddress)
+                } else {
+                    binding.localDeviceTv.text = getString(R.string.wifi_p2p_connection_local_device, "Not Available", "Not Available")
+                }
+            }.bindLife()
+
+            render({ it.localAddress }) {
+                if (it.isPresent) {
+                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().hostAddress)
+                } else {
+                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
+                }
+            }.bindLife()
+
+            render({ it.connectedRemoteDevice }) {
+                if (it.isPresent) {
+                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+                            it.get().name, it.get().address.hostAddress, it.get().macAddress)
+                } else {
+                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+                            "Not Available", "Not Available", "Not Available")
+                }
+            }.bindLife()
+
             val grant = RxPermissions(requireActivity())
                     .request(Manifest.permission.ACCESS_FINE_LOCATION)
                     .firstOrError()
@@ -129,6 +158,25 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                             }.loadingDialog(requireActivity())
                         }
                         .bindLife()
+
+                binding.remoteDevicesRv.adapter = SimpleAdapterSpec<WifiP2pDevice, RemoteServerItemLayoutBinding>(
+                        layoutId = R.layout.remote_server_item_layout,
+                        bindData = { _, device, lBinding ->
+                            lBinding.device = device.deviceName
+                            lBinding.ipAddress = "Mac address: ${device.deviceAddress}"
+                        },
+                        dataUpdater = bindState().map { if (it.peers.isPresent) it.peers.get().deviceList.toList() else emptyList() },
+                        itemClicks = listOf { binding, _ ->
+                            binding.root to { _, data ->
+                                rxSingle {
+                                    // TODO: handle click.
+                                }
+                            }
+                        }
+                ).emptyView<WifiP2pDevice, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
+                        emptyLayout = R.layout.remote_server_empty_item_layout,
+                        initShowEmpty = true)
+                        .toAdapter()
             }
         }
     }

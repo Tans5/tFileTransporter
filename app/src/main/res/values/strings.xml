@@ -23,7 +23,7 @@
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
-    <string name="broadcast_connection_title">Connect Remote Device by Broadcast</string>
+    <string name="broadcast_connection_title">Connect Remote Device via Broadcast</string>
     <string name="broadcast_connection_description">Use UDP broadcast to connect target device, your device must be in the same network with target device. \nUse system broadcast faster, but some devices do not support.</string>
     <string name="broadcast_connection_local_device">Local Device: %s</string>
     <string name="broadcast_connection_local_ip_address">Local IP Address: %s</string>
@@ -48,10 +48,10 @@
     <string name="tcp_scan_server_status_error">Server Status: Error</string>
     <string name="tcp_scan_scan">Scan</string>
 
-    <string name="wifi_p2p_connection_title">Connect by Wifi P2P</string>
+    <string name="wifi_p2p_connection_title">Connect via Wifi P2P</string>
     <string name="wifi_p2p_connection_tips">Just open the WiFi, close to the target device and system will find it. You need not keep two device in the same network.</string>
-    <string name="wifi_p2p_connection_local_device">Local Device\n Name: %s, Mac Address: %s</string>
-    <string name="wifi_p2p_connection_remote_device">Connected Remote Device\n Name: %s, Ip Address: %s, Mac Address: %s</string>
+    <string name="wifi_p2p_connection_local_device">Local Device\n Name: %s\n Mac Address: %s</string>
+    <string name="wifi_p2p_connection_remote_device">Connected Remote Device\n Name: %s\n Ip Address: %s\n Mac Address: %s</string>
     <string name="wifi_p2p_connection_local_address">Local Address: %s</string>
     <string name="wifi_p2p_connection_close_current_connection">Close Connection</string>
     <!-- Connection Activity End -->
