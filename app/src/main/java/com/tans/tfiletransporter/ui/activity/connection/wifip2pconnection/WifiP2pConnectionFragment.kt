@@ -16,10 +16,13 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
+import com.tans.tfiletransporter.net.FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.net.connection.RemoteDevice
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
+import com.tans.tfiletransporter.utils.*
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -28,8 +31,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.StandardSocketOptions
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -155,8 +161,24 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                 binding.transferFileLayout.clicks()
                     .switchMapSingle {
-                        rxSingle {
-                            // TODO: Handle transfer files.
+                        rxSingle(Dispatchers.IO) {
+                            val remoteDevice = bindState().map { it.connectedRemoteDevice }.firstOrError().await()
+                            val localAddress = bindState().map { it.localAddress }.firstOrError().await()
+                            if (remoteDevice.isPresent && localAddress.isPresent) {
+                                val sc = openAsynchronousSocketChannel()
+                                sc.connectSuspend(InetSocketAddress(remoteDevice.get().first, FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT))
+                                sc.close()
+                                withContext(Dispatchers.Main) {
+                                    startActivity(
+                                        FileTransportActivity.getIntent(
+                                            context = requireContext(),
+                                            localAddress = localAddress.get(),
+                                            remoteDevice = remoteDevice.get(),
+                                            asServer = false
+                                        )
+                                    )
+                                }
+                            }
                         }.onErrorResumeNext {
                             it.printStackTrace()
                             Single.just(Unit)
@@ -226,11 +248,47 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         }
                         .bindLife()
 
+                bindState()
+                    .map { it.localAddress }
+                    .distinctUntilChanged()
+                    .switchMapSingle { localAddress ->
+                        rxSingle(Dispatchers.IO) {
+                            if (localAddress.isPresent) {
+                                val ssc = openAsynchronousServerSocketChannelSuspend()
+                                ssc.use {
+                                    ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+                                    ssc.bindSuspend(InetSocketAddress(localAddress.get(), FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT), Int.MAX_VALUE)
+                                    while (true) {
+                                        val sc = ssc.acceptSuspend()
+                                        sc.close()
+                                        val remoteDevice = bindState().map { it.connectedRemoteDevice }.firstOrError().await()
+                                        if (remoteDevice.isPresent) {
+                                            withContext(Dispatchers.Main) {
+                                                startActivity(
+                                                    FileTransportActivity.getIntent(
+                                                        context = requireContext(),
+                                                        localAddress = localAddress.get(),
+                                                        remoteDevice = remoteDevice.get(),
+                                                        asServer = true
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }.onErrorResumeNext {
+                            it.printStackTrace()
+                            Single.just(Unit)
+                        }
+                    }
+                    .bindLife()
+
             }
         }
     }
 
-    suspend fun closeCurrentConnection() {
+    private suspend fun closeCurrentConnection() {
         wifiP2pManager.cancelConnectionSuspend(wifiChannel)
         wifiP2pManager.removeGroupSuspend(wifiChannel)
     }
