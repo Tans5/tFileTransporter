@@ -31,6 +31,7 @@ import kotlinx.coroutines.rx2.rxSingle
 import org.kodein.di.instance
 import java.net.InetAddress
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 data class WifiP2pConnectionState(
@@ -214,7 +215,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                     }.await()
                                 }
                                 Unit
-                            }.onErrorResumeNext {
+                            }
+                                .timeout(5000L, TimeUnit.MILLISECONDS)
+                                .onErrorResumeNext {
                                 it.printStackTrace()
                                 rxSingle { closeCurrentConnection() }
                             }
