@@ -12,10 +12,8 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.ui.activity.BaseActivity
-import com.tans.tfiletransporter.utils.findLocalAddressV4
 import com.tans.tfiletransporter.utils.toBytes
 import com.tbruyelle.rxpermissions2.RxPermissions
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import org.kodein.di.instance
@@ -53,15 +51,6 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                     updateState {
                         it.copy(address = Optional.empty())
                     }.await()
-                    delay(5000)
-                    updateState {
-                        val canUseAddress = findLocalAddressV4().getOrNull(0)
-                        it.copy(address = if (canUseAddress != null) {
-                            Optional.of(canUseAddress)
-                        } else {
-                            Optional.empty()
-                        })
-                    }.await()
                 }
             }
         }
@@ -79,16 +68,6 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
             if (!grant) {
                 finish()
             }
-
-            updateState {
-                // to deal as hotspot host situation, ugly code.
-                val canUseAddress = findLocalAddressV4().getOrNull(0)
-                it.copy(address = if (canUseAddress != null) {
-                    Optional.of(canUseAddress)
-                } else {
-                    Optional.empty()
-                })
-            }.await()
         }
 
     }
