@@ -98,7 +98,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
     override fun initViews(binding: WifiP2pConnectionFragmentBinding) {
         launch {
-
+            launch {
+                closeCurrentConnection()
+            }
             render({ it.localAddress }) {
                 if (it.isPresent) {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().hostAddress)
