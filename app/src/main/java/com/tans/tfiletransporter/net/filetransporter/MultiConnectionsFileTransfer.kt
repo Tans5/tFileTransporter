@@ -22,6 +22,7 @@ import java.nio.channels.AsynchronousSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
@@ -84,7 +85,7 @@ class MultiConnectionsFileServer(
             ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
             ssc.bindSuspend(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT), MULTI_CONNECTIONS_MAX)
             val job = launch(Dispatchers.IO) {
-                var errorTimes: Int = 0
+                val errorTimes = AtomicInteger(0)
                 while (true) {
                     val client = ssc.acceptSuspend()
                     launch(Dispatchers.IO) {
@@ -93,8 +94,7 @@ class MultiConnectionsFileServer(
                         }
                         if (result.isFailure) {
                             Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
-                            errorTimes++
-                            if (errorTimes >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
+                            if (errorTimes.addAndGet(1) >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
                                 throw result.exceptionOrNull()!!
                             }
                         }
