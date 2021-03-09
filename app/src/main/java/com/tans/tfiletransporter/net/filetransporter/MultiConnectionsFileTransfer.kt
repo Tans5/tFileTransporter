@@ -87,17 +87,23 @@ class MultiConnectionsFileServer(
             val job = launch(Dispatchers.IO) {
                 val errorTimes = AtomicInteger(0)
                 while (true) {
-                    val client = ssc.acceptSuspend()
-                    launch(Dispatchers.IO) {
-                        val result = kotlin.runCatching {
-                            newClient(client)
-                        }
-                        if (result.isFailure) {
-                            Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
-                            if (errorTimes.addAndGet(1) >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
-                                throw result.exceptionOrNull()!!
+                    val connectResult = kotlin.runCatching {
+                        ssc.acceptSuspend()
+                    }
+                    if (connectResult.isSuccess) {
+                        launch(Dispatchers.IO) {
+                            val result = kotlin.runCatching {
+                                newClient(connectResult.getOrThrow())
+                            }
+                            if (result.isFailure) {
+                                Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
+                                if (errorTimes.addAndGet(1) >= MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES) {
+                                    throw result.exceptionOrNull()!!
+                                }
                             }
                         }
+                    } else {
+                        connectResult.exceptionOrNull()?.printStackTrace()
                     }
                 }
             }
