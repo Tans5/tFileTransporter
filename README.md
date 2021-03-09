@@ -130,14 +130,11 @@ Remote device request download files.
     ```json
       
       [{
-      	"md5": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      	"file": {
             	"name":"test_file",
             	"path":"/home/user/downloads/test_file",
             	"size":10000000,
             	"last_modify":"2021-01-01T00:00:00+08:00"
-        	}
-      }]
+        	}]
     
     ```
     
