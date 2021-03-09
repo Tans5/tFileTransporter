@@ -8,9 +8,9 @@
     <string name="file_transport_activity_tab_remote_dir">REMOTE FOLDER</string>
     <string name="file_transport_activity_tab_message">MESSAGE</string>
     <string name="file_size_B">%d B</string>
-    <string name="file_size_KB">%.1f KB</string>
-    <string name="file_size_MB">%.1f MB</string>
-    <string name="file_size_GB">%.1f GB</string>
+    <string name="file_size_KB">%.2f KB</string>
+    <string name="file_size_MB">%.2f MB</string>
+    <string name="file_size_GB">%.2f GB</string>
     <string name="file_count">%d files</string>
 
     <string name="connection_error_title">Connection Error</string>
@@ -57,9 +57,9 @@
     <!-- Connection Activity End -->
 
     <string name="size_B">%dB</string>
-    <string name="size_KB">%.1fKB</string>
-    <string name="size_MB">%.1fMB</string>
-    <string name="size_GB">%.1fGB</string>
+    <string name="size_KB">%.2fKB</string>
+    <string name="size_MB">%.2fMB</string>
+    <string name="size_GB">%.2fGB</string>
 
     <!-- Folder Menu Start -->
     <string name="folder_menu_select_all_files">Select All Files</string>

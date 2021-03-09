@@ -93,7 +93,10 @@ class MultiConnectionsFileServer(
                     if (connectResult.isSuccess) {
                         launch(Dispatchers.IO) {
                             val result = kotlin.runCatching {
-                                newClient(connectResult.getOrThrow())
+                                val client = connectResult.getOrThrow()
+                                client.use {
+                                    newClient(client)
+                                }
                             }
                             if (result.isFailure) {
                                 Log.e("startMultiConnectionsFileServer", "startMultiConnectionsFileServer", result.exceptionOrNull())
@@ -300,6 +303,7 @@ class MultiConnectionsFileTransferClient(
             progressLong.set(progressLong.get() - hasRead)
             if (retry) {
                 Log.e("startMultiConnectionsFileClient", "startMultiConnectionsFileClient", result.exceptionOrNull())
+                delay(500)
                 downloadFrame(start, end, false)
             } else {
                 throw result.exceptionOrNull()!!
