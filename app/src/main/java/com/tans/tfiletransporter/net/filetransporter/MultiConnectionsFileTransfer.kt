@@ -107,6 +107,9 @@ class MultiConnectionsFileServer(
                         }
                     } else {
                         connectResult.exceptionOrNull()?.printStackTrace()
+                        if (progressLong.get() >= file.size || !isActive) {
+                            break
+                        }
                     }
                 }
             }
