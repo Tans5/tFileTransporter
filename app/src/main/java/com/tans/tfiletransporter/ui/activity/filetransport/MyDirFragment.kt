@@ -21,9 +21,7 @@ import com.tans.tfiletransporter.file.FileConstants.homePath
 import com.tans.tfiletransporter.file.FileConstants.homePathString
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.toFile
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -204,18 +202,22 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         )
 
         fileTransportScopeData.floatBtnEvent
-                .withLatestFrom(bindState().map { it.selectedFiles })
-                .filter { !isHidden && it.second.isNotEmpty() }
-                .flatMapSingle { (_, selectedFiles) ->
-                    rxSingle {
-                        fileTransportScopeData.fileTransporter.writerHandleChannel.send(requireActivity().newFilesShareWriterHandle(
-                                selectedFiles.map { it.toFile() }
-                        ))
-                    }.flatMap {
-                        updateState { state -> state.copy(selectedFiles = emptySet()) }
-                    }
+            .flatMapSingle {
+                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
+                    .firstOrError()
+            }
+            .withLatestFrom(bindState().map { it.selectedFiles })
+            .filter { it.first == DirTabType.MyDir && it.second.isNotEmpty() }
+            .flatMapSingle { (_, selectedFiles) ->
+                rxSingle {
+                    fileTransportScopeData.fileTransporter.writerHandleChannel.send(requireActivity().newFilesShareWriterHandle(
+                        selectedFiles.map { it.toFile() }
+                    ))
+                }.flatMap {
+                    updateState { state -> state.copy(selectedFiles = emptySet()) }
                 }
-                .bindLife()
+            }
+            .bindLife()
 
         binding.refreshLayout.refreshes()
                 .flatMapSingle {

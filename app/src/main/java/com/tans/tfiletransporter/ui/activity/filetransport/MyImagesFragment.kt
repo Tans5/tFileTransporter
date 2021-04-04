@@ -17,6 +17,8 @@ import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.DirTabType
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
 import com.tans.tfiletransporter.utils.readFrom
@@ -125,7 +127,11 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
             .bindLife()
 
         scopeData.floatBtnEvent
-            .filter { !isHidden }
+            .flatMapSingle {
+                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
+                    .firstOrError()
+            }
+            .filter { it == DirTabType.MyImages }
             .observeOn(Schedulers.io())
             .switchMapSingle {
                 rxSingle {

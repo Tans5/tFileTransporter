@@ -19,10 +19,7 @@ import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newRequestFilesShareWriterHandle
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newRequestFolderChildrenShareWriterHandle
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.toFile
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -190,23 +187,30 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
         )
 
         fileTransportScopeData.floatBtnEvent
-                .withLatestFrom(bindState().map { it.selectedFiles })
-                .map { it.second }
-                .filter { !isHidden && it.isNotEmpty() }
-                .observeOn(AndroidSchedulers.mainThread())
-                .flatMapSingle {
-                    rxSingle {
-                        val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
-                        withContext(Dispatchers.IO) {
-                            fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(newRequestFilesShareWriterHandle(it.map { it.toFile() }))
-                        }
-                        updateState {
-                            it.copy(selectedFiles = emptySet())
-                        }.await()
-                        withContext(Dispatchers.Main) { dialog.cancel() }
+            .flatMapSingle {
+                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
+                    .firstOrError()
+            }
+            .withLatestFrom(bindState().map { it.selectedFiles })
+            .filter { it.first == DirTabType.RemoteDir && it.second.isNotEmpty() }
+            .map { it.second }
+            .observeOn(AndroidSchedulers.mainThread())
+            .flatMapSingle {
+                rxSingle {
+                    val dialog =
+                        withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
+                    withContext(Dispatchers.IO) {
+                        fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(
+                            newRequestFilesShareWriterHandle(it.map { it.toFile() })
+                        )
                     }
+                    updateState {
+                        it.copy(selectedFiles = emptySet())
+                    }.await()
+                    withContext(Dispatchers.Main) { dialog.cancel() }
                 }
-                .bindLife()
+            }
+            .bindLife()
 
         binding.refreshLayout.refreshes()
             .flatMapSingle {

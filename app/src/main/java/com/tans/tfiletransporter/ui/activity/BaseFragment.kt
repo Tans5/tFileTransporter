@@ -42,11 +42,20 @@ abstract class BaseFragment<Binding: ViewDataBinding, State>(
         val rootView = this.rootView
         return if (rootView == null) {
             binding = DataBindingUtil.inflate(inflater, layoutId, container, false)
-            initViews(binding)
             this.rootView = binding.root
             binding.root
         } else {
             rootView
+        }
+    }
+
+
+    var isInit = false
+    override fun onResume() {
+        super.onResume()
+        if (!isInit) {
+            initViews(binding)
+            isInit = true
         }
     }
 

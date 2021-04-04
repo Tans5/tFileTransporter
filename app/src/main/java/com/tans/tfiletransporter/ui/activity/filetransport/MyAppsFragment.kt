@@ -14,6 +14,8 @@ import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.DirTabType
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
 import com.tans.tfiletransporter.utils.dp2px
@@ -112,31 +114,38 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
         )
 
         scopeData.floatBtnEvent
-                .filter { !isHidden }
-                .observeOn(Schedulers.io())
-                .switchMapSingle {
-                    rxSingle {
-                        val selectedApps = bindState().firstOrError().map { it.selected }.await()
-                        val files = selectedApps.filter { Files.isReadable(Paths.get(it.sourceDir)) }.map {
-                            File(name = "${it.name}_${it.packageName}.apk",
-                                    path = it.sourceDir,
-                                    size = it.appSize,
-                                    lastModify = OffsetDateTime.now())
-                        }
-                        if (selectedApps.isNotEmpty()) {
-                            scopeData.fileTransporter.startWriterHandleWhenFinish(
-                                    requireActivity().newFilesShareWriterHandle(
-                                            files = files,
-                                            pathConverter = { file -> Paths.get(file.path) }
-                                    )
+            .flatMapSingle {
+                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
+                    .firstOrError()
+            }
+            .filter { it == DirTabType.MyApps }
+            .observeOn(Schedulers.io())
+            .switchMapSingle {
+                rxSingle {
+                    val selectedApps = bindState().firstOrError().map { it.selected }.await()
+                    val files =
+                        selectedApps.filter { Files.isReadable(Paths.get(it.sourceDir)) }.map {
+                            File(
+                                name = "${it.name}_${it.packageName}.apk",
+                                path = it.sourceDir,
+                                size = it.appSize,
+                                lastModify = OffsetDateTime.now()
                             )
-                            updateState { it.copy(selected = emptySet()) }.await()
                         }
-                    }.onErrorResumeNext {
-                        Single.just(Unit)
+                    if (selectedApps.isNotEmpty()) {
+                        scopeData.fileTransporter.startWriterHandleWhenFinish(
+                            requireActivity().newFilesShareWriterHandle(
+                                files = files,
+                                pathConverter = { file -> Paths.get(file.path) }
+                            )
+                        )
+                        updateState { it.copy(selected = emptySet()) }.await()
                     }
+                }.onErrorResumeNext {
+                    Single.just(Unit)
                 }
-                .bindLife()
+            }
+            .bindLife()
     }
 
     @SuppressLint("QueryPermissionsNeeded")
