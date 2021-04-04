@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
-// 1.5 MB
-private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 1024 + 1024 * 512
+// 512KB
+private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 512
 private const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
 private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
@@ -272,6 +272,7 @@ class MultiConnectionsFileTransferClient(
             sc.use {
                 sc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
                 sc.setOptionSuspend(StandardSocketOptions.TCP_NODELAY, true)
+                sc.setOptionSuspend(StandardSocketOptions.SO_KEEPALIVE, true)
                 sc.connectSuspend(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT))
                 sc.writeSuspendSize(buffer, md5)
                 sc.writeSuspendSize(buffer, start.toBytes())
