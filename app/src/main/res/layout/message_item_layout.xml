@@ -8,7 +8,7 @@
         <import type="android.view.View" />
         <variable
             name="message"
-            type="com.tans.tfiletransporter.ui.activity.filetransport.Message" />
+            type="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData.Companion.Message" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

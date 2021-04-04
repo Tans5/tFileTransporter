@@ -20,13 +20,8 @@ import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent
 import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener
 import org.kodein.di.instance
 
-data class Message(
-        val isRemote: Boolean,
-        val timeMilli: Long,
-        val message: String
-)
 
-class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
+class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportScopeData.Companion.Message>>(
     R.layout.message_fragment,
     emptyList()
 ) {
@@ -37,22 +32,16 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
 
     override fun initViews(binding: MessageFragmentBinding) {
 
-        binding.messageRv.adapter = SimpleAdapterSpec<Message, MessageItemLayoutBinding>(
+        binding.messageRv.adapter = SimpleAdapterSpec<FileTransportScopeData.Companion.Message, MessageItemLayoutBinding>(
             layoutId = R.layout.message_item_layout,
             bindData = { _, data, lBinding -> lBinding.message = data },
             dataUpdater = bindState()
         ).toAdapter { if (it.isNotEmpty()) { binding.messageRv.scrollToPosition(it.size - 1) } }
 
-        fileTransportScopeData.remoteMessageEvent
-            .flatMapSingle { remoteMessage ->
-                updateState { oldState ->
-                    val message = Message(
-                        isRemote = true,
-                        timeMilli = System.currentTimeMillis(),
-                        message = remoteMessage
-                    )
-                    val newState = oldState + message
-                    newState
+        fileTransportScopeData.messagesEvent
+            .flatMapSingle { messages ->
+                updateState {
+                    messages
                 }
             }
             .bindLife()
@@ -68,13 +57,14 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<Message>>(
                             newSendMessageShareWriterHandle(sendingMessage)
                         )
                     }
-                    updateState { oldState ->
-                        oldState + Message(
-                            isRemote = false,
-                            timeMilli = System.currentTimeMillis(),
-                            message = sendingMessage
-                        )
-                    }.await()
+
+                    val messages = fileTransportScopeData.messagesEvent.firstOrError().await()
+                    val newMessage = FileTransportScopeData.Companion.Message(
+                        isRemote = false,
+                        timeMilli = System.currentTimeMillis(),
+                        message = sendingMessage
+                    )
+                    fileTransportScopeData.messagesEvent.onNext(messages + newMessage)
                     withContext(Dispatchers.Main) {
                         binding.editText.text?.clear()
                         // dialog.cancel()

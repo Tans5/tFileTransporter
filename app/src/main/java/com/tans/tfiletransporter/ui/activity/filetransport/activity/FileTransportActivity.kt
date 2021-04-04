@@ -31,7 +31,6 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.util.*
 import kotlin.runCatching
 
@@ -116,7 +115,13 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
                     sendMessageChain { _, inputStream, limit, _ ->
                         val message = inputStream.readString(limit)
-                        fileTransportScopeData.remoteMessageEvent.onNext(message)
+                        val newMessage = FileTransportScopeData.Companion.Message(
+                            isRemote = true,
+                            message = message,
+                            timeMilli = System.currentTimeMillis()
+                        )
+                        val messages: List<FileTransportScopeData.Companion.Message> = fileTransportScopeData.messagesEvent.firstOrError().await()
+                        fileTransportScopeData.messagesEvent.onNext(messages + newMessage)
                     }
                 }
             }
