@@ -160,7 +160,7 @@ class MultiConnectionsFileServer(
             val fileChannel = file.channel
             file.use {
                 fileChannel.use {
-                    val fileLock = fileChannel.lock(start, limitReadSize, true)
+                    // val fileLock = fileChannel.lock(start, limitReadSize, true)
                     while (true) {
                         val thisTimeRead = if (bufferSize + hasRead >= limitReadSize) {
                             (limitReadSize - hasRead).toInt()
