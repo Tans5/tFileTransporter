@@ -38,6 +38,7 @@ versions.rxutils = "0.2.4"
 versions.kotlincroutines = "1.3.5"
 versions.date = "1.3.0"
 versions.swiperefresh = "1.1.0"
+versions.netty = "4.1.63.Final"
 
 def view = [:]
 // androidx view
@@ -238,3 +239,9 @@ ext.deps.coroutines = coroutines
 def date = [:]
 date.runtime = "com.jakewharton.threetenabp:threetenabp:$versions.date"
 ext.deps.date = date
+
+
+// Netty
+def netty = [:]
+netty.runtime = "io.netty:netty-all:$versions.netty"
+ext.deps.netty = netty

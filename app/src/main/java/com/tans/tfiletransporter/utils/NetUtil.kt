@@ -158,8 +158,7 @@ fun InetAddress.getBroadcastAddress()
 fun ByteBuffer.copyAvailableBytes(): ByteArray {
     val position = position()
     val limit = limit()
-    val array = array()
-    return ByteArray(limit - position) { i -> array[position + i] }
+    return ByteArray(limit - position) { i -> get(position + i) }
 }
 
 fun ByteBuffer.moveToEndSize(size: Int) {
