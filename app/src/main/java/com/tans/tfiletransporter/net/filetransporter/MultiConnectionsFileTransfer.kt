@@ -27,11 +27,11 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
 // 512KB
-private const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 512
-private const val MULTI_CONNECTIONS_MAX: Int = 30
+const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 512
+const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
-private const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
-private const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
+const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
+const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
 private val fileTransporterPool = NetBufferPool(
         poolSize = MULTI_CONNECTIONS_MAX * 2,
