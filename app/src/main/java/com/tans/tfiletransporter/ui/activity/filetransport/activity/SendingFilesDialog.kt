@@ -5,14 +5,12 @@ import android.app.Dialog
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileServer
-import com.tans.tfiletransporter.net.filetransporter.PathConverter
-import com.tans.tfiletransporter.net.filetransporter.defaultPathConverter
-import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileServer
+import com.tans.tfiletransporter.net.filetransporter.*
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
 import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -55,6 +53,18 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
                                     binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasSend), fileSizeString)
                                 }
                             }
+//                            sendFileObservable(
+//                                fileMd5 = f,
+//                                localAddress = localAddress,
+//                                pathConverter = pathConverter)
+//                                .observeOn(AndroidSchedulers.mainThread())
+//                                .doOnNext {
+//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+//                                }
+//                                .ignoreElements()
+//                                .toSingleDefault(Unit)
+//                                .await()
                         }
                     }
 

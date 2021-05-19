@@ -33,7 +33,7 @@ const val MULTI_CONNECTIONS_MAX: Int = 30
 const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
 const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
-private val fileTransporterPool = NetBufferPool(
+val fileTransporterPool = NetBufferPool(
         poolSize = MULTI_CONNECTIONS_MAX * 2,
         bufferSize = MULTI_CONNECTIONS_BUFFER_SIZE
 )
@@ -153,7 +153,6 @@ class MultiConnectionsFileServer(
                 return
             }
             val limitReadSize = end - start
-            var offset: Long = start
             val bufferSize = buffer.capacity()
             val file = RandomAccessFile(path.toFile(), "r")
             file.seek(start)
@@ -170,7 +169,6 @@ class MultiConnectionsFileServer(
                         fileChannel.readSuspendSize(buffer, thisTimeRead)
                         client.writeSuspendSize(buffer)
                         hasRead += thisTimeRead
-                        offset += thisTimeRead
                         val allSend = progressLong.addAndGet(thisTimeRead.toLong())
                         progress(allSend, this.file.size)
                         if (allSend >= this.file.size) {
