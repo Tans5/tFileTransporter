@@ -3,7 +3,6 @@ package com.tans.tfiletransporter.net.filetransporter
 import android.os.Environment
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.FileMd5
-import com.tans.tfiletransporter.utils.moveToEndSize
 import com.tans.tfiletransporter.utils.newChildFile
 import com.tans.tfiletransporter.utils.readSuspendSize
 import io.netty.bootstrap.Bootstrap
@@ -19,14 +18,13 @@ import kotlinx.coroutines.runBlocking
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import java.nio.channels.ReadableByteChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
+import kotlin.math.min
 
 // Client
 fun downloadFileObservable(
@@ -58,7 +56,7 @@ fun downloadFileObservable(
             frameSize to max((if (fileSize % frameSize > 0L) MULTI_CONNECTIONS_MAX else MULTI_CONNECTIONS_MAX - 1), 1)
         }
 
-        val eventLoopGroup = NioEventLoopGroup(15)
+        val eventLoopGroup = NioEventLoopGroup()
 
         fun downloadFrame(
             start: Long,
@@ -67,7 +65,7 @@ fun downloadFileObservable(
             progress: (downloaded: Long) -> Unit
         ): ChannelFuture {
             val allFrameSize = end - start
-            var downloadedSize = 0L
+            val frameDownloadedSize = AtomicLong(0)
 
             return Bootstrap()
                 .group(eventLoopGroup)
@@ -81,9 +79,11 @@ fun downloadFileObservable(
                             error(Throwable("Init channel fail"))
                         } else {
 
-                            ch.pipeline().addLast(object : ChannelDuplexHandler() {
+                            ch.pipeline()
+                                .addLast(object : ChannelInboundHandlerAdapter() {
                                 override fun channelActive(ctx: ChannelHandlerContext?) {
-                                    if (ctx != null) {
+                                    ctx?.executor()?.execute {
+                                        // Write file's md5 and file range.
                                         val buffer = PooledByteBufAllocator.DEFAULT.buffer()
                                         buffer.writeBytes(fileMd5.md5)
                                         buffer.writeLong(start)
@@ -93,25 +93,27 @@ fun downloadFileObservable(
                                 }
 
                                 override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                                    if (msg != null && msg is ByteBuf && downloadedSize < allFrameSize) {
-                                        val fileChannel: FileChannel = RandomAccessFile(path.toFile(), "rw").let {
-                                            it.seek(start + downloadedSize)
-                                            it.channel
-                                        }
-                                        fileChannel.use {
-                                            val size = msg.writerIndex() - msg.readerIndex()
-                                            val nioBuffer = msg.nioBuffer(msg.readerIndex(), size)
-                                            while (true) {
-                                                val writeSize = it.write(nioBuffer)
-                                                if (writeSize <= 0) {
-                                                    break
-                                                } else {
-                                                    downloadedSize += writeSize
-                                                }
+                                    if (ctx != null && msg != null && msg is ByteBuf && frameDownloadedSize.get() < allFrameSize) {
+                                        ctx.executor().execute {
+                                            val fileChannel: FileChannel = RandomAccessFile(path.toFile(), "rw").let {
+                                                it.seek(start + frameDownloadedSize.get())
+                                                it.channel
                                             }
-                                            progress(size.toLong())
-                                            if (downloadedSize >= allFrameSize) {
-                                                ctx?.close()
+                                            fileChannel.use {
+                                                val size = msg.writerIndex() - msg.readerIndex()
+                                                val nioBuffer = msg.nioBuffer(msg.readerIndex(), size)
+                                                while (true) {
+                                                    val writeSize = it.write(nioBuffer)
+                                                    if (writeSize <= 0) {
+                                                        break
+                                                    } else {
+                                                        frameDownloadedSize.getAndAdd(writeSize.toLong())
+                                                    }
+                                                }
+                                                progress(size.toLong())
+                                                if (frameDownloadedSize.get() >= allFrameSize) {
+                                                    ctx.close()
+                                                }
                                             }
                                         }
                                     }
@@ -161,6 +163,7 @@ fun downloadFileObservable(
             for (task in tasks) {
                 if (task.channel().isActive) {
                     task.channel().close()
+                    task.cancel(true)
                 }
             }
             eventLoopGroup.shutdownGracefully()
@@ -200,26 +203,22 @@ fun sendFileObservable(
             .childHandler(object : ChannelInitializer<NioSocketChannel>() {
 
                 override fun initChannel(ch: NioSocketChannel?) {
-                    ch?.pipeline()?.addLast(
-                        object : ChannelDuplexHandler() {
+                    ch?.pipeline()
+                        ?.addLast(FrameInHandler())
+                        ?.addLast(
+                        object : ChannelInboundHandlerAdapter() {
                             // 1. 16 bytes md5. 2. 8 bytes start index. 3. 8 bytes end index.
-                            val readBuff = PooledByteBufAllocator.DEFAULT.buffer(32)
                             override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-                                try {
-                                    if (msg != null && msg is ByteBuf && ctx != null) {
-                                        readBuff.writeBytes(msg)
-                                        val size = readBuff.writerIndex() - readBuff.readerIndex()
-                                        if (size >= 32) {
-                                            val readMd5 = ByteArray(16)
-                                            readBuff.readBytes(readMd5)
-                                            val start = readBuff.readLong()
-                                            val end = readBuff.readLong()
-                                            readBuff.release()
-                                            if (!md5.contentEquals(readMd5) || start < 0 || end < 0 || start >= end) {
+                                    if (msg != null && msg is FileFrameData && ctx != null) {
+                                        ctx.executor().execute {
+                                            if (!msg.fileMd5.contentEquals(md5) || msg.start < 0 || msg.end < 0 || msg.start >= msg.end || msg.end > fileSize) {
                                                 ctx.close()
-                                                return
+                                                return@execute
                                             }
+                                            val start = msg.start
+                                            val end = msg.end
                                             val frameSize = end - start
+
                                             val fileChannel = RandomAccessFile(path.toFile(), "r").let {
                                                 it.seek(start)
                                                 it.channel
@@ -242,18 +241,12 @@ fun sendFileObservable(
                                                         val buffer = PooledByteBufAllocator.DEFAULT.buffer(bufferSize)
                                                         buffer.writeBytes(bioBuffer)
                                                         ctx.writeAndFlush(buffer)
+                                                        val progress = progressLong.addAndGet(thisTimeRead.toLong())
+                                                        emitter.onNext(progress)
+                                                        if (progress >= fileSize) {
+                                                            emitter.onComplete()
+                                                        }
                                                         bioBuffer.clear()
-//                                                        val allSendSize = progressLong.addAndGet(thisTimeRead.toLong())
-//                                                        emitter.onNext(allSendSize)
-//                                                        if (allSendSize >= fileSize) {
-//                                                            ctx.close()
-//                                                            emitter.onComplete()
-//                                                            break
-//                                                        }
-//                                                        if (hasSendSize >= frameSize) {
-//                                                            ctx.close()
-//                                                            break;
-//                                                        }
                                                     }
                                                 }
 
@@ -262,9 +255,6 @@ fun sendFileObservable(
                                             }
                                         }
                                     }
-                                } catch (e: Throwable) {
-                                    e.printStackTrace()
-                                }
                             }
 
                             override fun exceptionCaught(
@@ -273,6 +263,7 @@ fun sendFileObservable(
                             ) {
                                 if (cause != null) {
                                     emitter.onError(cause)
+                                    eventLoopGroupMain.shutdownGracefully()
                                     eventLoopGroup.shutdownGracefully()
                                 }
                             }
@@ -297,4 +288,75 @@ fun sendFileObservable(
 
     }
 }
+
+private data class FileFrameData(
+    val fileMd5: ByteArray,
+    val start: Long,
+    val end: Long
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as FileFrameData
+
+        if (!fileMd5.contentEquals(other.fileMd5)) return false
+        if (start != other.start) return false
+        if (end != other.end) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = fileMd5.contentHashCode()
+        result = 31 * result + start.hashCode()
+        result = 31 * result + end.hashCode()
+        return result
+    }
+}
+
+class FrameInHandler : ChannelInboundHandlerAdapter() {
+
+    private val byteBuf = PooledByteBufAllocator.DEFAULT.buffer(32)
+    private val nextFrameBuf = PooledByteBufAllocator.DEFAULT.buffer(32)
+
+    override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
+        super.channelRead(ctx, msg)
+        if (ctx != null && msg != null && msg is ByteBuf) {
+            ctx.executor().execute {
+                synchronized(this) {
+                    val readSize = byteBuf.readSize()
+                    val nextFrameSize = nextFrameBuf.readSize()
+                    val needReadSize = 32 - readSize - nextFrameSize
+                    if (readSize < 32) {
+                        if (nextFrameSize > 0) {
+                            byteBuf.readBytes(nextFrameBuf)
+                            nextFrameBuf.clear()
+                        }
+                        if (msg.readSize() > 0) {
+                            byteBuf.readBytes(msg, needReadSize)
+                        }
+                        if (msg.readSize() > 0) {
+                            nextFrameBuf.writeBytes(msg, min(msg.readSize(), 32))
+                        }
+                        if (byteBuf.readSize() >= 32) {
+                            val md5 = ByteArray(16)
+                            byteBuf.readBytes(md5)
+                            val start = byteBuf.readLong()
+                            val end = byteBuf.readLong()
+                            byteBuf.clear()
+                            ctx.fireChannelRead(FileFrameData(
+                                fileMd5 = md5,
+                                start = start,
+                                end = end
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private inline fun ByteBuf.readSize(): Int = writerIndex() - readInt()
 
