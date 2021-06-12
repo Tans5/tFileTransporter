@@ -91,17 +91,19 @@ fun downloadFileObservable(
                                     Schedulers.io().createWorker().schedule {
                                         Log.d(logTag, "$fileInfoMsg; Start Download Frame: Start -> $start, End -> $end")
 
+                                        val buffer = PooledByteBufAllocator.DEFAULT.buffer()
                                         try {
                                             // Write file's md5 and file range.
-                                            val buffer = PooledByteBufAllocator.DEFAULT.buffer()
                                             buffer.writeBytes(fileMd5.md5)
                                             buffer.writeLong(start)
                                             buffer.writeLong(end)
-                                            ctx?.writeAndFlush(buffer)
+                                            ctx?.writeAndFlush(buffer)?.sync()
                                         } catch (t: Throwable) {
                                             error(t)
                                             ctx?.channel()?.close()
                                             childEventLoopGroup.shutdownGracefully()
+                                        } finally {
+                                            buffer.release()
                                         }
 
                                     }
@@ -270,8 +272,12 @@ fun sendFileObservable(
                                                                 fileChannel.readSuspendSize(bioBuffer, thisTimeRead)
                                                             }
                                                             val buffer = PooledByteBufAllocator.DEFAULT.buffer(bufferSize)
-                                                            buffer.writeBytes(bioBuffer)
-                                                            ctx.writeAndFlush(buffer).sync()
+                                                            try {
+                                                                buffer.writeBytes(bioBuffer)
+                                                                ctx.writeAndFlush(buffer).sync()
+                                                            } finally {
+                                                                buffer.release()
+                                                            }
                                                             val progress = progressLong.addAndGet(thisTimeRead.toLong())
                                                             Log.d(logTag, "$fileInfoMsg; SendFile: $progress/$fileSize")
                                                             emitter.onNext(progress)
@@ -369,7 +375,7 @@ class FrameInHandler : ChannelInboundHandlerAdapter() {
                                 nextFrameBuf.clear()
                             }
                             if (msg.readSize() > 0) {
-                                byteBuf.writeBytes(msg, needReadSize)
+                                byteBuf.writeBytes(msg, min(needReadSize, msg.readSize()))
                             }
                             if (msg.readSize() > 0) {
                                 nextFrameBuf.readBytes(msg, min(msg.readSize(), 32))
@@ -380,6 +386,9 @@ class FrameInHandler : ChannelInboundHandlerAdapter() {
                                 val start = byteBuf.readLong()
                                 val end = byteBuf.readLong()
                                 byteBuf.clear()
+                                byteBuf.release()
+                                nextFrameBuf.clear()
+                                nextFrameBuf.release()
                                 ctx.fireChannelRead(FileFrameData(
                                     fileMd5 = md5,
                                     start = start,
