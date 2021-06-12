@@ -45,28 +45,28 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
                             delay(200)
-                            startMultiConnectionsFileClient(
-                                    fileMd5 = f,
-                                    serverAddress = serverAddress,
-                                    clientInstance = { client ->
-                                        updateState { Optional.of(client) }.await()
-                                    }) { hasDownload, limit ->
-                                withContext(Dispatchers.Main) {
-                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
-                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
-                                }
-                            }
-//                            downloadFileObservable(
-//                                fileMd5 = f,
-//                                serverAddress = serverAddress
-//                            ).observeOn(AndroidSchedulers.mainThread())
-//                                .doOnNext {
-//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+//                            startMultiConnectionsFileClient(
+//                                    fileMd5 = f,
+//                                    serverAddress = serverAddress,
+//                                    clientInstance = { client ->
+//                                        updateState { Optional.of(client) }.await()
+//                                    }) { hasDownload, limit ->
+//                                withContext(Dispatchers.Main) {
+//                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
+//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
 //                                }
-//                                .ignoreElements()
-//                                .toSingleDefault(Unit)
-//                                .await()
+//                            }
+                            downloadFileObservable(
+                                fileMd5 = f,
+                                serverAddress = serverAddress
+                            ).observeOn(AndroidSchedulers.mainThread())
+                                .doOnNext {
+                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+                                }
+                                .ignoreElements()
+                                .toSingleDefault(Unit)
+                                .await()
                         }
                     }
                     withContext(Dispatchers.Main) {
