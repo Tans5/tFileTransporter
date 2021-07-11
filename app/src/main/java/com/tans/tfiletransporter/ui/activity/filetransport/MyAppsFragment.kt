@@ -151,7 +151,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
     @SuppressLint("QueryPermissionsNeeded")
     fun refreshApps() = updateState {
         val apps = requireActivity().packageManager.getInstalledApplications(0)
-                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 && Files.isReadable(Paths.get(it.sourceDir)) }
                 .map {
                     AppInfo(
                             name = it.loadLabel(requireActivity().packageManager).toString(),

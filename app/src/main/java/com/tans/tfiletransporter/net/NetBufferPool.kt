@@ -18,7 +18,14 @@ class NetBufferPool(poolSize: Int, bufferSize: Int) {
 
     suspend fun requestBuffer() = pools.receive()
 
+    fun requestBufferBlock(): ByteBuffer = runBlocking { pools.receive() }
+
     suspend fun recycleBuffer(buffer: ByteBuffer) {
+        buffer.clear()
+        pools.send(buffer)
+    }
+
+    fun recycleBufferBlock(buffer: ByteBuffer) = runBlocking {
         buffer.clear()
         pools.send(buffer)
     }

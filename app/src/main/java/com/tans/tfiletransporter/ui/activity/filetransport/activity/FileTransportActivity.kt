@@ -46,12 +46,12 @@ data class FileTransportActivityState(
     val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting
 )
 
-enum class DirTabType(val tabName: String) {
-    MyApps("MY APPS"),
-    MyImages("MY IMAGES"),
-    MyDir("MY FOLDER"),
-    RemoteDir("REMOTE FOLDER"),
-    Message("MESSAGE")
+enum class DirTabType {
+    MyApps,
+    MyImages,
+    MyDir,
+    RemoteDir,
+    Message
 }
 
 
@@ -191,7 +191,15 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
             }
 
-            TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position -> tab.text = DirTabType.values()[position].tabName }.attach()
+            TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+                tab.text = when (DirTabType.values()[position]) {
+                    DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
+                    DirTabType.MyImages -> getString(R.string.file_transport_activity_tab_my_images)
+                    DirTabType.MyDir -> getString(R.string.file_transport_activity_tab_my_dir)
+                    DirTabType.RemoteDir -> getString(R.string.file_transport_activity_tab_remote_dir)
+                    DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
+                }
+            }.attach()
 
             binding.tabLayout.addOnTabSelectedListener(object :
                     TabLayout.OnTabSelectedListener {

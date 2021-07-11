@@ -12,7 +12,7 @@ android {
         applicationId "com.tans.tfiletransporter"
         minSdkVersion 26
         targetSdkVersion 30
-        versionCode 9
+        versionCode 8
         versionName "1.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -59,7 +59,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.3.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
-    implementation "androidx.fragment:fragment-ktx:1.3.2"
+    implementation "androidx.fragment:fragment-ktx:1.3.0"
     implementation deps.view.swiperefresh
 
     implementation deps.rxJava.runtime
@@ -96,6 +96,8 @@ dependencies {
     implementation deps.lifecycle.runtime
     implementation deps.lifecycle.viewmodel
     kapt deps.lifecycle.compiler
+
+    implementation deps.netty.runtime
 
     testImplementation 'junit:junit:4.13.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'

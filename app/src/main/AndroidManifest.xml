@@ -25,7 +25,9 @@
         android:theme="@style/Theme.TFileTransporter">
 
         <activity android:name=".ui.activity.connection.ConnectionActivity"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -34,7 +36,9 @@
 
         <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize|stateHidden"/>
+            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize"/>
 
     </application>
 
