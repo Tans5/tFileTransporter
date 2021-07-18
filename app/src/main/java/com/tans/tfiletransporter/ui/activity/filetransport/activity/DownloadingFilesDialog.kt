@@ -6,13 +6,11 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
-import com.tans.tfiletransporter.net.filetransporter.downloadFileObservable
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileClient
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
 import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -45,28 +43,28 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
                             delay(200)
-//                            startMultiConnectionsFileClient(
-//                                    fileMd5 = f,
-//                                    serverAddress = serverAddress,
-//                                    clientInstance = { client ->
-//                                        updateState { Optional.of(client) }.await()
-//                                    }) { hasDownload, limit ->
-//                                withContext(Dispatchers.Main) {
-//                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
-//                                }
-//                            }
-                            downloadFileObservable(
-                                fileMd5 = f,
-                                serverAddress = serverAddress
-                            ).observeOn(AndroidSchedulers.mainThread())
-                                .doOnNext {
-                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
-                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+                            startMultiConnectionsFileClient(
+                                    fileMd5 = f,
+                                    serverAddress = serverAddress,
+                                    clientInstance = { client ->
+                                        updateState { Optional.of(client) }.await()
+                                    }) { hasDownload, limit ->
+                                withContext(Dispatchers.Main) {
+                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
+                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
                                 }
-                                .ignoreElements()
-                                .toSingleDefault(Unit)
-                                .await()
+                            }
+//                            downloadFileObservable(
+//                                fileMd5 = f,
+//                                serverAddress = serverAddress
+//                            ).observeOn(AndroidSchedulers.mainThread())
+//                                .doOnNext {
+//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+//                                }
+//                                .ignoreElements()
+//                                .toSingleDefault(Unit)
+//                                .await()
                         }
                     }
                     withContext(Dispatchers.Main) {
