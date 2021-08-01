@@ -19,7 +19,7 @@ object DataBindingAdapter {
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
     @JvmStatic
-    @BindingAdapter("app:dateText")
+    @BindingAdapter("dateText")
     fun dateText(view: TextView, time: Long) {
         val modifiedOffsetDateTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(time), ZoneId.systemDefault())
         val modifiedLocalDate = modifiedOffsetDateTime.toLocalDate()
@@ -34,7 +34,7 @@ object DataBindingAdapter {
 
 
     @JvmStatic
-    @BindingAdapter("app:fileSizeText")
+    @BindingAdapter("fileSizeText")
     fun fileSizeText(view: TextView, size: Long) {
         val context = view.context
         view.text = when (size) {
@@ -47,7 +47,7 @@ object DataBindingAdapter {
     }
 
     @JvmStatic
-    @BindingAdapter("app:imageUrl")
+    @BindingAdapter("imageUrl")
     fun imageUrl(image: ImageView, url: String?) {
         val emptyErrorDrawable = ColorDrawable(image.context.applicationContext.getColor(R.color.gray_2))
         Glide.with(image.context.applicationContext)
