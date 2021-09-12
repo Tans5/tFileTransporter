@@ -191,17 +191,20 @@ class MultiConnectionsFileServer(
 }
 
 
-
+/**
+ * @return downloaded file path.
+ */
 @Throws(IOException::class)
 suspend fun startMultiConnectionsFileClient(
         fileMd5: FileMd5,
         serverAddress: InetAddress,
         clientInstance: suspend (client: MultiConnectionsFileTransferClient) -> Unit = {},
         progress: suspend (hasSend: Long, size: Long) -> Unit = { _, _ -> }
-) {
+): String {
     val client = MultiConnectionsFileTransferClient(fileMd5, serverAddress, progress)
     clientInstance(client)
     client.start()
+    return client.path.toAbsolutePath().toString()
 }
 
 
@@ -220,7 +223,7 @@ class MultiConnectionsFileTransferClient(
         }
         result
     }
-    private val path: Path by lazy { downloadDir.newChildFile(file.name) }
+    val path: Path by lazy { downloadDir.newChildFile(file.name) }
     private val progressLong = AtomicLong(0L)
 
     internal suspend fun start() =

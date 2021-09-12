@@ -3,12 +3,16 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 import android.app.Activity
 import android.app.Dialog
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.rxutils.SaveMediaType
+import com.tans.rxutils.insertMediaItem
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileClient
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import com.tans.tfiletransporter.utils.MediaType
+import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tfiletransporter.utils.getSizeString
 import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +47,7 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
                             delay(200)
-                            startMultiConnectionsFileClient(
+                            val downloadedFile = startMultiConnectionsFileClient(
                                     fileMd5 = f,
                                     serverAddress = serverAddress,
                                     clientInstance = { client ->
@@ -54,6 +58,22 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                     binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
                                 }
                             }
+
+                            val mimeAndMediaType = getMediaMimeTypeWithFileName(f.file.name)
+                            if (mimeAndMediaType != null) {
+                                insertMediaItem(
+                                    context = this@startDownloadingFiles,
+                                    mimeType = mimeAndMediaType.first,
+                                    name = f.file.name,
+                                    saveMediaType = when (mimeAndMediaType.second) {
+                                        MediaType.Audio -> SaveMediaType.Audio
+                                        MediaType.Video -> SaveMediaType.Video
+                                        MediaType.Image -> SaveMediaType.Images
+                                    },
+                                    relativePath = downloadedFile
+                                )
+                            }
+
 //                            downloadFileObservable(
 //                                fileMd5 = f,
 //                                serverAddress = serverAddress
