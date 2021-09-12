@@ -1,13 +1,13 @@
 package com.tans.tfiletransporter.ui.activity.connection
 
 import android.Manifest
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
+import android.content.Intent
+import android.net.*
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
@@ -65,6 +65,11 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                     it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION)
                 }
             }.firstOrError().await()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                i.data = Uri.fromParts("package", packageName, null)
+                startActivity(i)
+            }
             if (!grant) {
                 finish()
             }
