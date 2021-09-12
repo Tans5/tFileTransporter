@@ -41,11 +41,12 @@ suspend fun newRequestFolderChildrenShareWriterHandle(
 }
 
 suspend fun newFolderChildrenShareWriterHandle(
-    parentPath: String
+    parentPath: String,
+    shareFolder: Boolean
 ): FolderChildrenShareWriterHandle {
     val jsonData = withContext(Dispatchers.IO) {
         val path = Paths.get(FileConstants.homePathString + parentPath)
-        val children = if (Files.isReadable(path)) {
+        val children = if (shareFolder && Files.isReadable(path)) {
             Files.list(path)
                     .filter { Files.isReadable(it) }
                     .map<Any> { p ->

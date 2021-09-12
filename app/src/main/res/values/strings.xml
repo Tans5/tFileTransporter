@@ -68,4 +68,8 @@
     <string name="folder_menu_sort_by_file_name">Sort By Name</string>
     <!-- Folder Menu End -->
 
+    <!-- Transfer Settings Menu Start -->
+    <string name="transfer_setting_share_folder">Share My Dir</string>
+    <!-- Transfer Settings Menu End -->
+
 </resources>

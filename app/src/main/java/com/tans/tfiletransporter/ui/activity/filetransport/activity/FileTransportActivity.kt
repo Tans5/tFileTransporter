@@ -43,7 +43,8 @@ import kotlin.runCatching
 
 data class FileTransportActivityState(
     val selectedTabType: DirTabType = DirTabType.MyApps,
-    val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting
+    val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting,
+    val shareMyDir: Boolean = false
 )
 
 enum class DirTabType {
@@ -100,7 +101,13 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
                     requestFolderChildrenShareChain { _, inputStream, limit, _ ->
                         val string = inputStream.readString(limit)
-                        fileTransporter.writerHandleChannel.send(newFolderChildrenShareWriterHandle(string))
+                        fileTransporter.writerHandleChannel.send(
+                            newFolderChildrenShareWriterHandle(
+                                parentPath = string,
+                                shareFolder = this@FileTransportActivity.bindState()
+                                    .map { it.shareMyDir }.firstOrError().await()
+                            )
+                        )
                     }
 
                     folderChildrenShareChain { _, inputStream, limit, _ ->
@@ -186,6 +193,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             }
             loadingDialog.cancel()
 
+            render({ it.shareMyDir }) { binding.toolBar.menu.findItem(R.id.share_my_folder).isChecked = it }.bindLife()
+
             binding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
@@ -200,6 +209,17 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
                 }
             }.attach()
+
+            binding.toolBar.setOnMenuItemClickListener {
+                if (it.itemId == R.id.share_my_folder) {
+                    updateState { oldState ->
+                        oldState.copy(shareMyDir = !oldState.shareMyDir)
+                    }.bindLife()
+                    true
+                } else {
+                    false
+                }
+            }
 
             binding.tabLayout.addOnTabSelectedListener(object :
                     TabLayout.OnTabSelectedListener {
