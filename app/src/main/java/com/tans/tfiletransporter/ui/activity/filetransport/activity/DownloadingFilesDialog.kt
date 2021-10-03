@@ -3,16 +3,20 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 import android.app.Activity
 import android.app.Dialog
 import android.media.MediaScannerConnection
+import android.os.Environment
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
+import com.tans.tfiletransporter.net.filetransporter.downloadFileObservable
 import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileClient
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tfiletransporter.utils.getSizeString
+import com.tans.tfiletransporter.utils.newChildFile
 import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -20,10 +24,24 @@ import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 
 fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddress): Single<Unit> {
     var dialog: Dialog? = null
+
+    val downloadDir: Path by lazy {
+        val result = Paths.get(
+            Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS).path, "tFileTransfer")
+        if (!Files.exists(result)) {
+            Files.createDirectory(result)
+        }
+        result
+    }
+
     return Single.create<Unit> { emitter ->
         val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileTransferClient>>(
                 context = this,
@@ -57,6 +75,20 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 }
                             }
 
+//                            val path: Path = downloadDir.newChildFile(f.file.name)
+//                            downloadFileObservable(
+//                                fileMd5 = f,
+//                                serverAddress = serverAddress,
+//                                saveFile = path
+//                            ).observeOn(AndroidSchedulers.mainThread())
+//                                .doOnNext {
+//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+//                                }
+//                                .ignoreElements()
+//                                .toSingleDefault(Unit)
+//                                .await()
+
                             val mimeAndMediaType = getMediaMimeTypeWithFileName(f.file.name)
                             if (mimeAndMediaType != null) {
                                 MediaScannerConnection.scanFile(
@@ -66,18 +98,6 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                     null
                                 )
                             }
-
-//                            downloadFileObservable(
-//                                fileMd5 = f,
-//                                serverAddress = serverAddress
-//                            ).observeOn(AndroidSchedulers.mainThread())
-//                                .doOnNext {
-//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
-//                                }
-//                                .ignoreElements()
-//                                .toSingleDefault(Unit)
-//                                .await()
                         }
                     }
                     withContext(Dispatchers.Main) {

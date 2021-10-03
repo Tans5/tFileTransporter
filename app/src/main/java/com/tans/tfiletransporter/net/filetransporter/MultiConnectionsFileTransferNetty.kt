@@ -36,26 +36,20 @@ private const val TAG_RECEIVE = "FileReceive"
 // Client
 fun downloadFileObservable(
     fileMd5: FileMd5,
-    serverAddress: InetAddress
+    serverAddress: InetAddress,
+    saveFile: Path
 ): Observable<Long> {
 
     return Observable.create { emitter ->
         val file = fileMd5.file
         val fileSize = file.size
         val fileInfoMsg = "File -> ${file.name}, Size -> $fileSize"
-        val downloadDir: Path by lazy {
-            val result = Paths.get(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path, "tFileTransfer")
-            if (!Files.exists(result)) {
-                Files.createDirectory(result)
-            }
-            result
-        }
-        val path: Path by lazy { downloadDir.newChildFile(file.name) }
+
         val progressLong = AtomicLong(0L)
 
 
         // Init file and frame size.
-        val randomAccessFile = RandomAccessFile(path.toFile(), "rw")
+        val randomAccessFile = RandomAccessFile(saveFile.toFile(), "rw")
         randomAccessFile.use { randomAccessFile.setLength(fileSize) }
         val (frameSize: Long, frameCount: Int) = if (fileSize <= MULTI_CONNECTIONS_MIN_FRAME_SIZE * MULTI_CONNECTIONS_MAX) {
             MULTI_CONNECTIONS_MIN_FRAME_SIZE to (fileSize / MULTI_CONNECTIONS_MIN_FRAME_SIZE).toInt() + if (fileSize % MULTI_CONNECTIONS_MIN_FRAME_SIZE != 0L) 1 else 0
@@ -111,7 +105,7 @@ fun downloadFileObservable(
                                     if (ctx != null && msg != null && msg is ByteBuf && frameDownloadedSize.get() < allFrameSize) {
                                         ioExecutor.execute {
                                             try {
-                                                val fileChannel: FileChannel = RandomAccessFile(path.toFile(), "rw").let {
+                                                val fileChannel: FileChannel = RandomAccessFile(saveFile.toFile(), "rw").let {
                                                     it.seek(start + frameDownloadedSize.get())
                                                     it.channel
                                                 }
@@ -168,7 +162,7 @@ fun downloadFileObservable(
                     start = start,
                     end = end,
                     error = {
-                        Files.delete(path)
+                        Files.delete(saveFile)
                         if (!emitter.isDisposed) {
                             emitter.onError(it)
                             Log.e(TAG_RECEIVE, "$fileInfoMsg; Download error", it)
@@ -195,7 +189,7 @@ fun downloadFileObservable(
             }
             childEventLoopGroup.shutdownGracefully()
             if (progressLong.get() < fileSize) {
-                Files.delete(path)
+                Files.delete(saveFile)
             }
 
         }
