@@ -1,10 +1,8 @@
 package com.tans.tfiletransporter.net.filetransporter
 
-import android.os.Environment
 import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.FileMd5
-import com.tans.tfiletransporter.utils.newChildFile
 import com.tans.tfiletransporter.utils.readSuspendSize
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
@@ -15,7 +13,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.FixedLengthFrameDecoder
 import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.runBlocking
@@ -25,7 +22,6 @@ import java.net.InetSocketAddress
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
@@ -62,6 +58,36 @@ fun downloadFileObservable(
 
         val childEventLoopGroup = NioEventLoopGroup(0, ioExecutor)
 
+        var tasks: List<ChannelFuture>? = null
+
+        fun closeTasks() {
+            val tasksLocal = tasks ?: emptyList()
+            for (task in tasksLocal) {
+                if (task.channel().isActive) {
+                    task.channel().close().sync()
+                    task.cancel(false)
+                }
+            }
+        }
+
+        fun error(t: Throwable) {
+            closeTasks()
+            childEventLoopGroup.shutdownGracefully()
+            Files.delete(saveFile)
+            if (!emitter.isDisposed) {
+                Log.e(TAG_RECEIVE, "$fileInfoMsg; Download error", t)
+                emitter.onError(t)
+            }
+        }
+
+        fun complete() {
+            closeTasks()
+            if (!emitter.isDisposed) {
+                Log.d(TAG_RECEIVE, "$fileInfoMsg; Download Finish..")
+                emitter.onComplete()
+            }
+        }
+
         fun downloadFrame(
             start: Long,
             end: Long,
@@ -86,7 +112,7 @@ fun downloadFileObservable(
                                 .addLast(object : ChannelInboundHandlerAdapter() {
                                 override fun channelActive(ctx: ChannelHandlerContext?) {
                                     if (ctx != null) {
-                                        Schedulers.io().createWorker().schedule {
+                                        ioExecutor.execute {
                                             Log.d(TAG_RECEIVE, "$fileInfoMsg; Start Download Frame: Start -> $start, End -> $end")
                                             val buffer = ctx.alloc().buffer()
                                             try {
@@ -104,33 +130,35 @@ fun downloadFileObservable(
 
                                 override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
                                     if (ctx != null && msg != null && msg is ByteBuf && frameDownloadedSize.get() < allFrameSize) {
-                                        ioExecutor.execute {
-                                            try {
-                                                val fileChannel: FileChannel = RandomAccessFile(saveFile.toFile(), "rw").let {
+                                        try {
+                                            val fileChannel: FileChannel =
+                                                RandomAccessFile(saveFile.toFile(), "rw").let {
                                                     it.seek(start + frameDownloadedSize.get())
                                                     it.channel
                                                 }
-                                                fileChannel.use {
-                                                    val size = msg.readSize()
-                                                    val nioBuffer = msg.nioBuffer(msg.readerIndex(), size)
-                                                    while (true) {
-                                                        val writeSize = it.write(nioBuffer)
-                                                        if (writeSize <= 0) {
-                                                            break
-                                                        } else {
-                                                            frameDownloadedSize.getAndAdd(writeSize.toLong())
-                                                        }
-                                                    }
-                                                    progress(size.toLong())
-                                                    Log.d(TAG_RECEIVE, "$fileInfoMsg; Download Frame: Start -> $start, End -> $end, Process -> ${frameDownloadedSize.get()}/$allFrameSize}", )
-                                                    if (frameDownloadedSize.get() >= allFrameSize) {
-                                                        ctx.channel().close()
-                                                        Log.d(TAG_RECEIVE, "Frame download finish.")
+                                            fileChannel.use {
+                                                val size = msg.readSize()
+                                                frameDownloadedSize.getAndAdd(size.toLong())
+                                                val nioBuffer =
+                                                    msg.nioBuffer(msg.readerIndex(), size)
+                                                while (true) {
+                                                    val writeSize = it.write(nioBuffer)
+                                                    if (writeSize <= 0) {
+                                                        break
                                                     }
                                                 }
-                                            } catch (t: Throwable) {
-                                                error(t)
+                                                progress(size.toLong())
+                                                Log.d(
+                                                    TAG_RECEIVE,
+                                                    "$fileInfoMsg; Download Frame: Start -> $start, End -> $end, Process -> ${frameDownloadedSize.get()}/$allFrameSize}",
+                                                )
+                                                if (frameDownloadedSize.get() >= allFrameSize) {
+                                                    ctx.channel().close()
+                                                    Log.d(TAG_RECEIVE, "Frame download finish.")
+                                                }
                                             }
+                                        } catch (t: Throwable) {
+                                            error(t)
                                         }
                                     }
                                 }
@@ -151,7 +179,7 @@ fun downloadFileObservable(
                 }
         }
 
-        val tasks = (0 until frameCount)
+        tasks = (0 until frameCount)
             .map { i ->
                 val start = i * frameSize
                 val end = if (start + frameSize > fileSize) {
@@ -163,11 +191,7 @@ fun downloadFileObservable(
                     start = start,
                     end = end,
                     error = {
-                        Files.delete(saveFile)
-                        if (!emitter.isDisposed) {
-                            emitter.onError(it)
-                            Log.e(TAG_RECEIVE, "$fileInfoMsg; Download error", it)
-                        }
+                        error(it)
                     }) {
                     val size = progressLong.addAndGet(it)
                     if (!emitter.isDisposed) {
@@ -175,24 +199,13 @@ fun downloadFileObservable(
                     }
                     Log.d(TAG_RECEIVE, "$fileInfoMsg; $size/$fileSize")
                     if (size >= fileSize) {
-                        Log.d(TAG_RECEIVE, "$fileInfoMsg; Download Finish..")
-                        emitter.onComplete()
+                        complete()
                     }
                 }
             }
 
         emitter.setCancellable {
-            for (task in tasks) {
-                if (task.channel().isActive) {
-                    task.channel().close()
-                    task.cancel(false)
-                }
-            }
-            childEventLoopGroup.shutdownGracefully()
-            if (progressLong.get() < fileSize) {
-                Files.delete(saveFile)
-            }
-
+            closeTasks()
         }
 
     }
