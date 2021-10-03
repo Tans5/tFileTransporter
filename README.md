@@ -6,12 +6,8 @@ Use UDP Broadcast or WiFi P2P create  connections, Use TCP protocol to transfer 
 Play Store:  
 [https://play.google.com/store/apps/details?id=com.tans.tfiletransporter](https://play.google.com/store/apps/details?id=com.tans.tfiletransporter)
 
-PC:  
-[PC](https://github.com/Tans5/tFileTransfer_desktop)
-
-Apks:  
-[v1.0.1](https://raw.githubusercontent.com/Tans5/tFileTransporter/master/apks/tFileTransfer_v1.0.1.apk)  
-[v1.1.0](https://raw.githubusercontent.com/Tans5/tFileTransporter/master/apks/tFileTransfer_v1.1.0.apk)
+Desktop:  
+[Desktop](https://github.com/Tans5/tFileTransfer_desktop)
 
 ## Screenshots
 
