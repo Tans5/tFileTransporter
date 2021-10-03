@@ -90,6 +90,7 @@ fun downloadFileObservable(
                                             Log.d(TAG_RECEIVE, "$fileInfoMsg; Start Download Frame: Start -> $start, End -> $end")
                                             val buffer = ctx.alloc().buffer()
                                             try {
+                                                buffer.retain()
                                                 buffer.writeBytes(fileMd5.md5)
                                                 buffer.writeLong(start)
                                                 buffer.writeLong(end)
@@ -219,7 +220,19 @@ fun sendFileObservable(
         val childEventLoopGroup = NioEventLoopGroup(0, ioExecutor)
         val parentEventLoopGroup = NioEventLoopGroup(1, ioExecutor)
 
-        val serverChannelFuture = ServerBootstrap()
+        var serverChannelFuture: ChannelFuture? = null
+
+        fun error(t: Throwable) {
+            serverChannelFuture?.channel()?.close()?.sync()
+            emitter.onError(t)
+        }
+
+        fun complete() {
+            serverChannelFuture?.channel()?.close()?.sync()
+            emitter.onComplete()
+        }
+
+        serverChannelFuture = ServerBootstrap()
             .group(parentEventLoopGroup, childEventLoopGroup)
             .channel(NioServerSocketChannel::class.java)
             .option(ChannelOption.SO_REUSEADDR, true)
@@ -248,7 +261,9 @@ fun sendFileObservable(
                                                 if (!msg.fileMd5.contentEquals(md5) || msg.start < 0 || msg.end < 0 || msg.start >= msg.end || msg.end > fileSize) {
                                                     Log.d(TAG_SEND, "Wrong file frame data: $msg")
                                                     ctx.channel().close()
-                                                    emitter.onError(Throwable("Wrong frame data: $msg"))
+                                                    if (!emitter.isDisposed) {
+                                                        error(Throwable("Wrong frame data: $msg"))
+                                                    }
                                                     return@execute
                                                 }
                                                 val start = msg.start
@@ -273,16 +288,21 @@ fun sendFileObservable(
                                                                 fileChannel.readSuspendSize(bioBuffer, thisTimeRead)
                                                             }
                                                             hasSendSize += thisTimeRead
+                                                            buffer.retain()
                                                             buffer.writeBytes(bioBuffer)
                                                             ctx.writeAndFlush(buffer).await()
+                                                            bioBuffer.clear()
+                                                            buffer.clear()
                                                             val progress = progressLong.addAndGet(thisTimeRead.toLong())
                                                             Log.d(TAG_SEND, "$fileInfoMsg; SendFile: $progress/$fileSize")
                                                             emitter.onNext(progress)
                                                             if (progress >= fileSize) {
-                                                                emitter.onComplete()
+                                                                complete()
                                                             }
-                                                            bioBuffer.clear()
-                                                            buffer.clear()
+                                                            if (hasSendSize >= frameSize) {
+                                                                ctx.channel().close()
+                                                                break
+                                                            }
                                                         }
                                                     }
 
@@ -292,7 +312,7 @@ fun sendFileObservable(
                                             } catch (e: Throwable) {
                                                 e.printStackTrace()
                                                 Log.e(TAG_SEND, "SendFileError", e)
-                                                ctx.channel().closeFuture()
+                                                ctx.channel().close()
                                                 progressLong.addAndGet(-hasSendSize)
                                             }
 
@@ -305,7 +325,7 @@ fun sendFileObservable(
                                 cause: Throwable?
                             ) {
                                 if (cause != null && !emitter.isDisposed) {
-                                    emitter.onError(cause)
+                                    error(cause)
                                 }
                             }
                         })
@@ -314,9 +334,13 @@ fun sendFileObservable(
             .bind(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT))
             .addListener {
                 if (!it.isSuccess && !emitter.isDisposed) {
-                    emitter.onError(it.cause())
+                    error(it.cause())
                 }
             }
+
+        emitter.setCancellable {
+            serverChannelFuture.channel().close().sync()
+        }
 
         ioExecutor.execute {
             // Wait close
@@ -326,10 +350,6 @@ fun sendFileObservable(
                 parentEventLoopGroup.shutdownGracefully()
                 childEventLoopGroup.shutdownGracefully()
             }
-        }
-
-        emitter.setCancellable {
-            serverChannelFuture.sync().cancel(true)
         }
 
     }

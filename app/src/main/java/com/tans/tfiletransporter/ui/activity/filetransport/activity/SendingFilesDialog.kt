@@ -43,28 +43,28 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
                                 binding.filePb.progress = 0
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
-                            startMultiConnectionsFileServer(
-                                    fileMd5 = f,
-                                    localAddress = localAddress,
-                                    pathConverter = pathConverter,
-                                    serverInstance = { server -> updateState { Optional.of(server) }.await() }) { hasSend, limit ->
-                                withContext(Dispatchers.Main) {
-                                    binding.filePb.progress = ((hasSend.toDouble() / limit.toDouble()) * 100.0).toInt()
-                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasSend), fileSizeString)
-                                }
-                            }
-//                            sendFileObservable(
-//                                fileMd5 = f,
-//                                localAddress = localAddress,
-//                                pathConverter = pathConverter)
-//                                .observeOn(AndroidSchedulers.mainThread())
-//                                .doOnNext {
-//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+//                            startMultiConnectionsFileServer(
+//                                    fileMd5 = f,
+//                                    localAddress = localAddress,
+//                                    pathConverter = pathConverter,
+//                                    serverInstance = { server -> updateState { Optional.of(server) }.await() }) { hasSend, limit ->
+//                                withContext(Dispatchers.Main) {
+//                                    binding.filePb.progress = ((hasSend.toDouble() / limit.toDouble()) * 100.0).toInt()
+//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasSend), fileSizeString)
 //                                }
-//                                .ignoreElements()
-//                                .toSingleDefault(Unit)
-//                                .await()
+//                            }
+                            sendFileObservable(
+                                fileMd5 = f,
+                                localAddress = localAddress,
+                                pathConverter = pathConverter)
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .doOnNext {
+                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+                                }
+                                .ignoreElements()
+                                .toSingleDefault(Unit)
+                                .await()
                         }
                     }
 
