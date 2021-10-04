@@ -62,10 +62,13 @@ fun downloadFileObservable(
 
         fun closeTasks() {
             val tasksLocal = tasks ?: emptyList()
+            if (progressLong.get() < fileSize) {
+                Files.delete(saveFile)
+            }
             for (task in tasksLocal) {
                 if (task.channel().isActive) {
                     task.channel().close().sync()
-                    task.cancel(false)
+                    task.cancel(true)
                 }
             }
         }
@@ -73,7 +76,6 @@ fun downloadFileObservable(
         fun error(t: Throwable) {
             closeTasks()
             childEventLoopGroup.shutdownGracefully()
-            Files.delete(saveFile)
             if (!emitter.isDisposed) {
                 Log.e(TAG_RECEIVE, "$fileInfoMsg; Download error", t)
                 emitter.onError(t)
@@ -102,7 +104,6 @@ fun downloadFileObservable(
                 .channel(NioSocketChannel::class.java)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
-                .option(ChannelOption.SO_RCVBUF, MULTI_CONNECTIONS_BUFFER_SIZE)
                 .handler(object : ChannelInitializer<NioSocketChannel>() {
                     override fun initChannel(ch: NioSocketChannel?) {
                         if (ch == null) {
@@ -205,7 +206,7 @@ fun downloadFileObservable(
             }
 
         emitter.setCancellable {
-            closeTasks()
+            error(Throwable("User Cancel"))
         }
 
     }
@@ -237,21 +238,25 @@ fun sendFileObservable(
 
         fun error(t: Throwable) {
             serverChannelFuture?.channel()?.close()?.sync()
-            emitter.onError(t)
+            serverChannelFuture?.cancel(true)
+            if (!emitter.isDisposed) {
+                emitter.onError(t)
+            }
         }
 
         fun complete() {
             serverChannelFuture?.channel()?.close()?.sync()
-            emitter.onComplete()
+            serverChannelFuture?.cancel(true)
+            if (!emitter.isDisposed) {
+                emitter.onComplete()
+            }
         }
 
         serverChannelFuture = ServerBootstrap()
             .group(parentEventLoopGroup, childEventLoopGroup)
             .channel(NioServerSocketChannel::class.java)
             .option(ChannelOption.SO_REUSEADDR, true)
-            .option(ChannelOption.SO_BACKLOG, MULTI_CONNECTIONS_MAX)
             .childOption(ChannelOption.SO_KEEPALIVE, true)
-            .childOption(ChannelOption.SO_RCVBUF, MULTI_CONNECTIONS_BUFFER_SIZE)
             .childHandler(object : ChannelInitializer<NioSocketChannel>() {
 
                 override fun initChannel(ch: NioSocketChannel?) {
@@ -352,7 +357,7 @@ fun sendFileObservable(
             }
 
         emitter.setCancellable {
-            serverChannelFuture.channel().close().sync()
+            error(Throwable("User cancel"))
         }
 
         ioExecutor.execute {
