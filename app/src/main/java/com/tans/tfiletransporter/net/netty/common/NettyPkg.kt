@@ -4,6 +4,7 @@ import androidx.annotation.Keep
 import com.tans.tfiletransporter.net.netty.common.handler.HeartbeatChecker
 import com.tans.tfiletransporter.net.netty.common.handler.PackageDecoder
 import com.tans.tfiletransporter.net.netty.common.handler.PackageEncoder
+import com.tans.tfiletransporter.net.netty.common.handler.PkgWriter
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelPipeline
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
@@ -32,7 +33,7 @@ sealed class NettyPkg {
     @Keep
     data class ServerFinishPkg(val msg: String) : NettyPkg()
     @Keep
-    data class BytesPkg(val bytes: ByteArray, val pkgIndex: UInt? = null) : NettyPkg() {
+    data class BytesPkg(val bytes: ByteArray, override val pkgIndex: UInt? = null) : NettyPkg(), PkgIndex {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false
@@ -49,11 +50,15 @@ sealed class NettyPkg {
         }
     }
     @Keep
-    data class JsonPkg(val json: String, val pkgIndex: UInt? = null) : NettyPkg()
+    data class JsonPkg(val json: String, override val pkgIndex: UInt? = null) : NettyPkg(), PkgIndex
     @Keep
-    data class TextPkg(val text: String, val pkgIndex: UInt? = null) : NettyPkg()
+    data class TextPkg(val text: String, override val pkgIndex: UInt? = null) : NettyPkg(), PkgIndex
     @Keep
-    data class ResponsePkg(val pkgIndex: UInt) : NettyPkg()
+    data class ResponsePkg(override val pkgIndex: UInt) : NettyPkg(), PkgIndex
+
+    interface PkgIndex {
+        val pkgIndex: UInt?
+    }
 }
 
 const val HANDLER_IDLE_STATE = "IDLE_STATE"
@@ -62,6 +67,7 @@ const val HANDLER_LENGTH_ENCODER = "LENGTH_ENCODER"
 const val HANDLER_PACKAGE_DECODER = "PACKAGE_DECODER"
 const val HANDLER_PACKAGE_ENCODER = "PACKAGE_ENCODER"
 const val HANDLER_HEARTBEAT_CHECKER = "HEARTBEAT_CHECKER"
+const val HANDLER_PKG_WRITER = "PKG_WRITER"
 
 fun ChannelPipeline.setDefaultHandler(timeoutSeconds: Int = 30): ChannelPipeline {
     return addLast(HANDLER_IDLE_STATE, IdleStateHandler(0, 0, timeoutSeconds))
@@ -70,6 +76,7 @@ fun ChannelPipeline.setDefaultHandler(timeoutSeconds: Int = 30): ChannelPipeline
         .addLast(HANDLER_PACKAGE_ENCODER, PackageEncoder())
         .addLast(HANDLER_PACKAGE_DECODER, PackageDecoder())
         .addLast(HANDLER_HEARTBEAT_CHECKER, HeartbeatChecker(timeoutSeconds / 2))
+        .addLast(HANDLER_PKG_WRITER, PkgWriter())
 }
 
 fun ByteBuf.readBytes(): ByteArray {
