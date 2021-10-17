@@ -10,6 +10,7 @@ import java.nio.channels.CompletionHandler
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+val ioExecutor = Dispatchers.IO.asExecutor()
 
 suspend fun openDatagramChannel(): DatagramChannel = blockToSuspend { DatagramChannel.open() }
 
