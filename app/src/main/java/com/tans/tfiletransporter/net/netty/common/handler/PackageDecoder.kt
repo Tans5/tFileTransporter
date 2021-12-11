@@ -1,11 +1,9 @@
 package com.tans.tfiletransporter.net.netty.common.handler
 
-import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.netty.common.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
-import io.netty.handler.timeout.IdleState
 
 class PackageDecoder : ByteToMessageDecoder() {
 
@@ -52,13 +50,6 @@ class PackageDecoder : ByteToMessageDecoder() {
             else -> {
                 out.add(read.resetReaderIndex())
             }
-        }
-    }
-
-    override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
-        super.userEventTriggered(ctx, evt)
-        if (evt == IdleState.ALL_IDLE) {
-            ctx.fireChannelRead(NettyPkg.TimeoutPkg)
         }
     }
 

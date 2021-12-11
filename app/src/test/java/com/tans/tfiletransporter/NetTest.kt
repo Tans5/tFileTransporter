@@ -15,6 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.handler.timeout.IdleState
 import org.junit.Test
 import java.net.InetSocketAddress
 
@@ -42,7 +43,7 @@ class NetTest {
                                             ioExecutor.execute {
                                                 for (i in 0 until 1000) {
                                                     ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is server."))
-                                                    Thread.sleep(1000)
+                                                    Thread.sleep(5000)
                                                 }
                                                 ctx.writePkg(NettyPkg.ClientFinishPkg("ClientFinish"))
                                             }
@@ -60,6 +61,17 @@ class NetTest {
                                             channel?.close()
                                         }
                                     }
+
+                                    override fun userEventTriggered(
+                                        ctx: ChannelHandlerContext?,
+                                        evt: Any?
+                                    ) {
+                                        super.userEventTriggered(ctx, evt)
+                                        if (evt == IdleState.ALL_IDLE) {
+                                            println("Timeout")
+                                        }
+                                    }
+
                                 })
                         }
                     })
@@ -91,7 +103,7 @@ class NetTest {
                                                 ioExecutor.execute {
                                                     for (i in 0 until 1000) {
                                                         ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is client."))
-                                                        Thread.sleep(1000)
+                                                        Thread.sleep(5000)
                                                     }
                                                     // ctx.writePkg(NettyPkg.ServerFinishPkg("Finish"))
                                                 }
@@ -110,6 +122,17 @@ class NetTest {
                                             ctx?.close()
                                         }
                                     }
+
+                                    override fun userEventTriggered(
+                                        ctx: ChannelHandlerContext?,
+                                        evt: Any?
+                                    ) {
+                                        super.userEventTriggered(ctx, evt)
+                                        if (evt == IdleState.ALL_IDLE) {
+                                            println("Timeout")
+                                        }
+                                    }
+
                                 })
                         }
                     })

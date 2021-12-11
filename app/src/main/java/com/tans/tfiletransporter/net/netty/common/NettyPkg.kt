@@ -29,8 +29,6 @@ sealed class NettyPkg {
     @Keep
     object HeartBeatPkg : NettyPkg()
     @Keep
-    object TimeoutPkg : NettyPkg()
-    @Keep
     data class ClientFinishPkg(val msg: String) : NettyPkg()
     @Keep
     data class ServerFinishPkg(val msg: String) : NettyPkg()
@@ -77,7 +75,7 @@ fun ChannelPipeline.setDefaultHandler(timeoutSeconds: Int = 30): ChannelPipeline
         .addLast(HANDLER_LENGTH_DECODER, LengthFieldBasedFrameDecoder(NETTY_MAX_PACKAGE_SIZE, 0, 4, 0, 4))
         .addLast(HANDLER_PACKAGE_ENCODER, PackageEncoder())
         .addLast(HANDLER_PACKAGE_DECODER, PackageDecoder())
-        .addLast(HANDLER_HEARTBEAT_CHECKER, HeartbeatChecker(timeoutSeconds / 2))
+        .addLast(HANDLER_HEARTBEAT_CHECKER, HeartbeatChecker((timeoutSeconds / 2).let { if (it <= 0) 1 else it }))
         .addLast(HANDLER_PKG_WRITER, PkgWriter())
 }
 
