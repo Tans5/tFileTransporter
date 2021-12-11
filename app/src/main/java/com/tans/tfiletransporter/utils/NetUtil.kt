@@ -132,6 +132,19 @@ fun Long.toBytes(): ByteArray = ByteArray(8) { index ->
     (this and ((0x00_00_00_00_00_00_00_FF).toLong() shl slide) ushr slide).toByte()
 }
 
+fun ByteArray.toLong(): Long {
+    var result = 0L
+    if (size != 8) {
+        error("Byte array size is not 8")
+    } else {
+        for ((index, b) in this.withIndex()) {
+            val shiftCount = (7 - index) * 8
+            result = (b.toLong() shl shiftCount) or result
+        }
+        return result
+    }
+}
+
 fun findLocalAddressV4(): List<InetAddress> {
     val interfaces = NetworkInterface.getNetworkInterfaces()
     val result = ArrayList<InetAddress>()

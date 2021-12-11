@@ -5,6 +5,8 @@ import com.tans.tfiletransporter.net.netty.common.handler.writePkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
 import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
 import com.tans.tfiletransporter.utils.ioExecutor
+import com.tans.tfiletransporter.utils.toBytes
+import com.tans.tfiletransporter.utils.toLong
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel

@@ -1,8 +1,6 @@
 package com.tans.tfiletransporter.net.netty.filetransfer
 
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
-import com.tans.tfiletransporter.net.filetransporter.MULTI_CONNECTIONS_MAX
-import com.tans.tfiletransporter.net.filetransporter.MULTI_CONNECTIONS_MIN_FRAME_SIZE
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkg
@@ -27,11 +25,11 @@ import kotlin.math.max
 private val ioExecutor = Dispatchers.IO.asExecutor()
 
 
-private const val MAX_CLIENT_CONNECTIONS: Int = 15
+const val MAX_CLIENT_CONNECTIONS: Int = 15
 // 10 MB
-private const val MIN_CLIENT_FRAME_SIZE: Long = 1024 * 1024 * 10L
+const val MIN_CLIENT_FRAME_SIZE: Long = 1024 * 1024 * 10L
 
-private typealias ConnectionCancelObserver = (notifyToServer: Boolean) -> Boolean
+typealias ConnectionCancelObserver = (notifyToRemote: Boolean) -> Boolean
 
 // Client
 fun downloadFileObservable(
@@ -167,7 +165,9 @@ fun downloadFileObservable(
                                                             randomWriteFile.use {
                                                                 val s = msg.bytes.size.toLong()
                                                                 it.write(msg.bytes)
-                                                                localDownloadSize.addAndGet(s)
+                                                                if (localDownloadSize.addAndGet(s) >= currentFrameSize) {
+                                                                    ch.close()
+                                                                }
                                                                 downloadProgress.addAndGet(s)
                                                                 emitterNextOrComplete()
                                                             }
