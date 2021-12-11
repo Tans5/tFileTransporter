@@ -4,6 +4,8 @@ import com.tans.tfiletransporter.net.netty.common.*
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
+import io.netty.handler.timeout.IdleState
+import io.netty.handler.timeout.IdleStateEvent
 
 class PackageDecoder : ByteToMessageDecoder() {
 
@@ -50,6 +52,13 @@ class PackageDecoder : ByteToMessageDecoder() {
             else -> {
                 out.add(read.resetReaderIndex())
             }
+        }
+    }
+
+    override fun userEventTriggered(ctx: ChannelHandlerContext?, evt: Any?) {
+        super.userEventTriggered(ctx, evt)
+        if (evt is IdleStateEvent && evt.state() == IdleState.ALL_IDLE) {
+            ctx?.fireChannelRead(NettyPkg.TimeoutPkg)
         }
     }
 

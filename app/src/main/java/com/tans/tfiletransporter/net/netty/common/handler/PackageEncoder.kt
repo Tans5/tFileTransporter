@@ -43,9 +43,12 @@ class PackageEncoder : MessageToByteEncoder<NettyPkg>() {
                 out.writeByte(RESPONSE_PKG.toInt())
                 out.writeBytes(msg.pkgIndex.toBytes())
             }
+            else -> {
+
+            }
         }
     }
 
-    fun UInt.toBytes(): ByteArray = toLong().toBytes().takeLast(4).toByteArray()
+    private fun UInt.toBytes(): ByteArray = toLong().toBytes().takeLast(4).toByteArray()
 
 }
