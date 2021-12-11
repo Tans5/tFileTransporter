@@ -35,7 +35,7 @@ class PackageEncoder : MessageToByteEncoder<NettyPkg>() {
                 out.writeBytes(msg.json.toByteArray(Charsets.UTF_8))
             }
             is NettyPkg.TextPkg -> {
-                out.writeByte(BYTES_PKG.toInt())
+                out.writeByte(TEXT_PKG.toInt())
                 out.writeBytes(msg.pkgIndex!!.toBytes())
                 out.writeBytes(msg.text.toByteArray(Charsets.UTF_8))
             }

@@ -21,11 +21,9 @@ class HeartbeatChecker(private val durationSeconds: Int) : ChannelInboundHandler
     }
 
     override fun userEventTriggered(ctx: ChannelHandlerContext, evt: Any) {
+        super.userEventTriggered(ctx, evt)
         if (evt == IdleState.ALL_IDLE) {
-            Log.e(TAG_NETTY, "", Throwable("Read or Write timeout and close channel."))
-            ctx.channel().close()
-        } else {
-            super.userEventTriggered(ctx, evt)
+            Log.e(TAG_NETTY, "", Throwable("Read or Write timeout"))
         }
     }
 }

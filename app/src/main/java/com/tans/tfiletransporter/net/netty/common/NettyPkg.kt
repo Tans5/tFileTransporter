@@ -29,6 +29,8 @@ sealed class NettyPkg {
     @Keep
     object HeartBeatPkg : NettyPkg()
     @Keep
+    object TimeoutPkg : NettyPkg()
+    @Keep
     data class ClientFinishPkg(val msg: String) : NettyPkg()
     @Keep
     data class ServerFinishPkg(val msg: String) : NettyPkg()
