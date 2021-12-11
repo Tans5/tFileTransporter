@@ -30,7 +30,7 @@ import kotlin.math.max
 const val MULTI_CONNECTIONS_BUFFER_SIZE: Int = 1024 * 512
 const val MULTI_CONNECTIONS_MAX: Int = 30
 // 10 MB
-const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10
+const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10L
 const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
 val fileTransporterPool = NetBufferPool(

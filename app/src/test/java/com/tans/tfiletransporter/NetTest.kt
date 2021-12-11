@@ -15,6 +15,8 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.reactivex.Observable
+import io.reactivex.schedulers.Schedulers
 import org.junit.Test
 import java.net.InetSocketAddress
 
@@ -100,33 +102,22 @@ class NetTest {
 //                                        }
 //                                    }
 //
-//                                    override fun channelRead(
-//                                        ctx: ChannelHandlerContext?,
-//                                        msg: Any?
-//                                    ) {
-//                                        if (msg != null) {
-//                                            println("Client: $msg")
-//                                        }
-//                                        if (msg is NettyPkg.ClientFinishPkg) {
-//                                            ctx?.close()
-//                                        }
-//                                    }
-//
-//                                })
-//                        }
-//                    })
-//
-//                val f = clientStrap.connect(InetSocketAddress(6666)).sync()
-//                f.channel().closeFuture().sync()
-//            } finally {
-//                rwGroup.shutdownGracefully()
-//            }
+//    fun createObservable(): Observable<String> = Observable.create { emitter ->
+//        emitter.setCancellable {
+//            println("Cancel")
 //        }
-//        ct.start()
-//
-//        ct.join()
-//        println("Client Finish")
-//        st.join()
-//        println("Server Finish")
+//        for (i in 0..10) {
+//            if (!emitter.isDisposed) {
+//                if (i == 5) {
+//                    emitter.onError(Throwable("TestError"))
+//                } else {
+//                    emitter.onNext(i.toString())
+//                }
+//            }
+//            Thread.sleep(1000)
+//        }
+//        if (!emitter.isDisposed) {
+//            emitter.onComplete()
+//        }
 //    }
 }
