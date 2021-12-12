@@ -120,7 +120,7 @@ fun downloadFileObservable(
                     val co: ConnectionCancelObserver = { notifyServer ->
                         if (c?.isActive == true) {
                             if (notifyServer) {
-                                c?.write(NettyPkg.ServerFinishPkg("Client cancel"))
+                                c?.writeAndFlush(NettyPkg.ServerFinishPkg("Client cancel"))?.sync()
                                 c?.close()
                                 true
                             } else {
