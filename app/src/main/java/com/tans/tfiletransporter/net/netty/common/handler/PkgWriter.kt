@@ -46,14 +46,14 @@ class PkgWriter : ChannelInboundHandlerAdapter() {
 }
 
 fun ChannelHandlerContext.writePkg(pkg: NettyPkg): UInt? {
-    val writer = (pipeline()[HANDLER_PKG_WRITER] as? PkgWriter) ?: error("Didn't find Pkg writer.")
+    val writer = pipeline().get(PkgWriter::class.java) ?: error("Didn't find Pkg writer.")
     return with(writer) {
         writePkg(pkg)
     }
 }
 
 fun ChannelHandlerContext.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
-    val writer = (pipeline()[HANDLER_PKG_WRITER] as? PkgWriter) ?: error("Didn't find Pkg writer.")
+    val writer = pipeline().get(PkgWriter::class.java) ?: error("Didn't find Pkg writer.")
     return with(writer) {
         writePkgBlockReply(pkg, timeoutMillis)
     }

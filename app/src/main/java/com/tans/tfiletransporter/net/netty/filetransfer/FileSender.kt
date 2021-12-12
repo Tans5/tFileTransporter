@@ -182,16 +182,23 @@ fun sendFileObservable(
                                                                             runBlocking {
                                                                                 fileChannel.readSuspendSize(byteBuffer, thisTimeRead)
                                                                             }
-                                                                            val byteArray = byteBuffer.copyAvailableBytes()
-                                                                            ctx.writePkgBlockReply(NettyPkg.BytesPkg(byteArray))
-                                                                            hasSendSize += thisTimeRead
-                                                                            sendProgress.addAndGet(thisTimeRead.toLong())
-                                                                            emitterNextOrComplete()
-                                                                            if (hasSendSize >= localFrameSize) {
+                                                                            if (ch.isActive) {
+                                                                                val byteArray = byteBuffer.copyAvailableBytes()
+                                                                                ctx.writePkgBlockReply(NettyPkg.BytesPkg(byteArray))
+                                                                                hasSendSize += thisTimeRead
+                                                                                sendProgress.addAndGet(thisTimeRead.toLong())
+                                                                                emitterNextOrComplete()
+                                                                                if (hasSendSize >= localFrameSize) {
+                                                                                    break
+                                                                                }
+                                                                            } else {
+                                                                                tryCancelConnection(true)
                                                                                 break
                                                                             }
                                                                         }
-                                                                        ctx.close()
+                                                                        if (ch.isActive) {
+                                                                            ctx.close()
+                                                                        }
                                                                     }
 
                                                                 }
