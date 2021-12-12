@@ -155,12 +155,15 @@ fun sendFileObservable(
                                                             }
                                                             connectionCancelObserver.add(co)
                                                             try {
-                                                                val readMd5 = bytes.take(16).toByteArray()
-                                                                val rangeBytes = bytes.takeLast(16)
-                                                                val start = rangeBytes.take(8).toByteArray().toLong()
-                                                                val end = rangeBytes.takeLast(8).toByteArray().toLong()
+                                                                val readMd5 = ByteArray(16)
+                                                                System.arraycopy(bytes, 0, readMd5, 0, 16)
+                                                                val startBytes = ByteArray(8)
+                                                                System.arraycopy(bytes, 16, startBytes, 0, 8)
+                                                                val endBytes = ByteArray(8)
+                                                                System.arraycopy(bytes, 24, endBytes, 0, 8)
+                                                                val start = startBytes.toLong()
+                                                                val end = endBytes.toLong()
                                                                 val localFrameSize = end - start
-
                                                                 if (!readMd5.contentEquals(md5) || start < 0 || end < 0 || start >= end|| end > fileSize) {
                                                                     tryCancelConnection(true)
                                                                 } else {
