@@ -5,8 +5,6 @@ import com.tans.tfiletransporter.net.netty.common.handler.writePkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
 import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
 import com.tans.tfiletransporter.utils.ioExecutor
-import com.tans.tfiletransporter.utils.toBytes
-import com.tans.tfiletransporter.utils.toLong
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
@@ -17,8 +15,6 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import org.junit.Test
 import java.net.InetSocketAddress
 
@@ -42,15 +38,15 @@ class NetTest {
 //                                ?.setDefaultHandler()
 //                                ?.addLast(object : ChannelDuplexHandler() {
 //                                    override fun channelActive(ctx: ChannelHandlerContext?) {
-//                                        if (ctx != null) {
-//                                            ioExecutor.execute {
-//                                                for (i in 0 until 1000) {
-//                                                    ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is server."))
-//                                                    Thread.sleep(5000)
-//                                                }
-//                                                ctx.writePkg(NettyPkg.ClientFinishPkg("ClientFinish"))
-//                                            }
-//                                        }
+////                                        if (ctx != null) {
+////                                            ioExecutor.execute {
+////                                                for (i in 0 until 1000) {
+////                                                    ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is server."))
+////                                                    Thread.sleep(5000)
+////                                                }
+////                                                ctx.writePkg(NettyPkg.ClientFinishPkg("ClientFinish"))
+////                                            }
+////                                        }
 //                                    }
 //
 //                                    override fun channelRead(
@@ -59,6 +55,11 @@ class NetTest {
 //                                    ) {
 //                                        if (msg != null) {
 //                                            println("Server: $msg")
+//                                        }
+//                                        if (msg is NettyPkg.TextPkg) {
+//                                            ioExecutor.execute {
+//                                                ctx?.writePkgBlockReply(NettyPkg.BytesPkg("Hello, here is server.".toByteArray()))
+//                                            }
 //                                        }
 //                                        if (msg is NettyPkg.ServerFinishPkg) {
 //                                            channel?.close()
@@ -93,33 +94,42 @@ class NetTest {
 //                                        if (ctx != null) {
 //                                            println("Client connect success.")
 //                                            ioExecutor.execute {
-//                                                ioExecutor.execute {
-//                                                    for (i in 0 until 1000) {
-//                                                        ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is client."))
-//                                                        Thread.sleep(5000)
-//                                                    }
-//                                                    // ctx.writePkg(NettyPkg.ServerFinishPkg("Finish"))
+//                                                for (i in 0 until 1000) {
+//                                                    ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is client."))
+//                                                    Thread.sleep(5000)
 //                                                }
+//                                                // ctx.writePkg(NettyPkg.ServerFinishPkg("Finish"))
 //                                            }
 //                                        }
 //                                    }
 //
-//    fun createObservable(): Observable<String> = Observable.create { emitter ->
-//        emitter.setCancellable {
-//            println("Cancel")
-//        }
-//        for (i in 0..10) {
-//            if (!emitter.isDisposed) {
-//                if (i == 5) {
-//                    emitter.onError(Throwable("TestError"))
-//                } else {
-//                    emitter.onNext(i.toString())
-//                }
+//                                    override fun channelRead(
+//                                        ctx: ChannelHandlerContext?,
+//                                        msg: Any?
+//                                    ) {
+//                                        if (msg != null) {
+//                                            println("Client: $msg")
+//                                        }
+//                                        if (msg is NettyPkg.ClientFinishPkg) {
+//                                            ctx?.close()
+//                                        }
+//                                    }
+//
+//                                })
+//                        }
+//                    })
+//
+//                val f = clientStrap.connect(InetSocketAddress(6666)).sync()
+//                f.channel().closeFuture().sync()
+//            } finally {
+//                rwGroup.shutdownGracefully()
 //            }
-//            Thread.sleep(1000)
 //        }
-//        if (!emitter.isDisposed) {
-//            emitter.onComplete()
-//        }
+//        ct.start()
+//
+//        ct.join()
+//        println("Client Finish")
+//        st.join()
+//        println("Server Finish")
 //    }
 }
