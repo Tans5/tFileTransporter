@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 private val ioExecutor = Dispatchers.IO.asExecutor()
 
-// 4KB
-private const val WRITE_BUFFER_SIZE = 1024 * 4
+// 512KB
+private const val WRITE_BUFFER_SIZE = 1024 * 256
 
 typealias PathConverter = (file: File) -> Path
 val defaultPathConverter: PathConverter = { file ->
