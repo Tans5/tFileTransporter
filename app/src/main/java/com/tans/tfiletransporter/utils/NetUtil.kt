@@ -139,7 +139,8 @@ fun ByteArray.toLong(): Long {
     } else {
         for ((index, b) in this.withIndex()) {
             val shiftCount = (7 - index) * 8
-            result = (b.toLong() shl shiftCount) or result
+            val a = b.toUByte().toULong().toLong()
+            result = (a shl shiftCount) or result
         }
         return result
     }
