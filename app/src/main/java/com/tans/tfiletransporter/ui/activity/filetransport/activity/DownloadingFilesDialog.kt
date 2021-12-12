@@ -8,8 +8,8 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
-import com.tans.tfiletransporter.net.filetransporter.downloadFileObservable
 import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.netty.filetransfer.downloadFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tfiletransporter.utils.getSizeString

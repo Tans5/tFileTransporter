@@ -5,8 +5,11 @@ import android.app.Dialog
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.filetransporter.*
+import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileServer
+import com.tans.tfiletransporter.net.filetransporter.defaultPathConverter
 import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.netty.filetransfer.PathConverter
+import com.tans.tfiletransporter.net.netty.filetransfer.sendFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
 import io.reactivex.Single
