@@ -29,6 +29,11 @@ private inline fun <reified T> T.toBaseJsonString(): String {
     val content = moshi.adapter(T::class.java).toJson(this)
     val type = when (T::class.java) {
         FileExploreHandshakeModel::class.java -> FILE_MODEL_TYPE_HANDSHAKE
+        RequestFolderModel::class.java -> FILE_MODEL_TYPE_REQUEST_FOLDER
+        ShareFolderModel::class.java -> FILE_MODEL_TYPE_SHARE_FOLDER
+        RequestFilesModel::class.java -> FILE_MODEL_TYPE_REQUEST_FILES
+        ShareFilesModel::class.java -> FILE_MODEL_TYPE_SHARE_FILES
+        MessageModel::class.java -> FILE_MODEL_TYPE_MESSAGE
         else -> 0
     }
     val model = FileExploreBaseModel(
@@ -44,6 +49,21 @@ private fun String.toFileContentModel(): FileExploreContentModel? {
         when (baseModel.type) {
             FILE_MODEL_TYPE_HANDSHAKE -> {
                 moshi.adapter(FileExploreHandshakeModel::class.java).fromJson(baseModel.content)
+            }
+            FILE_MODEL_TYPE_REQUEST_FOLDER -> {
+                moshi.adapter(RequestFolderModel::class.java).fromJson(baseModel.content)
+            }
+            FILE_MODEL_TYPE_SHARE_FOLDER-> {
+                moshi.adapter(ShareFolderModel::class.java).fromJson(baseModel.content)
+            }
+            FILE_MODEL_TYPE_REQUEST_FILES -> {
+                moshi.adapter(RequestFilesModel::class.java).fromJson(baseModel.content)
+            }
+            FILE_MODEL_TYPE_SHARE_FILES -> {
+                moshi.adapter(ShareFolderModel::class.java).fromJson(baseModel.content)
+            }
+            FILE_MODEL_TYPE_MESSAGE -> {
+                moshi.adapter(MessageModel::class.java).fromJson(baseModel.content)
             }
             else -> null
         }
@@ -62,6 +82,17 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
             }
             clientChannel?.close()
             serverChannel?.close()
+        },
+        sendFileExploreContent = { content, wait ->
+            val channel = clientChannel
+            if (channel?.isActive == true) {
+                val msg = NettyPkg.JsonPkg(json = content.toBaseJsonString())
+                if (wait) {
+                    channel.writePkgBlockReply(msg)
+                } else {
+                    channel.writePkg(msg)
+                }
+            }
         }
     )
     ioExecutor.execute {
@@ -97,6 +128,11 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                                                         is FileExploreHandshakeModel -> {
                                                             connection.connectionActive(model)
                                                             clientChannel = ctx.channel()
+                                                        }
+                                                        else -> {
+                                                            if (model != null) {
+                                                                connection.newRemoteFileExploreContent(model)
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -142,6 +178,17 @@ fun connectionFileExploreServer(remoteAddress: InetAddress): FileExploreConnecti
                 channel?.writePkg(NettyPkg.ServerFinishPkg("Close"))
             }
             channel?.close()
+        },
+        sendFileExploreContent = { content, wait ->
+            val channelLocal = channel
+            if (channelLocal?.isActive == true) {
+                val msg = NettyPkg.JsonPkg(json = content.toBaseJsonString())
+                if (wait) {
+                    channelLocal.writePkgBlockReply(msg)
+                } else {
+                    channelLocal.writePkg(msg)
+                }
+            }
         }
     )
     ioExecutor.execute {
@@ -168,6 +215,11 @@ fun connectionFileExploreServer(remoteAddress: InetAddress): FileExploreConnecti
                                                         )
                                                         ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toBaseJsonString()))
                                                         connection.connectionActive(model)
+                                                    }
+                                                    else -> {
+                                                        if (model != null) {
+                                                            connection.newRemoteFileExploreContent(model)
+                                                        }
                                                     }
                                                 }
                                             }
