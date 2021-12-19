@@ -1,8 +1,8 @@
 package com.tans.tfiletransporter.net.netty.common.handler
 
 import android.annotation.SuppressLint
-import com.tans.tfiletransporter.net.netty.common.HANDLER_PKG_WRITER
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
+import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.reactivex.subjects.PublishSubject
@@ -26,7 +26,7 @@ class PkgWriter : ChannelInboundHandlerAdapter() {
         indexReplySubject.onComplete()
     }
 
-    fun ChannelHandlerContext.writePkg(pkg: NettyPkg): UInt? {
+    fun Channel.writePkgWriter(pkg: NettyPkg): UInt? {
         val fixedPkg = when (pkg) {
             is NettyPkg.BytesPkg -> pkg.copy(pkgIndex = writePackageIndex.getAndIncrement().toUInt())
             is NettyPkg.JsonPkg -> pkg.copy(pkgIndex = writePackageIndex.getAndIncrement().toUInt())
@@ -38,23 +38,23 @@ class PkgWriter : ChannelInboundHandlerAdapter() {
     }
 
     @SuppressLint("CheckResult")
-    fun ChannelHandlerContext.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
-        val index = writePkg(pkg) ?: error("$pkg not support block reply")
+    fun Channel.writePkgBlockReplyWriter(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
+        val index = writePkgWriter(pkg) ?: error("$pkg not support block reply")
         indexReplySubject.first(index).timeout(timeoutMillis, TimeUnit.MILLISECONDS).blockingGet()
         return index
     }
 }
 
-fun ChannelHandlerContext.writePkg(pkg: NettyPkg): UInt? {
+fun Channel.writePkg(pkg: NettyPkg): UInt? {
     val writer = pipeline().get(PkgWriter::class.java) ?: error("Didn't find Pkg writer.")
     return with(writer) {
-        writePkg(pkg)
+        writePkgWriter(pkg)
     }
 }
 
-fun ChannelHandlerContext.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
+fun Channel.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
     val writer = pipeline().get(PkgWriter::class.java) ?: error("Didn't find Pkg writer.")
     return with(writer) {
-        writePkgBlockReply(pkg, timeoutMillis)
+        writePkgBlockReplyWriter(pkg, timeoutMillis)
     }
 }

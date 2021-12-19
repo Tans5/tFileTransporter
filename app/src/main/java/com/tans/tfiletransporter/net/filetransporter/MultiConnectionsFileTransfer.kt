@@ -8,6 +8,7 @@ import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_POR
 import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.netty.filetransfer.fileTransporterPool
 import com.tans.tfiletransporter.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -33,10 +34,6 @@ const val MULTI_CONNECTIONS_MAX: Int = 30
 const val MULTI_CONNECTIONS_MIN_FRAME_SIZE: Long = 1024 * 1024 * 10L
 const val MULTI_CONNECTIONS_MAX_SERVER_ERROR_TIMES = 5
 
-val fileTransporterPool = NetBufferPool(
-        poolSize = MULTI_CONNECTIONS_MAX * 2,
-        bufferSize = MULTI_CONNECTIONS_BUFFER_SIZE
-)
 
 @Throws(IOException::class)
 suspend fun startMultiConnectionsFileServer(

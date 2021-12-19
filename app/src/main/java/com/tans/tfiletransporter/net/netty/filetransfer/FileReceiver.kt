@@ -120,7 +120,7 @@ fun downloadFileObservable(
                     val co: ConnectionCancelObserver = { notifyServer ->
                         if (c?.isActive == true) {
                             if (notifyServer) {
-                                c?.writeAndFlush(NettyPkg.ServerFinishPkg("Client cancel"))?.sync()
+                                c?.writePkg(NettyPkg.ServerFinishPkg("Client cancel"))
                                 c?.close()
                                 true
                             } else {
@@ -146,7 +146,7 @@ fun downloadFileObservable(
                                                 if (ctx != null) {
                                                     ioExecutor.execute {
                                                         val bytes = fileMd5ByteArray + start.toBytes() + end.toBytes()
-                                                        ctx.writePkg(NettyPkg.BytesPkg(bytes))
+                                                        ctx.channel().writePkg(NettyPkg.BytesPkg(bytes))
                                                     }
                                                 }
                                             }

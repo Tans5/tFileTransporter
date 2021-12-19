@@ -2,9 +2,11 @@ package com.tans.tfiletransporter.net.netty.filetransfer
 
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
+import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.File
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
+import com.tans.tfiletransporter.net.netty.common.handler.writePkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
 import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
 import com.tans.tfiletransporter.utils.copyAvailableBytes
@@ -22,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -31,10 +32,17 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 
-private val ioExecutor = Dispatchers.IO.asExecutor()
 
 // 512KB
 private const val WRITE_BUFFER_SIZE = 1024 * 256
+private const val BUFFER_SIZE = 40
+
+val fileTransporterPool = NetBufferPool(
+    poolSize = BUFFER_SIZE,
+    bufferSize = WRITE_BUFFER_SIZE
+)
+
+private val ioExecutor = Dispatchers.IO.asExecutor()
 
 typealias PathConverter = (file: File) -> Path
 val defaultPathConverter: PathConverter = { file ->
@@ -142,7 +150,7 @@ fun sendFileObservable(
                                                             val co: ConnectionCancelObserver = { notifyToClient ->
                                                                 if (ch.isActive) {
                                                                     if (notifyToClient) {
-                                                                        ch.writeAndFlush(NettyPkg.ClientFinishPkg("Server cancel")).sync()
+                                                                        ch.writePkg(NettyPkg.ClientFinishPkg("Server cancel"))
                                                                         ch.close()
                                                                         true
                                                                     } else {
@@ -173,31 +181,35 @@ fun sendFileObservable(
                                                                     }
 
                                                                     fileChannel.use {
-                                                                        val byteBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE)
+                                                                        val byteBuffer = fileTransporterPool.requestBufferBlock()
                                                                         val bufferSize = WRITE_BUFFER_SIZE
                                                                         var hasSendSize = 0L
-                                                                        while (true) {
-                                                                            val thisTimeRead = if (bufferSize + hasSendSize >= localFrameSize) {
-                                                                                (localFrameSize - hasSendSize).toInt()
-                                                                            } else {
-                                                                                bufferSize
-                                                                            }
-                                                                            runBlocking {
-                                                                                fileChannel.readSuspendSize(byteBuffer, thisTimeRead)
-                                                                            }
-                                                                            if (ch.isActive) {
-                                                                                val byteArray = byteBuffer.copyAvailableBytes()
-                                                                                ctx.writePkgBlockReply(NettyPkg.BytesPkg(byteArray))
-                                                                                hasSendSize += thisTimeRead
-                                                                                sendProgress.addAndGet(thisTimeRead.toLong())
-                                                                                emitterNextOrComplete()
-                                                                                if (hasSendSize >= localFrameSize) {
+                                                                        try {
+                                                                            while (true) {
+                                                                                val thisTimeRead = if (bufferSize + hasSendSize >= localFrameSize) {
+                                                                                    (localFrameSize - hasSendSize).toInt()
+                                                                                } else {
+                                                                                    bufferSize
+                                                                                }
+                                                                                runBlocking {
+                                                                                    fileChannel.readSuspendSize(byteBuffer, thisTimeRead)
+                                                                                }
+                                                                                if (ch.isActive) {
+                                                                                    val byteArray = byteBuffer.copyAvailableBytes()
+                                                                                    ctx.channel().writePkgBlockReply(NettyPkg.BytesPkg(byteArray))
+                                                                                    hasSendSize += thisTimeRead
+                                                                                    sendProgress.addAndGet(thisTimeRead.toLong())
+                                                                                    emitterNextOrComplete()
+                                                                                    if (hasSendSize >= localFrameSize) {
+                                                                                        break
+                                                                                    }
+                                                                                } else {
+                                                                                    tryCancelConnection(true)
                                                                                     break
                                                                                 }
-                                                                            } else {
-                                                                                tryCancelConnection(true)
-                                                                                break
                                                                             }
+                                                                        } finally {
+                                                                            fileTransporterPool.recycleBufferBlock(byteBuffer)
                                                                         }
                                                                         if (ch.isActive) {
                                                                             ctx.close()
