@@ -19,10 +19,13 @@ import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.file.FileConstants.homePath
 import com.tans.tfiletransporter.file.FileConstants.homePathString
+import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.model.ShareFilesModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
+import com.tans.tfiletransporter.utils.getFilePathMd5
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
@@ -71,7 +74,7 @@ fun List<DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<DirectoryFileL
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
-    private val fileTransportScopeData: FileTransportScopeData by instance()
+    private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
@@ -201,7 +204,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 .build()
         )
 
-        fileTransportScopeData.floatBtnEvent
+        scopeData.floatBtnEvent
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
@@ -210,9 +213,26 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             .filter { it.first == DirTabType.MyDir && it.second.isNotEmpty() }
             .flatMapSingle { (_, selectedFiles) ->
                 rxSingle {
-                    fileTransportScopeData.fileTransporter.writerHandleChannel.send(requireActivity().newFilesShareWriterHandle(
-                        selectedFiles.map { it.toFile() }
-                    ))
+                    val fileConnection = scopeData.fileExploreConnection
+                    val md5Files = selectedFiles.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+                        homePathString, it.path).getFilePathMd5(), file = it.toFile()) }
+                    fileConnection.sendFileExploreContentToRemote(
+                        fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+                        waitReplay = true
+                    )
+                    withContext(Dispatchers.Main) {
+                        val result = kotlin.runCatching {
+                            requireActivity().startSendingFiles(
+                                files = md5Files,
+                                localAddress = scopeData.localAddress,
+                                pathConverter = { file -> Paths.get(file.path) }
+                            ).await()
+                        }
+                        if (result.isFailure) {
+                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+                        }
+                    }
+
                 }.flatMap {
                     updateState { state -> state.copy(selectedFiles = emptySet()) }
                 }

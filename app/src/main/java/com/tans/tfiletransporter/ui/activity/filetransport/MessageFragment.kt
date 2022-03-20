@@ -7,10 +7,10 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
 import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
+import com.tans.tfiletransporter.net.model.MessageModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newSendMessageShareWriterHandle
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
@@ -53,8 +53,8 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportS
                 rxSingle {
                     // val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
                     withContext(Dispatchers.IO) {
-                        fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(
-                            newSendMessageShareWriterHandle(sendingMessage)
+                        fileTransportScopeData.fileExploreConnection.sendFileExploreContentToRemote(
+                            MessageModel(message = sendingMessage)
                         )
                     }
 

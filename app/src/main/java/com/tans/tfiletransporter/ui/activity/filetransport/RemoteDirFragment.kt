@@ -16,11 +16,15 @@ import com.tans.tfiletransporter.databinding.FileItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
 import com.tans.tfiletransporter.file.*
+import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.model.RequestFilesModel
+import com.tans.tfiletransporter.net.model.RequestFolderModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
+import com.tans.tfiletransporter.utils.getFilePathMd5
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
@@ -31,6 +35,7 @@ import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
+import java.nio.file.Paths
 import java.util.*
 
 data class RemoteDirState(
@@ -41,7 +46,7 @@ data class RemoteDirState(
 
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
 
-    private val fileTransportScopeData: FileTransportScopeData by instance()
+    private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
@@ -49,7 +54,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
     override fun initViews(binding: RemoteDirFragmentBinding) {
 
         updateState {
-            RemoteDirState(Optional.of(newRootFileTree(path = fileTransportScopeData.remoteDirSeparator)), emptySet())
+            RemoteDirState(Optional.of(newRootFileTree(path = scopeData.handshakeModel.pathSeparator)), emptySet())
         }.bindLife()
 
         bindState()
@@ -61,10 +66,12 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
             .flatMapSingle { oldTree ->
                 if (!oldTree.notNeedRefresh) {
                     rxSingle {
-                        fileTransportScopeData.fileTransporter.writerHandleChannel.send(
-                            newRequestFolderChildrenShareWriterHandle(oldTree.path)
+                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
+                            RequestFolderModel(
+                                requestPath = oldTree.path
+                            )
                         )
-                        fileTransportScopeData.remoteFolderModelEvent.firstOrError()
+                        scopeData.remoteFolderModelEvent.firstOrError()
                             .flatMap { remoteFolder ->
                                 if (remoteFolder.path == oldTree.path) {
                                     updateState { oldState ->
@@ -89,7 +96,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                                             fileTree = Optional.of(
                                                     children.refreshFileTree(
                                                             parentTree = oldTree,
-                                                            dirSeparator = fileTransportScopeData.remoteDirSeparator
+                                                            dirSeparator = scopeData.handshakeModel.pathSeparator
                                                     )
                                             ), selectedFiles = emptySet()
                                         )
@@ -186,7 +193,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 .build()
         )
 
-        fileTransportScopeData.floatBtnEvent
+        scopeData.floatBtnEvent
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
@@ -200,8 +207,17 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                     val dialog =
                         withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
                     withContext(Dispatchers.IO) {
-                        fileTransportScopeData.fileTransporter.startWriterHandleWhenFinish(
-                            newRequestFilesShareWriterHandle(it.map { it.toFile() })
+                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
+                            fileExploreContent = RequestFilesModel(
+                                requestFiles = it.map {
+                                    FileMd5(
+                                        md5 = Paths.get(
+                                            FileConstants.homePathString, it.path
+                                        ).getFilePathMd5(), file = it.toFile()
+                                    )
+                                }
+                            ),
+                            waitReplay = true
                         )
                     }
                     updateState {

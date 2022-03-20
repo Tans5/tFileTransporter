@@ -1,12 +1,9 @@
 package com.tans.tfiletransporter.net.netty.common.handler
 
-import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
-import com.tans.tfiletransporter.net.netty.common.TAG_NETTY
 import com.tans.tfiletransporter.utils.ioExecutor
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.handler.timeout.IdleState
 
 class HeartbeatChecker(private val durationSeconds: Int) : ChannelInboundHandlerAdapter() {
 

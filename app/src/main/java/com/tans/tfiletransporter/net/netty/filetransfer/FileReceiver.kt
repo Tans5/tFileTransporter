@@ -175,6 +175,9 @@ fun downloadFileObservable(
                                                         NettyPkg.TimeoutPkg, is NettyPkg.ClientFinishPkg -> {
                                                             tryChancelConnection(false)
                                                         }
+                                                        else -> {
+
+                                                        }
                                                     }
                                                 }
                                             }

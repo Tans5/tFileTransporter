@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.annotation.SuppressLint
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
+import android.util.Log
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
@@ -11,19 +12,22 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
+import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.model.ShareFilesModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.DirTabType
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
+import com.tans.tfiletransporter.utils.getFilePathMd5
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import org.threeten.bp.OffsetDateTime
 import java.nio.file.Files
@@ -132,13 +136,26 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
                                 lastModify = OffsetDateTime.now()
                             )
                         }
-                    if (selectedApps.isNotEmpty()) {
-                        scopeData.fileTransporter.startWriterHandleWhenFinish(
-                            requireActivity().newFilesShareWriterHandle(
-                                files = files,
-                                pathConverter = { file -> Paths.get(file.path) }
-                            )
+                    if (files.isNotEmpty()) {
+                        val fileConnection = scopeData.fileExploreConnection
+                        val md5Files = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+                            FileConstants.homePathString, it.path).getFilePathMd5(), it) }
+                        fileConnection.sendFileExploreContentToRemote(
+                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+                            waitReplay = true
                         )
+                        withContext(Dispatchers.Main) {
+                            val result = kotlin.runCatching {
+                                requireActivity().startSendingFiles(
+                                    files = md5Files,
+                                    localAddress = scopeData.localAddress,
+                                    pathConverter = { file -> Paths.get(file.path) }
+                                ).await()
+                            }
+                            if (result.isFailure) {
+                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+                            }
+                        }
                         updateState { it.copy(selected = emptySet()) }.await()
                     }
                 }.onErrorResumeNext {

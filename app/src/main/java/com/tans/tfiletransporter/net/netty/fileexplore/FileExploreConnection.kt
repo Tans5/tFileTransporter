@@ -44,7 +44,7 @@ class FileExploreConnection(
         remoteFileExploreContentSubject.onNext(fileExploreContent)
     }
 
-    fun sendFileExploreContentToRemote(fileExploreContent: FileExploreContentModel, waitReplay: Boolean = true) {
+    fun sendFileExploreContentToRemote(fileExploreContent: FileExploreContentModel, waitReplay: Boolean = false) {
         sendFileExploreContent(fileExploreContent, waitReplay)
     }
 

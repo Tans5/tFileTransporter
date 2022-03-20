@@ -11,7 +11,8 @@ sealed class FileExploreContentModel
 @JsonClass(generateAdapter = true)
 data class FileExploreHandshakeModel(
     @Json(name = "version") val version: Int,
-    @Json(name = "path_separator") val pathSeparator: String
+    @Json(name = "path_separator") val pathSeparator: String,
+    @Json(name = "device_name") val deviceName: String
 ) : FileExploreContentModel()
 
 @Keep

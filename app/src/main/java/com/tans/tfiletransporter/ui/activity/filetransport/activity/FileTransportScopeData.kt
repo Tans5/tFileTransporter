@@ -1,14 +1,18 @@
 package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
-import com.tans.tfiletransporter.net.filetransporter.FileTransporter
+import com.tans.tfiletransporter.net.model.FileExploreHandshakeModel
 import com.tans.tfiletransporter.net.model.ResponseFolderModel
+import com.tans.tfiletransporter.net.netty.fileexplore.FileExploreConnection
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
+import java.net.InetAddress
 
 class FileTransportScopeData(
-    val remoteDirSeparator: String,
-    val fileTransporter: FileTransporter
+    val handshakeModel: FileExploreHandshakeModel,
+    val fileExploreConnection: FileExploreConnection,
+    val localAddress: InetAddress,
+    val remoteAddress: InetAddress
 ) {
 
     // Floating Action Button in Activity clicks event, Activity To Event

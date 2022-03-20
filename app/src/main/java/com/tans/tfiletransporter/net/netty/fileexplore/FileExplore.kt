@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.net.netty.fileexplore
 
+import android.os.Build
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.FILE_TRANSPORT_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.*
@@ -25,7 +26,7 @@ private val ioExecutor = Dispatchers.IO.asExecutor()
 
 private const val FILE_EXPLORE_VERSION = 2
 
-private inline fun <reified T> T.toBaseJsonString(): String {
+private inline fun <reified T> T.toFileExploreBaseJsonString(): String {
     val content = moshi.adapter(T::class.java).toJson(this)
     val type = when (T::class.java) {
         FileExploreHandshakeModel::class.java -> FILE_MODEL_TYPE_HANDSHAKE
@@ -43,27 +44,35 @@ private inline fun <reified T> T.toBaseJsonString(): String {
     return moshi.adapter(FileExploreBaseModel::class.java).toJson(model)
 }
 
+inline fun <reified T> String.fromJson(): T? {
+    return moshi.adapter(T::class.java).fromJson(this)
+}
+
+inline fun <reified T> T.toJson(): String? {
+    return moshi.adapter(T::class.java).toJson(this)
+}
+
 private fun String.toFileContentModel(): FileExploreContentModel? {
     val baseModel = moshi.adapter(FileExploreBaseModel::class.java).fromJson(this)
     return if (baseModel != null) {
         when (baseModel.type) {
             FILE_MODEL_TYPE_HANDSHAKE -> {
-                moshi.adapter(FileExploreHandshakeModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<FileExploreHandshakeModel>()
             }
             FILE_MODEL_TYPE_REQUEST_FOLDER -> {
-                moshi.adapter(RequestFolderModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<RequestFolderModel>()
             }
             FILE_MODEL_TYPE_SHARE_FOLDER-> {
-                moshi.adapter(ShareFolderModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<ShareFolderModel>()
             }
             FILE_MODEL_TYPE_REQUEST_FILES -> {
-                moshi.adapter(RequestFilesModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<RequestFilesModel>()
             }
             FILE_MODEL_TYPE_SHARE_FILES -> {
-                moshi.adapter(ShareFolderModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<ShareFilesModel>()
             }
             FILE_MODEL_TYPE_MESSAGE -> {
-                moshi.adapter(MessageModel::class.java).fromJson(baseModel.content)
+                baseModel.content.fromJson<MessageModel>()
             }
             else -> null
         }
@@ -86,7 +95,7 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
         sendFileExploreContent = { content, wait ->
             val channel = clientChannel
             if (channel?.isActive == true) {
-                val msg = NettyPkg.JsonPkg(json = content.toBaseJsonString())
+                val msg = NettyPkg.JsonPkg(json = content.toFileExploreBaseJsonString())
                 if (wait) {
                     channel.writePkgBlockReply(msg)
                 } else {
@@ -114,9 +123,10 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                                         super.channelActive(ctx)
                                         val handshakeModel = FileExploreHandshakeModel(
                                             version = FILE_EXPLORE_VERSION,
-                                            pathSeparator = File.separator
+                                            pathSeparator = File.separator,
+                                            deviceName = "${Build.BRAND} ${Build.MODEL}"
                                         )
-                                        ctx?.channel()?.writePkg(NettyPkg.JsonPkg(json = handshakeModel.toBaseJsonString()))
+                                        ctx?.channel()?.writePkg(NettyPkg.JsonPkg(json = handshakeModel.toFileExploreBaseJsonString()))
                                     }
 
                                     override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
@@ -170,7 +180,7 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
     return connection
 }
 
-fun connectionFileExploreServer(remoteAddress: InetAddress): FileExploreConnection {
+fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnection {
     var channel: Channel? = null
     val connection = FileExploreConnection(
         closeConnection = { notifyRemote ->
@@ -182,7 +192,7 @@ fun connectionFileExploreServer(remoteAddress: InetAddress): FileExploreConnecti
         sendFileExploreContent = { content, wait ->
             val channelLocal = channel
             if (channelLocal?.isActive == true) {
-                val msg = NettyPkg.JsonPkg(json = content.toBaseJsonString())
+                val msg = NettyPkg.JsonPkg(json = content.toFileExploreBaseJsonString())
                 if (wait) {
                     channelLocal.writePkgBlockReply(msg)
                 } else {
@@ -211,9 +221,10 @@ fun connectionFileExploreServer(remoteAddress: InetAddress): FileExploreConnecti
                                                     is FileExploreHandshakeModel -> {
                                                         val handshakeModel = FileExploreHandshakeModel(
                                                             version = FILE_EXPLORE_VERSION,
-                                                            pathSeparator = File.pathSeparator
+                                                            pathSeparator = File.pathSeparator,
+                                                            deviceName = "${Build.BRAND} ${Build.MODEL}"
                                                         )
-                                                        ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toBaseJsonString()))
+                                                        ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))
                                                         connection.connectionActive(model)
                                                     }
                                                     else -> {
