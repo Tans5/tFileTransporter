@@ -7,7 +7,6 @@ import android.os.Environment
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.filetransfer.downloadFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
@@ -26,7 +25,6 @@ import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 
 fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddress): Single<Unit> {
     var dialog: Dialog? = null
@@ -42,10 +40,10 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
     }
 
     return Single.create<Unit> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileTransferClient>>(
+        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Unit>(
                 context = this,
                 layoutId = R.layout.reading_writing_files_dialog_layout,
-                defaultState = Optional.empty(),
+                defaultState = Unit,
                 outSizeCancelable = false
         ) {
 
@@ -112,7 +110,6 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                         .concatMapSingle {
                             rxSingle {
                                 val activeClient = bindState().firstOrError().await()
-                                if (activeClient.isPresent) { activeClient.get().cancel() }
                                 withContext(Dispatchers.Main) {
                                     emitter.onError(Throwable("Download Canceled By User"))
                                     cancel()

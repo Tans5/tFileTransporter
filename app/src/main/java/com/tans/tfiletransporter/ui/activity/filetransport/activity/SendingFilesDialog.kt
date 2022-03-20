@@ -5,10 +5,9 @@ import android.app.Dialog
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileServer
-import com.tans.tfiletransporter.net.filetransporter.defaultPathConverter
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.filetransfer.PathConverter
+import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
 import com.tans.tfiletransporter.net.netty.filetransfer.sendFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getSizeString
@@ -20,16 +19,15 @@ import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import java.util.*
 
 
 fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, pathConverter: PathConverter = defaultPathConverter): Single<Unit> {
     var dialog: Dialog? = null
     return Single.create<Unit> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileServer>>(
+        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Unit>(
                 context = this,
                 layoutId = R.layout.reading_writing_files_dialog_layout,
-                defaultState = Optional.empty(),
+                defaultState = Unit,
                 outSizeCancelable = false
         ) {
 
@@ -83,8 +81,6 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
                 binding.cancelButton.clicks()
                         .concatMapSingle {
                             rxSingle {
-                                val activeServer = bindState().firstOrError().await()
-                                if (activeServer.isPresent) { activeServer.get().cancel() }
                                 withContext(Dispatchers.Main) {
                                     emitter.onError(Throwable("Sending Files Canceled By User."))
                                     cancel()

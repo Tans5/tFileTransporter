@@ -14,11 +14,11 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.connection.RemoteDevice
-import com.tans.tfiletransporter.net.filetransporter.defaultPathConverter
 import com.tans.tfiletransporter.net.model.*
 import com.tans.tfiletransporter.net.netty.fileexplore.FileExploreConnection
 import com.tans.tfiletransporter.net.netty.fileexplore.connectToFileExploreServer
 import com.tans.tfiletransporter.net.netty.fileexplore.startFileExploreServer
+import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
