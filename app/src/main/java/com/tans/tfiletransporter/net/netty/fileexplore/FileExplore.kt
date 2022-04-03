@@ -100,6 +100,9 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                     channel.writePkg(msg)
                 }
             }
+        },
+        isConnectionActiveCallback = {
+            clientChannel?.isActive == true
         }
     )
     ioExecutor.execute {
@@ -199,6 +202,9 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                     channelLocal.writePkg(msg)
                 }
             }
+        },
+        isConnectionActiveCallback = {
+            channel?.isActive == true
         }
     )
     ioExecutor.execute {

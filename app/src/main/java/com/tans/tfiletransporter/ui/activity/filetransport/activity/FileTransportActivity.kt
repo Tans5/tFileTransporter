@@ -24,6 +24,7 @@ import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
+import com.tans.tfiletransporter.utils.ioExecutor
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.rxkotlin.cast
 import io.reactivex.rxkotlin.ofType
@@ -168,7 +169,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             val shareFolder = bindState().firstOrError().blockingGet().shareMyDir
                             val parentPath = it.requestPath
                             val path = Paths.get(FileConstants.homePathString + parentPath)
-                            val children = if (Files.isReadable(path)) {
+                            val children = if (shareFolder && Files.isReadable(path)) {
                                 Files.list(path)
                                     .filter { Files.isReadable(it) }
                                     .map { p ->
@@ -237,7 +238,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 .ignoreElements()
                 .await()
 
-            fileConnection.observeDisconnected().await()
             withContext(Dispatchers.Main) {
                 showNoOptionalDialog(
                         title = getString(R.string.connection_error_title),
@@ -367,6 +367,13 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         launch {
             val tabType = withContext(Dispatchers.IO) { bindState().firstOrError().map { it.selectedTabType }.await() }
             if (fragments[tabType]?.onBackPressed() != true) {
+                ioExecutor.execute {
+                    fileTransportScopeData.fileExploreConnection.let {
+                        if (it.isConnectionActive()) {
+                            it.close(true)
+                        }
+                    }
+                }
                 finish()
             }
         }
