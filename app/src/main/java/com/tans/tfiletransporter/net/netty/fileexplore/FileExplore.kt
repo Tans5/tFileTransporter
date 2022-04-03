@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.net.netty.fileexplore
 
 import android.os.Build
+import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.moshi
 import com.tans.tfiletransporter.net.FILE_TRANSPORT_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.*
@@ -150,6 +151,10 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                                                     }
                                                     is NettyPkg.ServerFinishPkg, is NettyPkg.TimeoutPkg -> {
                                                         connection.close(false)
+                                                        Log.e("File explore close or heartbeat timeout", null)
+                                                    }
+                                                    is NettyPkg.HeartBeatPkg -> {
+                                                        Log.d("File explore receive heartbeat.")
                                                     }
                                                     else -> {
                                                     }
@@ -165,6 +170,7 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
 
                                     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
                                         connection.close(false)
+                                        Log.e("File explore error.", cause)
                                     }
                                 })
                         } else {
@@ -175,6 +181,9 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
             val channel = server.bind(InetSocketAddress(localAddress, FILE_TRANSPORT_LISTEN_PORT)).sync().channel()
             serverChannel = channel
             channel.closeFuture().sync()
+        } catch (t: Throwable) {
+            Log.e("File transfer start error", t)
+            connection.close(false)
         } finally {
             connectionEventGroup.shutdownGracefully()
             rwEventGroup.shutdownGracefully()
@@ -244,6 +253,10 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                                 }
                                                 is NettyPkg.ClientFinishPkg, is NettyPkg.TimeoutPkg -> {
                                                     connection.close(false)
+                                                    Log.e("File explore close or heartbeat timeout", null)
+                                                }
+                                                is NettyPkg.HeartBeatPkg -> {
+                                                    Log.d("File explore receive heartbeat.")
                                                 }
                                                 else -> {}
                                             }
@@ -257,6 +270,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                 }
                                 override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
                                     connection.close(false)
+                                    Log.e("File explore error.", cause)
                                 }
                             })
                     }
@@ -265,6 +279,9 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
             val channelLocal = client.connect(InetSocketAddress(remoteAddress, FILE_TRANSPORT_LISTEN_PORT)).sync().channel()
             channel = channelLocal
             channelLocal.closeFuture().sync()
+        } catch (t: Throwable) {
+            Log.e("File transfer start error", t)
+            connection.close(false)
         } finally {
             eventGroup.shutdownGracefully()
         }

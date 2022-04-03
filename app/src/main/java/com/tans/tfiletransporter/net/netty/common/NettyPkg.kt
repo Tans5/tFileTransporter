@@ -71,13 +71,13 @@ const val HANDLER_PACKAGE_ENCODER = "PACKAGE_ENCODER"
 const val HANDLER_HEARTBEAT_CHECKER = "HEARTBEAT_CHECKER"
 const val HANDLER_PKG_WRITER = "PKG_WRITER"
 
-fun ChannelPipeline.setDefaultHandler(timeoutSeconds: Int = 30): ChannelPipeline {
+fun ChannelPipeline.setDefaultHandler(timeoutSeconds: Int = 12, heartbeatSeconds: Int = 4): ChannelPipeline {
     return addLast(HANDLER_IDLE_STATE, IdleStateHandler(0, 0, timeoutSeconds))
         .addLast(HANDLER_LENGTH_ENCODER, LengthFieldPrepender(4))
         .addLast(HANDLER_LENGTH_DECODER, LengthFieldBasedFrameDecoder(NETTY_MAX_PACKAGE_SIZE, 0, 4, 0, 4))
         .addLast(HANDLER_PACKAGE_ENCODER, PackageEncoder())
         .addLast(HANDLER_PACKAGE_DECODER, PackageDecoder())
-        .addLast(HANDLER_HEARTBEAT_CHECKER, HeartbeatChecker((timeoutSeconds / 2).let { if (it <= 0) 1 else it }))
+        .addLast(HANDLER_HEARTBEAT_CHECKER, HeartbeatChecker(heartbeatSeconds))
         .addLast(HANDLER_PKG_WRITER, PkgWriter())
 }
 

@@ -11,7 +11,7 @@ class HeartbeatChecker(private val durationSeconds: Int) : ChannelInboundHandler
         super.channelActive(ctx)
         ioExecutor.execute {
             do {
-                ctx.write(NettyPkg.HeartBeatPkg)
+                ctx.writeAndFlush(NettyPkg.HeartBeatPkg)
                 Thread.sleep(durationSeconds * 1000L)
             } while (ctx.channel().isActive)
         }
