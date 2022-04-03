@@ -168,7 +168,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             val shareFolder = bindState().firstOrError().blockingGet().shareMyDir
                             val parentPath = it.requestPath
                             val path = Paths.get(FileConstants.homePathString + parentPath)
-                            val children = if (shareFolder && Files.isReadable(path)) {
+                            val children = if (Files.isReadable(path)) {
                                 Files.list(path)
                                     .filter { Files.isReadable(it) }
                                     .map { p ->

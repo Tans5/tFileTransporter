@@ -26,16 +26,14 @@ private val ioExecutor = Dispatchers.IO.asExecutor()
 
 private const val FILE_EXPLORE_VERSION = 2
 
-private inline fun <reified T> T.toFileExploreBaseJsonString(): String {
-    val content = moshi.adapter(T::class.java).toJson(this)
-    val type = when (T::class.java) {
-        FileExploreHandshakeModel::class.java -> FILE_MODEL_TYPE_HANDSHAKE
-        RequestFolderModel::class.java -> FILE_MODEL_TYPE_REQUEST_FOLDER
-        ShareFolderModel::class.java -> FILE_MODEL_TYPE_SHARE_FOLDER
-        RequestFilesModel::class.java -> FILE_MODEL_TYPE_REQUEST_FILES
-        ShareFilesModel::class.java -> FILE_MODEL_TYPE_SHARE_FILES
-        MessageModel::class.java -> FILE_MODEL_TYPE_MESSAGE
-        else -> 0
+private fun FileExploreContentModel.toFileExploreBaseJsonString(): String {
+    val (type, content) = when (this) {
+        is FileExploreHandshakeModel-> FILE_MODEL_TYPE_HANDSHAKE to moshi.adapter(FileExploreHandshakeModel::class.java).toJson(this)
+        is RequestFolderModel-> FILE_MODEL_TYPE_REQUEST_FOLDER to moshi.adapter(RequestFolderModel::class.java).toJson(this)
+        is ShareFolderModel -> FILE_MODEL_TYPE_SHARE_FOLDER to moshi.adapter(ShareFolderModel::class.java).toJson(this)
+        is RequestFilesModel -> FILE_MODEL_TYPE_REQUEST_FILES to moshi.adapter(RequestFilesModel::class.java).toJson(this)
+        is ShareFilesModel -> FILE_MODEL_TYPE_SHARE_FILES to moshi.adapter(ShareFilesModel::class.java).toJson(this)
+        is MessageModel -> FILE_MODEL_TYPE_MESSAGE to moshi.adapter(MessageModel::class.java).toJson(this)
     }
     val model = FileExploreBaseModel(
         type = type,
@@ -205,6 +203,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
     )
     ioExecutor.execute {
         val eventGroup = NioEventLoopGroup(1, ioExecutor)
+        Thread.sleep(100)
         try {
             val client = Bootstrap()
                 .group(eventGroup)
