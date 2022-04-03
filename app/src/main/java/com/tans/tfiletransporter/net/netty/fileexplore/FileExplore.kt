@@ -132,24 +132,26 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                                     override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
                                         super.channelRead(ctx, msg)
                                         if (msg != null && msg is NettyPkg && ctx != null) {
-                                            when (msg) {
-                                                is NettyPkg.JsonPkg -> {
-                                                    when (val model = msg.json.toFileContentModel()) {
-                                                        is FileExploreHandshakeModel -> {
-                                                            connection.connectionActive(model)
-                                                            clientChannel = ctx.channel()
-                                                        }
-                                                        else -> {
-                                                            if (model != null) {
-                                                                connection.newRemoteFileExploreContent(model)
+                                            ioExecutor.execute {
+                                                when (msg) {
+                                                    is NettyPkg.JsonPkg -> {
+                                                        when (val model = msg.json.toFileContentModel()) {
+                                                            is FileExploreHandshakeModel -> {
+                                                                connection.connectionActive(model)
+                                                                clientChannel = ctx.channel()
+                                                            }
+                                                            else -> {
+                                                                if (model != null) {
+                                                                    connection.newRemoteFileExploreContent(model)
+                                                                }
                                                             }
                                                         }
                                                     }
-                                                }
-                                                is NettyPkg.ServerFinishPkg, is NettyPkg.TimeoutPkg -> {
-                                                    connection.close(false)
-                                                }
-                                                else -> {
+                                                    is NettyPkg.ServerFinishPkg, is NettyPkg.TimeoutPkg -> {
+                                                        connection.close(false)
+                                                    }
+                                                    else -> {
+                                                    }
                                                 }
                                             }
                                         }
@@ -215,29 +217,31 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
 
                                 override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
                                     if (msg != null && msg is NettyPkg && ctx != null) {
-                                        when (msg) {
-                                            is NettyPkg.JsonPkg -> {
-                                                when (val model = msg.json.toFileContentModel()) {
-                                                    is FileExploreHandshakeModel -> {
-                                                        val handshakeModel = FileExploreHandshakeModel(
-                                                            version = FILE_EXPLORE_VERSION,
-                                                            pathSeparator = File.separator,
-                                                            deviceName = "${Build.BRAND} ${Build.MODEL}"
-                                                        )
-                                                        ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))
-                                                        connection.connectionActive(model)
-                                                    }
-                                                    else -> {
-                                                        if (model != null) {
-                                                            connection.newRemoteFileExploreContent(model)
+                                        ioExecutor.execute {
+                                            when (msg) {
+                                                is NettyPkg.JsonPkg -> {
+                                                    when (val model = msg.json.toFileContentModel()) {
+                                                        is FileExploreHandshakeModel -> {
+                                                            val handshakeModel = FileExploreHandshakeModel(
+                                                                version = FILE_EXPLORE_VERSION,
+                                                                pathSeparator = File.separator,
+                                                                deviceName = "${Build.BRAND} ${Build.MODEL}"
+                                                            )
+                                                            ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))
+                                                            connection.connectionActive(model)
+                                                        }
+                                                        else -> {
+                                                            if (model != null) {
+                                                                connection.newRemoteFileExploreContent(model)
+                                                            }
                                                         }
                                                     }
                                                 }
+                                                is NettyPkg.ClientFinishPkg, is NettyPkg.TimeoutPkg -> {
+                                                    connection.close(false)
+                                                }
+                                                else -> {}
                                             }
-                                            is NettyPkg.ClientFinishPkg, is NettyPkg.TimeoutPkg -> {
-                                               connection.close(false)
-                                            }
-                                            else -> {}
                                         }
                                     }
                                 }

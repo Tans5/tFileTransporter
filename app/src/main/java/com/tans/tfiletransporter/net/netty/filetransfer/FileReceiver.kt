@@ -156,27 +156,29 @@ fun downloadFileObservable(
                                                 msg: Any?
                                             ) {
                                                 if (msg is NettyPkg) {
-                                                    when (msg) {
-                                                        is NettyPkg.BytesPkg -> {
-                                                            val randomWriteFile =
-                                                                RandomAccessFile(realFile, "rw").apply {
-                                                                    seek(start + localDownloadSize.get())
+                                                    ioExecutor.execute {
+                                                        when (msg) {
+                                                            is NettyPkg.BytesPkg -> {
+                                                                val randomWriteFile =
+                                                                    RandomAccessFile(realFile, "rw").apply {
+                                                                        seek(start + localDownloadSize.get())
+                                                                    }
+                                                                randomWriteFile.use {
+                                                                    val s = msg.bytes.size.toLong()
+                                                                    it.write(msg.bytes)
+                                                                    if (localDownloadSize.addAndGet(s) >= currentFrameSize) {
+                                                                        ch.close()
+                                                                    }
+                                                                    downloadProgress.addAndGet(s)
+                                                                    emitterNextOrComplete()
                                                                 }
-                                                            randomWriteFile.use {
-                                                                val s = msg.bytes.size.toLong()
-                                                                it.write(msg.bytes)
-                                                                if (localDownloadSize.addAndGet(s) >= currentFrameSize) {
-                                                                    ch.close()
-                                                                }
-                                                                downloadProgress.addAndGet(s)
-                                                                emitterNextOrComplete()
                                                             }
-                                                        }
-                                                        NettyPkg.TimeoutPkg, is NettyPkg.ClientFinishPkg -> {
-                                                            tryChancelConnection(false)
-                                                        }
-                                                        else -> {
+                                                            NettyPkg.TimeoutPkg, is NettyPkg.ClientFinishPkg -> {
+                                                                tryChancelConnection(false)
+                                                            }
+                                                            else -> {
 
+                                                            }
                                                         }
                                                     }
                                                 }

@@ -227,8 +227,11 @@ fun sendFileObservable(
                                                     }
                                                 }
                                                 NettyPkg.TimeoutPkg, is NettyPkg.ServerFinishPkg -> {
-                                                    tryCancelConnection(false)
+                                                    ioExecutor.execute {
+                                                        tryCancelConnection(false)
+                                                    }
                                                 }
+                                                else -> {}
                                             }
                                         }
                                     }
