@@ -221,7 +221,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                                     is FileExploreHandshakeModel -> {
                                                         val handshakeModel = FileExploreHandshakeModel(
                                                             version = FILE_EXPLORE_VERSION,
-                                                            pathSeparator = File.pathSeparator,
+                                                            pathSeparator = File.separator,
                                                             deviceName = "${Build.BRAND} ${Build.MODEL}"
                                                         )
                                                         ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))

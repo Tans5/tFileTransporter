@@ -40,7 +40,7 @@ class PkgWriter : ChannelInboundHandlerAdapter() {
     @SuppressLint("CheckResult")
     fun Channel.writePkgBlockReplyWriter(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
         val index = writePkgWriter(pkg) ?: error("$pkg not support block reply")
-        indexReplySubject.first(index).timeout(timeoutMillis, TimeUnit.MILLISECONDS).blockingGet()
+        indexReplySubject.filter { it == index }.timeout(timeoutMillis, TimeUnit.MILLISECONDS).firstOrError().blockingGet()
         return index
     }
 }
