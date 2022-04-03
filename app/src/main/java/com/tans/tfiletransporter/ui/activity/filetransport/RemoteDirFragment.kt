@@ -71,42 +71,40 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                                 requestPath = oldTree.path
                             )
                         )
-                        scopeData.remoteFolderModelEvent.firstOrError()
+                        scopeData.remoteFolderModelEvent
+                            .filter { it.path == oldTree.path }
+                            .firstOrError()
                             .flatMap { remoteFolder ->
-                                if (remoteFolder.path == oldTree.path) {
-                                    updateState { oldState ->
-                                        val children: List<YoungLeaf> = remoteFolder.childrenFolders
-                                            .map {
-                                                DirectoryYoungLeaf(
-                                                    name = it.name,
-                                                    childrenCount = it.childCount,
-                                                    lastModified = it.lastModify.toInstant()
-                                                        .toEpochMilli()
-                                                )
-                                            } + remoteFolder.childrenFiles
-                                            .map {
-                                                FileYoungLeaf(
-                                                    name = it.name,
-                                                    size = it.size,
-                                                    lastModified = it.lastModify.toInstant()
-                                                        .toEpochMilli()
-                                                )
-                                            }
-                                        oldState.copy(
-                                            fileTree = Optional.of(
-                                                    children.refreshFileTree(
-                                                            parentTree = oldTree,
-                                                            dirSeparator = scopeData.handshakeModel.pathSeparator
-                                                    )
-                                            ), selectedFiles = emptySet()
-                                        )
-                                    }.map {
+                                updateState { oldState ->
+                                    val children: List<YoungLeaf> = remoteFolder.childrenFolders
+                                        .map {
+                                            DirectoryYoungLeaf(
+                                                name = it.name,
+                                                childrenCount = it.childCount,
+                                                lastModified = it.lastModify.toInstant()
+                                                    .toEpochMilli()
+                                            )
+                                        } + remoteFolder.childrenFiles
+                                        .map {
+                                            FileYoungLeaf(
+                                                name = it.name,
+                                                size = it.size,
+                                                lastModified = it.lastModify.toInstant()
+                                                    .toEpochMilli()
+                                            )
+                                        }
+                                    oldState.copy(
+                                        fileTree = Optional.of(
+                                            children.refreshFileTree(
+                                                parentTree = oldTree,
+                                                dirSeparator = scopeData.handshakeModel.pathSeparator
+                                            )
+                                        ), selectedFiles = emptySet()
+                                    )
+                                }.map {
 
-                                    }.onErrorResumeNext {
-                                        Log.e(this::class.qualifiedName, it.toString())
-                                        Single.just(Unit)
-                                    }
-                                } else {
+                                }.onErrorResumeNext {
+                                    Log.e(this::class.qualifiedName, it.toString())
                                     Single.just(Unit)
                                 }
                             }.await()

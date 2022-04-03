@@ -121,7 +121,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
 
             fileConnection.observeRemoteFileExploreContent()
-                .distinctUntilChanged()
                 .doOnNext {
                     when (it) {
                         is FileExploreHandshakeModel -> {
