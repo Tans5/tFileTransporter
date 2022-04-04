@@ -372,6 +372,15 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        fileTransportScopeData.fileExploreConnection.let {
+            if (it.isConnectionActive()) {
+                it.close(false)
+            }
+        }
+    }
+
     companion object {
 
         private const val LOCAL_ADDRESS_EXTRA_KEY = "local_address_extra_key"
