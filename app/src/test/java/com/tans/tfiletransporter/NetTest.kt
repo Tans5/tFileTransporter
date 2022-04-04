@@ -1,272 +1,135 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.net.commonNetBufferPool
-import com.tans.tfiletransporter.net.connection.TcpScanConnectionClient
-import com.tans.tfiletransporter.net.connection.TcpScanConnectionServer
-import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
-import com.tans.tfiletransporter.utils.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import com.tans.tfiletransporter.net.netty.common.NettyPkg
+import com.tans.tfiletransporter.net.netty.common.handler.writePkg
+import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
+import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
+import com.tans.tfiletransporter.utils.ioExecutor
+import io.netty.bootstrap.Bootstrap
+import io.netty.bootstrap.ServerBootstrap
+import io.netty.channel.Channel
+import io.netty.channel.ChannelDuplexHandler
+import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelInitializer
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.SocketChannel
+import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.channel.socket.nio.NioSocketChannel
 import org.junit.Test
-import java.net.InetAddress
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
+import java.net.InetSocketAddress
 
 class NetTest {
 
 //    @Test
-//    fun broadcastSenderTest() = runBlocking {
+//    fun nettyTest() {
+//        // Server
+//        val st = Thread {
+//            val readAndWriteWorkGroup = NioEventLoopGroup(10, ioExecutor)
+//            val connectWorkGroup = NioEventLoopGroup(1, ioExecutor)
+//            try {
+//                var channel: Channel? = null
+//                val serverBootstrap = ServerBootstrap()
+//                    .group(connectWorkGroup, readAndWriteWorkGroup)
+//                    .channel(NioServerSocketChannel::class.java)
+//                    .childHandler(object : ChannelInitializer<SocketChannel>() {
+//                        override fun initChannel(ch: SocketChannel?) {
+//                            println("Client ip: ${ch?.remoteAddress()}")
+//                            ch?.pipeline()
+//                                ?.setDefaultHandler()
+//                                ?.addLast(object : ChannelDuplexHandler() {
+//                                    override fun channelActive(ctx: ChannelHandlerContext?) {
+////                                        if (ctx != null) {
+////                                            ioExecutor.execute {
+////                                                for (i in 0 until 1000) {
+////                                                    ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is server."))
+////                                                    Thread.sleep(5000)
+////                                                }
+////                                                ctx.writePkg(NettyPkg.ClientFinishPkg("ClientFinish"))
+////                                            }
+////                                        }
+//                                    }
 //
-//        val systemName = System.getProperty("os.name")
-//        val userName = System.getProperty("user.name")
+//                                    override fun channelRead(
+//                                        ctx: ChannelHandlerContext?,
+//                                        msg: Any?
+//                                    ) {
+//                                        if (msg != null) {
+//                                            println("Server: $msg")
+//                                        }
+//                                        if (msg is NettyPkg.TextPkg) {
+//                                            ioExecutor.execute {
+//                                                ctx?.writePkgBlockReply(NettyPkg.BytesPkg("Hello, here is server.".toByteArray()))
+//                                            }
+//                                        }
+//                                        if (msg is NettyPkg.ServerFinishPkg) {
+//                                            channel?.close()
+//                                        }
+//                                    }
 //
-//        val allAddress = findLocalAddressV4()
-//        val local = allAddress[0]
-//        val broadcast = local.getBroadcastAddress()
-//        val job = launch {
-//            kotlin.runCatching {
-//                launchUdpBroadcastSender(broadMessage = "$userName's $systemName", localAddress = local) { remoteAddress, remoteDevice ->
-//                    println("RemoteAddress: $remoteAddress, RemoteDevice: $remoteDevice")
-//                    false
-//                }
+//                                })
+//                        }
+//                    })
+//                channel = serverBootstrap.bind(6666).sync().channel()
+//                channel.closeFuture().sync()
+//            } finally {
+//                connectWorkGroup.shutdownGracefully()
+//                readAndWriteWorkGroup.shutdownGracefully()
 //            }
 //        }
+//        st.start()
 //
-////        val job2 = launch(Dispatchers.IO) {
-////            val dc = DatagramChannel.open()
-////            dc.setOption(StandardSocketOptions.SO_BROADCAST, true)
-////            dc.bind(InetSocketAddress(if (systemName?.contains("Windows") == true) local else broadcast, 6666))
-////            val byteBuffer = ByteBuffer.allocate(1024)
-////            while (true) {
-////                byteBuffer.clear()
-////                val remote = dc.receive(byteBuffer)
-////                byteBuffer.flip()
-////                val msg = String(byteBuffer.copyAvailableBytes(), Charsets.UTF_8)
-////                println("Broadcast message: $msg, Address: ${(remote as InetSocketAddress).address.hostAddress}")
-////            }
-////        }
-////
-////        val job3 = launch (Dispatchers.IO) {
-////            try {
-////                delay(200)
-////                val client = SocketChannel.open()
-////                client.setOption(StandardSocketOptions.SO_REUSEADDR, true)
-////                client.connect(InetSocketAddress(local, 6667))
-////                val buffer = ByteBuffer.allocate(1024 + 4)
-////                val sendData = "My_MAC-mini Client".toByteArray(Charsets.UTF_8)
-////                buffer.put(sendData.size.toBytes())
-////                buffer.put(sendData)
-////                buffer.flip()
-////                client.write(buffer)
-////                buffer.clear()
-////                buffer.position(1024 + 3)
-////                client.read(buffer)
-////                buffer.position(1024 + 3)
-////                val reply = buffer.get()
-////                println("Reply From Server: $reply")
-////                client.close()
-////            } catch(e: Exception) {
-////                println(e)
-////            }
-////        }
+//        // Client
+//        val ct = Thread {
 //
-//        job.join()
-////        job2.join()
-////        job3.join()
+//            val rwGroup = NioEventLoopGroup(10, ioExecutor)
+//            try {
+//                val clientStrap = Bootstrap()
+//                    .group(rwGroup)
+//                    .channel(NioSocketChannel::class.java)
+//                    .handler(object : ChannelInitializer<SocketChannel>() {
+//                        override fun initChannel(ch: SocketChannel?) {
+//                            ch?.pipeline()?.setDefaultHandler()
+//                                ?.addLast(object : ChannelDuplexHandler() {
+//                                    override fun channelActive(ctx: ChannelHandlerContext?) {
+//                                        if (ctx != null) {
+//                                            println("Client connect success.")
+//                                            ioExecutor.execute {
+//                                                for (i in 0 until 1000) {
+//                                                    ctx.writePkgBlockReply(NettyPkg.TextPkg(text = "Hello, here is client."))
+//                                                    Thread.sleep(5000)
+//                                                }
+//                                                // ctx.writePkg(NettyPkg.ServerFinishPkg("Finish"))
+//                                            }
+//                                        }
+//                                    }
 //
-//    }
-
-//    @Test
-//    fun readLimitTest() = runBlocking {
-//        val job = launch(Dispatchers.IO) {
-//            val fc = FileChannel.open(Paths.get("a.text"), StandardOpenOption.READ)
-//            fc.readDataLimit(2048) {
-//                val scanner = Scanner(it)
-//                scanner.use {
-//                    while (scanner.hasNextLine()) {
-//                        println(scanner.nextLine())
-//                    }
-//                }
+//                                    override fun channelRead(
+//                                        ctx: ChannelHandlerContext?,
+//                                        msg: Any?
+//                                    ) {
+//                                        if (msg != null) {
+//                                            println("Client: $msg")
+//                                        }
+//                                        if (msg is NettyPkg.ClientFinishPkg) {
+//                                            ctx?.close()
+//                                        }
+//                                    }
+//
+//                                })
+//                        }
+//                    })
+//
+//                val f = clientStrap.connect(InetSocketAddress(6666)).sync()
+//                f.channel().closeFuture().sync()
+//            } finally {
+//                rwGroup.shutdownGracefully()
 //            }
 //        }
-//        job.join()
-//    }
-
-//    @Test
-//    fun writeSuspendSizeTest() = runBlocking {
-//        val job = launch(Dispatchers.IO) {
-//            val path = Paths.get("a.text")
-//            if (!Files.exists(path)) {
-//                Files.createFile(path)
-//            }
-//            val fc = FileChannel.open(path, StandardOpenOption.WRITE)
-//            val data = "Hello, World!!!".toByteArray(Charsets.UTF_8)
-//            val buffer = ByteBuffer.allocate(1024)
-//            fc.writeSuspendSize(buffer, arrayOf(data[0]).toByteArray())
-//            fc.close()
-//        }
-//        job.join()
-//    }
-
-//    @Test
-//    fun writeDataLimitTest() = runBlocking {
-//        val path = Paths.get("a.text")
-//        if (!Files.exists(path)) {
-//            Files.createFile(path)
-//        }
-//        val fileChannel = FileChannel.open(path, StandardOpenOption.WRITE)
-//        val result = kotlin.runCatching {
-//            fileChannel.writeDataLimit(
-//                    limit = 10,
-//                    buffer = ByteBuffer.allocate(2)
-//            ) {
-//                val data = "fadfadsfas21312313131".toByteArray(Charsets.UTF_8)
-//                it.write(data)
-//            }
-//        }
-//        fileChannel.close()
-//        //println(result)
-//    }
-
-//    @Test
-//    fun fileNameTest() = runBlocking {
-//        // ((.|\s)+)(-\d+)?(\..+)?$
-//        val regex1 = "((.|\\s)+)-(\\d+)(\\..+)$".toRegex()
-//        val name = "3213131fasd.tans"
-//        if (regex1.matches(name)) {
-//            val i = regex1.find(name)
-//            i?.groupValues?.map {
-//                println(it)
-//            }
-//        }
-//        val regex2 = "((.|\\s)+)(\\..+)\$".toRegex()
-//        if (regex2.matches(name)) {
-//            val i = regex2.find(name)
-//            i?.groupValues?.map {
-//                println(it)
-//            }
-//        }
-//        val regex3 = "((.|\\s)+)-(\\d+)$".toRegex()
+//        ct.start()
 //
-//        if (regex3.matches(name)) {
-//            val i = regex3.find(name)
-//            i?.groupValues?.map {
-//                println(it)
-//            }
-//        }
-//
-//        Unit
-//
-//    }
-
-//    @Test
-//    fun fileCreateTest() {
-//        val parent = Paths.get("testdir")
-//        if (!Files.exists(parent)) {
-//            Files.createDirectory(parent)
-//        }
-//        parent.newChildFile("tea  fsda")
-//    }
-
-//    @Test
-//    fun md5Deal() {
-//        val result = Paths.get("build.gradle").getFileMd5()
-//        val json = moshi.adapter(ByteArray::class.java).toJson(result)
-//        println(json)
-//        val result2 = moshi.adapter(ByteArray::class.java).fromJson(json)
-//        println(result2)
-//    }
-//
-//    @Test
-//    fun longBytesTest() {
-//        val a = -1L
-//        val bytes = a.toBytes()
-//        println(bytes.contentToString())
-//    }
-//
-//    @Test
-//    fun multiConnectionsFileTransferTest() = runBlocking {
-//        val path = Paths.get("test")
-//        val size = Files.size(path)
-//        val file = com.tans.tfiletransporter.net.model.File(
-//                name = "test",
-//                path = "test",
-//                size = size
-//        )
-//        val md5 = path.getFileMd5()
-//        val fileMd5 = FileMd5(
-//                md5,
-//                file
-//        )
-//        val localAddress = findLocalAddressV4()[0]
-//
-//        val job1 = launch(Dispatchers.IO) {
-//            println("Server Running !!!")
-//            startMultiConnectionsFileServer(fileMd5, localAddress) { progress, _ ->
-//                println("Has send: $progress")
-//            }
-//        }
-//
-//        val job2 = launch(Dispatchers.IO) {
-//            println("Client Running !!!")
-//            startMultiConnectionsFileClient(fileMd5, localAddress) { progress, _ ->
-//                println("Hes Download: $progress")
-//            }
-//        }
-//
-//        job1.join()
-//        job2.join()
-//    }
-
-//    @Test
-//    fun sendMessage() = runBlocking {
-////        val dc = openDatagramChannel()
-////        val buffer = ByteBuffer.allocate(1024)
-////        val remoteAddress = arrayOf(192.toByte(), 168.toByte(), 106.toByte(), 181.toByte()).toByteArray()
-////        val remoteInet = InetSocketAddress(InetAddress.getByAddress(remoteAddress), 9999)
-////        while (true) {
-////            buffer.clear()
-////            buffer.put("Hello, World".toByteArray(Charsets.UTF_8))
-////            buffer.flip()
-////            dc.sendSuspend(buffer, remoteInet)
-////            delay(500)
-////        }
-//    }
-
-//    @Test
-//    fun tcpScanTest() = runBlocking {
-//        commonNetBufferPool
-//        val localAddress = findLocalAddressV4()[0]
-////        val jobServer = launch(Dispatchers.IO) {
-////            val server = TcpScanConnectionServer(
-////                localDevice = "Server",
-////                localAddress = localAddress
-////            )
-////            server.runTcpScanConnectionServer { remoteAddress: InetAddress, remoteDevice: String ->
-////                println("Remote device: $remoteDevice, address: ${remoteAddress.hostAddress}")
-////                false
-////            }
-////        }
-//
-//        val jobClient = launch(Dispatchers.IO) {
-//            delay(1000)
-//            val client = TcpScanConnectionClient(
-//                localDevice = "Client",
-//                localAddress = localAddress
-//            )
-//            // println(client.connectTo(localAddress))
-//            val result = client.scanServers { loadIndex, size ->
-//                println("Load index: $loadIndex, size: $size")
-//            }
-//            println(result)
-//        }
-//
-//        jobClient.join()
-//        //jobServer.join()
+//        ct.join()
+//        println("Client Finish")
+//        st.join()
+//        println("Server Finish")
 //    }
 }

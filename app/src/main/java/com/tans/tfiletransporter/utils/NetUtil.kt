@@ -10,6 +10,7 @@ import java.nio.channels.CompletionHandler
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+val ioExecutor = Dispatchers.IO.asExecutor()
 
 suspend fun openDatagramChannel(): DatagramChannel = blockToSuspend { DatagramChannel.open() }
 
@@ -129,6 +130,20 @@ fun InetAddress.getSubNetAllAddress(subNet: Int): List<InetAddress> {
 fun Long.toBytes(): ByteArray = ByteArray(8) { index ->
     val slide = (7 - index) * 8
     (this and ((0x00_00_00_00_00_00_00_FF).toLong() shl slide) ushr slide).toByte()
+}
+
+fun ByteArray.toLong(): Long {
+    var result = 0L
+    if (size != 8) {
+        error("Byte array size is not 8")
+    } else {
+        for ((index, b) in this.withIndex()) {
+            val shiftCount = (7 - index) * 8
+            val a = b.toUByte().toULong().toLong()
+            result = (a shl shiftCount) or result
+        }
+        return result
+    }
 }
 
 fun findLocalAddressV4(): List<InetAddress> {

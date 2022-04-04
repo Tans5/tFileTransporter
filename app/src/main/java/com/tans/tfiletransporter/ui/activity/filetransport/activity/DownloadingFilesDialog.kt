@@ -7,13 +7,14 @@ import android.os.Environment
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
-import com.tans.tfiletransporter.net.filetransporter.MultiConnectionsFileTransferClient
-import com.tans.tfiletransporter.net.filetransporter.startMultiConnectionsFileClient
 import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.netty.filetransfer.downloadFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tfiletransporter.utils.getSizeString
+import com.tans.tfiletransporter.utils.newChildFile
 import io.reactivex.Single
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -24,7 +25,6 @@ import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 
 fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddress): Single<Unit> {
     var dialog: Dialog? = null
@@ -40,10 +40,10 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
     }
 
     return Single.create<Unit> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Optional<MultiConnectionsFileTransferClient>>(
+        val dialogInternal = object : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, Unit>(
                 context = this,
                 layoutId = R.layout.reading_writing_files_dialog_layout,
-                defaultState = Optional.empty(),
+                defaultState = Unit,
                 outSizeCancelable = false
         ) {
 
@@ -59,38 +59,27 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.filePb.progress = 0
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
-                            delay(200)
-                            val downloadedFile = startMultiConnectionsFileClient(
-                                    fileMd5 = f,
-                                    serverAddress = serverAddress,
-                                    clientInstance = { client ->
-                                        updateState { Optional.of(client) }.await()
-                                    }) { hasDownload, limit ->
-                                withContext(Dispatchers.Main) {
-                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
-                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
-                                }
-                            }
+                            delay(300)
 
-//                            val path: Path = downloadDir.newChildFile(f.file.name)
-//                            downloadFileObservable(
-//                                fileMd5 = f,
-//                                serverAddress = serverAddress,
-//                                saveFile = path
-//                            ).observeOn(AndroidSchedulers.mainThread())
-//                                .doOnNext {
-//                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
-//                                }
-//                                .ignoreElements()
-//                                .toSingleDefault(Unit)
-//                                .await()
+                            val path: Path = downloadDir.newChildFile(f.file.name)
+                            downloadFileObservable(
+                                fileMd5 = f,
+                                serverAddress = serverAddress,
+                                saveFile = path
+                            ).observeOn(AndroidSchedulers.mainThread())
+                                .doOnNext {
+                                    binding.filePb.progress = ((it.toDouble() / f.file.size.toDouble()) * 100.0).toInt()
+                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(it), fileSizeString)
+                                }
+                                .ignoreElements()
+                                .toSingleDefault(Unit)
+                                .await()
 
                             val mimeAndMediaType = getMediaMimeTypeWithFileName(f.file.name)
                             if (mimeAndMediaType != null) {
                                 MediaScannerConnection.scanFile(
                                     this@startDownloadingFiles,
-                                    arrayOf(downloadedFile),
+                                    arrayOf(path.toString()),
                                     arrayOf(mimeAndMediaType.first),
                                     null
                                 )
@@ -110,9 +99,7 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                         .concatMapSingle {
                             rxSingle {
                                 val activeClient = bindState().firstOrError().await()
-                                if (activeClient.isPresent) { activeClient.get().cancel() }
                                 withContext(Dispatchers.Main) {
-                                    emitter.onError(Throwable("Download Canceled By User"))
                                     cancel()
                                 }
                             }
@@ -124,7 +111,9 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
         dialogInternal.setOnCancelListener { if (!emitter.isDisposed) emitter.onSuccess(Unit) }
         dialogInternal.show()
         dialog = dialogInternal
-    }.doFinally {
+    }
+        .subscribeOn(AndroidSchedulers.mainThread())
+        .doFinally {
         val dialogInternal = dialog
         if (dialogInternal?.isShowing == true) { dialogInternal.cancel() }
     }

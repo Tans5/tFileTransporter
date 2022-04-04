@@ -14,19 +14,22 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
+import com.tans.tfiletransporter.file.FileConstants
 import com.tans.tfiletransporter.net.commonNetBufferPool
 import com.tans.tfiletransporter.net.model.File
+import com.tans.tfiletransporter.net.model.FileMd5
+import com.tans.tfiletransporter.net.model.ShareFilesModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.DirTabType
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.newFilesShareWriterHandle
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
+import com.tans.tfiletransporter.utils.getFilePathMd5
 import com.tans.tfiletransporter.utils.readFrom
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import org.threeten.bp.OffsetDateTime
 import java.nio.channels.Channels
@@ -138,13 +141,27 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                     val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
                     if (selectImages.isNotEmpty()) {
                         clearImageCaches()
-                        val files = selectImages.createCatches()
-                        scopeData.fileTransporter.startWriterHandleWhenFinish(
-                                requireActivity().newFilesShareWriterHandle(files = files) { file -> Paths.get(file.path) }
+
+                        updateState { it.copy(selectedImages = emptySet()) }.await()
+                        val fileConnection = scopeData.fileExploreConnection
+                        val md5Files = selectImages.createCatches().filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+                            FileConstants.homePathString, it.path).getFilePathMd5(), file = it) }
+                        fileConnection.sendFileExploreContentToRemote(
+                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+                            waitReplay = true
                         )
-                        updateState {
-                            it.selectedImages
-                            it.copy(selectedImages = emptySet()) }.await()
+                        withContext(Dispatchers.Main) {
+                            val result = kotlin.runCatching {
+                                requireActivity().startSendingFiles(
+                                    files = md5Files,
+                                    localAddress = scopeData.localAddress,
+                                    pathConverter = { file -> Paths.get(file.path) }
+                                ).await()
+                            }
+                            if (result.isFailure) {
+                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+                            }
+                        }
                     }
                 }.onErrorResumeNext {
                     Log.e("Send Images", "Send Images Error", it)
