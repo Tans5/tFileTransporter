@@ -82,7 +82,7 @@ fun sendFileObservable(
                 val p = sendProgress.get()
                 if (!emitter.isDisposed) {
                     emitter.onNext(p)
-                    Log.d("Send file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble())}%")
+                    Log.d("Send file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
                 }
                 if (p >= fileSize) {
                     Log.d("Send file ${fileData.name} finish.")

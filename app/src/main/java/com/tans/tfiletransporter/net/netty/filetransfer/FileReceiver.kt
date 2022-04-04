@@ -63,7 +63,7 @@ fun downloadFileObservable(
             if (downloadState.get()) {
                 val p = downloadProgress.get()
                 if (!emitter.isDisposed) {
-                    Log.d("Receive file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble())}%")
+                    Log.d("Receive file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
                     emitter.onNext(p)
                 }
                 if (p >= fileSize) {
