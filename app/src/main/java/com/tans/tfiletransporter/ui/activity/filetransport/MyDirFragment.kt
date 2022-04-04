@@ -21,6 +21,7 @@ import com.tans.tfiletransporter.file.FileConstants.homePath
 import com.tans.tfiletransporter.file.FileConstants.homePathString
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.model.ShareFilesModel
+import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
@@ -225,7 +226,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                             requireActivity().startSendingFiles(
                                 files = md5Files,
                                 localAddress = scopeData.localAddress,
-                                pathConverter = { file -> Paths.get(file.path) }
+                                pathConverter = defaultPathConverter
                             ).await()
                         }
                         if (result.isFailure) {
