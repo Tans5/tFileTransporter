@@ -152,7 +152,11 @@ fun sendFileObservable(
                                                             val co: ConnectionCancelObserver = { notifyToClient ->
                                                                 if (ch.isActive) {
                                                                     if (notifyToClient) {
-                                                                        ch.writePkg(NettyPkg.ClientFinishPkg("Server cancel"))
+                                                                        try {
+                                                                            ch.writePkg(NettyPkg.ClientFinishPkg("Server cancel"))
+                                                                        } catch (t: Throwable) {
+                                                                            t.printStackTrace()
+                                                                        }
                                                                         true
                                                                     } else {
                                                                         false
