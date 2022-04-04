@@ -161,16 +161,20 @@ fun downloadFileObservable(
                                                     ioExecutor.execute {
                                                         when (msg) {
                                                             is NettyPkg.BytesPkg -> {
-                                                                val randomWriteFile =
-                                                                    RandomAccessFile(realFile, "rw").apply {
-                                                                        seek(start + localDownloadSize.get())
+                                                                try {
+                                                                    val randomWriteFile =
+                                                                        RandomAccessFile(realFile, "rw").apply {
+                                                                            seek(start + localDownloadSize.get())
+                                                                        }
+                                                                    randomWriteFile.use {
+                                                                        val s = msg.bytes.size.toLong()
+                                                                        it.write(msg.bytes)
+                                                                        localDownloadSize.addAndGet(s)
+                                                                        downloadProgress.addAndGet(s)
+                                                                        emitterNextOrComplete()
                                                                     }
-                                                                randomWriteFile.use {
-                                                                    val s = msg.bytes.size.toLong()
-                                                                    it.write(msg.bytes)
-                                                                    localDownloadSize.addAndGet(s)
-                                                                    downloadProgress.addAndGet(s)
-                                                                    emitterNextOrComplete()
+                                                                } catch (t: Throwable) {
+                                                                    tryChancelConnection(false, t)
                                                                 }
                                                             }
                                                             NettyPkg.TimeoutPkg -> {

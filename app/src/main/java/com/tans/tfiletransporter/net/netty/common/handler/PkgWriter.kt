@@ -21,11 +21,6 @@ class PkgWriter : ChannelInboundHandlerAdapter() {
         super.channelRead(ctx, msg)
     }
 
-    override fun channelInactive(ctx: ChannelHandlerContext?) {
-        super.channelInactive(ctx)
-        indexReplySubject.onComplete()
-    }
-
     fun Channel.writePkgWriter(pkg: NettyPkg): UInt? {
         val fixedPkg = when (pkg) {
             is NettyPkg.BytesPkg -> pkg.copy(pkgIndex = writePackageIndex.getAndIncrement().toUInt())

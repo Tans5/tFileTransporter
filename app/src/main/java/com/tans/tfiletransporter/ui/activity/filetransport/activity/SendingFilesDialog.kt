@@ -72,7 +72,6 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
                         .concatMapSingle {
                             rxSingle {
                                 withContext(Dispatchers.Main) {
-                                    emitter.onError(Throwable("Sending Files Canceled By User."))
                                     cancel()
                                 }
                             }

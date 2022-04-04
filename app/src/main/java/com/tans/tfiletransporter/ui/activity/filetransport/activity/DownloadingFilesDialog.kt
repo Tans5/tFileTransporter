@@ -100,7 +100,6 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                             rxSingle {
                                 val activeClient = bindState().firstOrError().await()
                                 withContext(Dispatchers.Main) {
-                                    emitter.onError(Throwable("Download Canceled By User"))
                                     cancel()
                                 }
                             }

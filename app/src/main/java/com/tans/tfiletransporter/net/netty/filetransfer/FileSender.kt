@@ -153,10 +153,8 @@ fun sendFileObservable(
                                                                 if (ch.isActive) {
                                                                     if (notifyToClient) {
                                                                         ch.writePkg(NettyPkg.ClientFinishPkg("Server cancel"))
-                                                                        ch.close()
                                                                         true
                                                                     } else {
-                                                                        ch.close()
                                                                         false
                                                                     }
                                                                 } else {
@@ -216,6 +214,8 @@ fun sendFileObservable(
                                                                     }
                                                                 }
 
+                                                            } catch (t: Throwable) {
+                                                                tryCancelConnection(false, t)
                                                             } finally {
                                                                 connectionCancelObserver.remove(co)
                                                             }
