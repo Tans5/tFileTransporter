@@ -123,13 +123,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             fileConnection.observeRemoteFileExploreContent()
                 .doOnNext {
                     when (it) {
-                        is FileExploreHandshakeModel -> {
-                            fileConnection.sendFileExploreContentToRemote(
-                                fileExploreContent = RequestFolderModel(
-                                    requestPath = it.pathSeparator
-                                )
-                            )
-                        }
                         is MessageModel -> {
                             val lastMessages = fileTransportScopeData.messagesEvent.firstOrError().blockingGet()
                             val message = FileTransportScopeData.Companion.Message(
@@ -232,6 +225,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                                 childrenFiles = it.childrenFiles
                             ))
                         }
+                        else -> {}
                     }
                 }
                 .ignoreElements()

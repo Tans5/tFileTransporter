@@ -60,17 +60,6 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
                             delay(200)
-//                            val downloadedFile = startMultiConnectionsFileClient(
-//                                    fileMd5 = f,
-//                                    serverAddress = serverAddress,
-//                                    clientInstance = { client ->
-//                                        updateState { Optional.of(client) }.await()
-//                                    }) { hasDownload, limit ->
-//                                withContext(Dispatchers.Main) {
-//                                    binding.filePb.progress = ((hasDownload.toDouble() / limit.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasDownload), fileSizeString)
-//                                }
-//                            }
 
                             val path: Path = downloadDir.newChildFile(f.file.name)
                             downloadFileObservable(
@@ -123,7 +112,9 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
         dialogInternal.setOnCancelListener { if (!emitter.isDisposed) emitter.onSuccess(Unit) }
         dialogInternal.show()
         dialog = dialogInternal
-    }.doFinally {
+    }
+        .subscribeOn(AndroidSchedulers.mainThread())
+        .doFinally {
         val dialogInternal = dialog
         if (dialogInternal?.isShowing == true) { dialogInternal.cancel() }
     }

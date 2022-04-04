@@ -44,16 +44,6 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
                                 binding.filePb.progress = 0
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
-//                            startMultiConnectionsFileServer(
-//                                    fileMd5 = f,
-//                                    localAddress = localAddress,
-//                                    pathConverter = pathConverter,
-//                                    serverInstance = { server -> updateState { Optional.of(server) }.await() }) { hasSend, limit ->
-//                                withContext(Dispatchers.Main) {
-//                                    binding.filePb.progress = ((hasSend.toDouble() / limit.toDouble()) * 100.0).toInt()
-//                                    binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(hasSend), fileSizeString)
-//                                }
-//                            }
                             sendFileObservable(
                                 fileMd5 = f,
                                 localAddress = localAddress,
@@ -95,7 +85,8 @@ fun Activity.startSendingFiles(files: List<FileMd5>, localAddress: InetAddress, 
         dialogInternal.setOnCancelListener { if (!emitter.isDisposed) emitter.onSuccess(Unit) }
         dialogInternal.show()
         dialog = dialogInternal
-    }.doFinally {
+    }.subscribeOn(AndroidSchedulers.mainThread())
+        .doFinally {
         val dialogInternal = dialog
         if (dialogInternal?.isShowing == true) { dialogInternal.cancel() }
     }
