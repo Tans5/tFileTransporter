@@ -142,6 +142,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                     if (selectImages.isNotEmpty()) {
                         clearImageCaches()
 
+                        updateState { it.copy(selectedImages = emptySet()) }.await()
                         val fileConnection = scopeData.fileExploreConnection
                         val md5Files = selectImages.createCatches().filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
                             FileConstants.homePathString, it.path).getFilePathMd5(), file = it) }

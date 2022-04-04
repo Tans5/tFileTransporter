@@ -168,9 +168,7 @@ fun downloadFileObservable(
                                                                 randomWriteFile.use {
                                                                     val s = msg.bytes.size.toLong()
                                                                     it.write(msg.bytes)
-                                                                    if (localDownloadSize.addAndGet(s) >= currentFrameSize) {
-                                                                        ch.close()
-                                                                    }
+                                                                    localDownloadSize.addAndGet(s)
                                                                     downloadProgress.addAndGet(s)
                                                                     emitterNextOrComplete()
                                                                 }
@@ -202,6 +200,8 @@ fun downloadFileObservable(
                         c = bootstrap.connect(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT)).sync().channel()
                         c?.closeFuture()?.sync()
                     } catch (t: Throwable) {
+                        tryChancelConnection(false, t)
+                    } finally {
                         childEventLoopGroup.shutdownGracefully()
                         connectionCancelObserver.remove(co)
                     }

@@ -253,6 +253,8 @@ fun sendFileObservable(
                     })
                 channel = serverBootstrap.bind(InetSocketAddress(localAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT)).sync().channel()
                 channel?.closeFuture()?.sync()
+            } catch (t: Throwable) {
+                tryCancelConnection(false, t)
             } finally {
                 connectionEventGroup.shutdownGracefully()
                 rwEventGroup.shutdownGracefully()
