@@ -59,7 +59,7 @@ fun Activity.startDownloadingFiles(files: List<FileMd5>, serverAddress: InetAddr
                                 binding.filePb.progress = 0
                                 binding.fileDealSizeTv.text = getString(R.string.file_deal_progress, getSizeString(0L), fileSizeString)
                             }
-                            delay(200)
+                            delay(300)
 
                             val path: Path = downloadDir.newChildFile(f.file.name)
                             downloadFileObservable(

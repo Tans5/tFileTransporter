@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.net.netty.filetransfer
 
+import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
@@ -58,13 +59,29 @@ fun downloadFileObservable(
         }
         val downloadState = AtomicBoolean(true)
 
-        fun tryChancelConnection(notifyToServer: Boolean) {
-            if (downloadState.compareAndSet(true, false)) {
-                if (downloadProgress.get() >= fileSize) {
+        fun emitterNextOrComplete() {
+            if (downloadState.get()) {
+                val p = downloadProgress.get()
+                if (!emitter.isDisposed) {
+                    Log.d("Receive file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble())}%")
+                    emitter.onNext(p)
+                }
+                if (p >= fileSize) {
+                    Log.d("Receive file ${fileData.name} finish.")
+                    downloadState.set(false)
                     if (!emitter.isDisposed) {
                         emitter.onComplete()
                     }
+                }
+            }
+        }
+
+        fun tryChancelConnection(notifyToServer: Boolean, throwable: Throwable?) {
+            if (downloadState.compareAndSet(true, false)) {
+                if (downloadProgress.get() >= fileSize) {
+                    emitterNextOrComplete()
                 } else {
+                    Log.e("Receive file error", throwable)
                     var hasSendToServer = false
                     for (o in connectionCancelObserver) {
                         if (notifyToServer) {
@@ -87,23 +104,8 @@ fun downloadFileObservable(
             }
         }
 
-        fun emitterNextOrComplete() {
-            if (downloadState.get()) {
-                val p = downloadProgress.get()
-                if (!emitter.isDisposed) {
-                    emitter.onNext(p)
-                }
-                if (p >= fileSize) {
-                    downloadState.set(false)
-                    if (!emitter.isDisposed) {
-                        emitter.onComplete()
-                    }
-                }
-            }
-        }
-
         emitter.setCancellable {
-            tryChancelConnection(true)
+            tryChancelConnection(true, Throwable("User canceled."))
         }
 
 
@@ -173,8 +175,12 @@ fun downloadFileObservable(
                                                                     emitterNextOrComplete()
                                                                 }
                                                             }
-                                                            NettyPkg.TimeoutPkg, is NettyPkg.ClientFinishPkg -> {
-                                                                tryChancelConnection(false)
+                                                            NettyPkg.TimeoutPkg -> {
+                                                                tryChancelConnection(false, Throwable("Timeout"))
+                                                            }
+
+                                                            is NettyPkg.ClientFinishPkg -> {
+                                                                tryChancelConnection(false, Throwable("Finish"))
                                                             }
                                                             else -> {
 
@@ -190,7 +196,7 @@ fun downloadFileObservable(
                                     ctx: ChannelHandlerContext?,
                                     cause: Throwable?
                                 ) {
-                                    tryChancelConnection(false)
+                                    tryChancelConnection(false, cause)
                                 }
                             })
                         c = bootstrap.connect(InetSocketAddress(serverAddress, MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT)).sync().channel()

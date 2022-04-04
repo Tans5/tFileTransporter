@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.net.netty.filetransfer
 
 import com.tans.tfiletransporter.file.FileConstants
+import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.File
@@ -75,14 +76,31 @@ fun sendFileObservable(
         val connectionCancelObserver = LinkedBlockingDeque<ConnectionCancelObserver>()
         val sendState = AtomicBoolean(true)
 
-        fun tryCancelConnection(notifyToClient: Boolean) {
-            if (sendState.compareAndSet(true, false)) {
-                if (sendProgress.get() >= fileSize) {
+
+        fun emitterNextOrComplete() {
+            if (sendState.get()) {
+                val p = sendProgress.get()
+                if (!emitter.isDisposed) {
+                    emitter.onNext(p)
+                    Log.d("Send file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble())}%")
+                }
+                if (p >= fileSize) {
+                    Log.d("Send file ${fileData.name} finish.")
+                    sendState.set(false)
                     channel?.close()?.sync()
                     if (!emitter.isDisposed) {
                         emitter.onComplete()
                     }
+                }
+            }
+        }
+
+        fun tryCancelConnection(notifyToClient: Boolean, throwable: Throwable?) {
+            if (sendState.compareAndSet(true, false)) {
+                if (sendProgress.get() >= fileSize) {
+                    emitterNextOrComplete()
                 } else {
+                    Log.e("Send file canceled", throwable)
                     var hasSendToClient = false
                     for (o in connectionCancelObserver) {
                         if (notifyToClient) {
@@ -97,30 +115,14 @@ fun sendFileObservable(
                     }
                     channel?.close()?.sync()
                     if (!emitter.isDisposed) {
-                        emitter.onError(Throwable("User cancel or error."))
-                    }
-                }
-            }
-        }
-
-        fun emitterNextOrComplete() {
-            if (sendState.get()) {
-                val p = sendProgress.get()
-                if (!emitter.isDisposed) {
-                    emitter.onNext(p)
-                }
-                if (p >= fileSize) {
-                    sendState.set(false)
-                    channel?.close()?.sync()
-                    if (!emitter.isDisposed) {
-                        emitter.onComplete()
+                        emitter.onError(throwable ?: Throwable("Unknown error."))
                     }
                 }
             }
         }
 
         emitter.setCancellable {
-            tryCancelConnection(true)
+            tryCancelConnection(true, Throwable("User canceled."))
         }
 
         ioExecutor.execute {
@@ -173,7 +175,7 @@ fun sendFileObservable(
                                                                 val end = endBytes.toLong()
                                                                 val localFrameSize = end - start
                                                                 if (!readMd5.contentEquals(md5) || start < 0 || end < 0 || start >= end|| end > fileSize) {
-                                                                    tryCancelConnection(true)
+                                                                    tryCancelConnection(true, Throwable("Wrong file frame data: md5 -> $md5, start -> $start, end -> $end"))
                                                                 } else {
                                                                     val fileChannel = RandomAccessFile(realFile, "r").let {
                                                                         it.seek(start)
@@ -204,31 +206,34 @@ fun sendFileObservable(
                                                                                         break
                                                                                     }
                                                                                 } else {
-                                                                                    tryCancelConnection(true)
+                                                                                    tryCancelConnection(true, Throwable("Client closed"))
                                                                                     break
                                                                                 }
                                                                             }
                                                                         } finally {
                                                                             fileTransporterPool.recycleBufferBlock(byteBuffer)
                                                                         }
-                                                                        if (ch.isActive) {
-                                                                            ctx.close()
-                                                                        }
                                                                     }
-
                                                                 }
 
                                                             } finally {
                                                                 connectionCancelObserver.remove(co)
                                                             }
                                                         } else {
-                                                            tryCancelConnection(true)
+                                                            tryCancelConnection(true, Throwable("Wrong file frame data"))
                                                         }
                                                     }
                                                 }
-                                                NettyPkg.TimeoutPkg, is NettyPkg.ServerFinishPkg -> {
+                                                NettyPkg.TimeoutPkg -> {
                                                     ioExecutor.execute {
-                                                        tryCancelConnection(false)
+                                                        Log.e("Send files timeout", null)
+                                                        tryCancelConnection(false, Throwable("Timeout!"))
+                                                    }
+                                                }
+                                                is NettyPkg.ServerFinishPkg -> {
+                                                    ioExecutor.execute {
+                                                        Log.d("Send files finish")
+                                                        tryCancelConnection(false, Throwable("Send file finish."))
                                                     }
                                                 }
                                                 else -> {}
@@ -240,9 +245,9 @@ fun sendFileObservable(
                                         ctx: ChannelHandlerContext?,
                                         cause: Throwable?
                                     ) {
-                                        tryCancelConnection(false)
+                                        tryCancelConnection(false, cause)
+                                        Log.e("Send file error", cause)
                                     }
-
                                 })
                         }
                     })
