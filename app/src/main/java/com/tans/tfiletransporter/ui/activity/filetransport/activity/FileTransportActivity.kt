@@ -43,6 +43,7 @@ import org.threeten.bp.ZoneId
 import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
 import kotlin.runCatching
 import kotlin.streams.toList
 
@@ -106,130 +107,137 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             } else {
                 connectToFileExploreServer(remoteAddress)
             }
-            val handshakeModel = fileConnection.observeConnected().await()
+            val handshakeModel = try {
+                fileConnection.observeConnected().timeout(30 * 1000, TimeUnit.MILLISECONDS).await()
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                null
+            }
 
-            updateState { oldState ->
-                oldState.copy(
-                    connectionStatus = ConnectionStatus.Connected(
-                        localAddress = localAddress,
-                        remoteAddress = remoteAddress,
-                        handshakeModel = handshakeModel,
-                        fileExploreConnection = fileConnection
+            if (handshakeModel != null) {
+                updateState { oldState ->
+                    oldState.copy(
+                        connectionStatus = ConnectionStatus.Connected(
+                            localAddress = localAddress,
+                            remoteAddress = remoteAddress,
+                            handshakeModel = handshakeModel,
+                            fileExploreConnection = fileConnection
+                        )
                     )
-                )
-            }.await()
+                }.await()
 
 
-            fileConnection.observeRemoteFileExploreContent()
-                .doOnNext {
-                    when (it) {
-                        is MessageModel -> {
-                            val lastMessages = fileTransportScopeData.messagesEvent.firstOrError().blockingGet()
-                            val message = FileTransportScopeData.Companion.Message(
-                                isRemote = true,
-                                timeMilli = SystemClock.uptimeMillis(),
-                                message = it.message
-                            )
-                            fileTransportScopeData.messagesEvent.onNext(lastMessages + message)
-                        }
-                        is RequestFilesModel -> {
-                            runBlocking(context = this.coroutineContext) {
-                                val dialog = withContext(Dispatchers.Main) {
-                                    showLoadingDialog()
+                fileConnection.observeRemoteFileExploreContent()
+                    .doOnNext {
+                        when (it) {
+                            is MessageModel -> {
+                                val lastMessages = fileTransportScopeData.messagesEvent.firstOrError().blockingGet()
+                                val message = FileTransportScopeData.Companion.Message(
+                                    isRemote = true,
+                                    timeMilli = SystemClock.uptimeMillis(),
+                                    message = it.message
+                                )
+                                fileTransportScopeData.messagesEvent.onNext(lastMessages + message)
+                            }
+                            is RequestFilesModel -> {
+                                runBlocking(context = this.coroutineContext) {
+                                    val dialog = withContext(Dispatchers.Main) {
+                                        showLoadingDialog()
+                                    }
+                                    fileConnection.sendFileExploreContentToRemote(
+                                        fileExploreContent = ShareFilesModel(shareFiles = it.requestFiles),
+                                        waitReplay = true
+                                    )
+                                    withContext(Dispatchers.Main) {
+                                        dialog.cancel()
+                                        val result = kotlin.runCatching {
+                                            startSendingFiles(
+                                                files = it.requestFiles,
+                                                localAddress = localAddress,
+                                                pathConverter = defaultPathConverter
+                                            ).await()
+                                        }
+                                        if (result.isFailure) {
+                                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+                                        }
+                                    }
+                                }
+
+                            }
+                            is RequestFolderModel -> {
+                                val shareFolder = bindState().firstOrError().blockingGet().shareMyDir
+                                val parentPath = it.requestPath
+                                val path = Paths.get(FileConstants.homePathString + parentPath)
+                                val children = if (shareFolder && Files.isReadable(path)) {
+                                    Files.list(path)
+                                        .filter { Files.isReadable(it) }
+                                        .map { p ->
+                                            val name = p.fileName.toString()
+                                            val lastModify = OffsetDateTime.ofInstant(
+                                                Instant.ofEpochMilli(
+                                                    Files.getLastModifiedTime(p).toMillis()
+                                                ), ZoneId.systemDefault()
+                                            )
+                                            val pathString =
+                                                if (parentPath.endsWith(FileConstants.FILE_SEPARATOR)) parentPath + name else parentPath + FileConstants.FILE_SEPARATOR + name
+                                            if (Files.isDirectory(p)) {
+                                                Folder(
+                                                    name = name,
+                                                    path = pathString,
+                                                    childCount = p.let {
+                                                        val s = Files.list(it)
+                                                        val size = s.count()
+                                                        s.close()
+                                                        size
+                                                    },
+                                                    lastModify = lastModify
+                                                )
+                                            } else {
+                                                File(
+                                                    name = name,
+                                                    path = pathString,
+                                                    size = Files.size(p),
+                                                    lastModify = lastModify
+                                                )
+                                            }
+                                        }.toList()
+
+                                } else {
+                                    emptyList()
                                 }
                                 fileConnection.sendFileExploreContentToRemote(
-                                    fileExploreContent = ShareFilesModel(shareFiles = it.requestFiles),
-                                    waitReplay = true
+                                    fileExploreContent = ShareFolderModel(
+                                        path = parentPath,
+                                        childrenFolders = children.filterIsInstance<Folder>(),
+                                        childrenFiles = children.filterIsInstance<File>()
+                                    )
                                 )
-                                withContext(Dispatchers.Main) {
-                                    dialog.cancel()
-                                    val result = kotlin.runCatching {
-                                        startSendingFiles(
-                                            files = it.requestFiles,
-                                            localAddress = localAddress,
-                                            pathConverter = defaultPathConverter
-                                        ).await()
-                                    }
-                                    if (result.isFailure) {
-                                        Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-                                    }
+                            }
+                            is ShareFilesModel -> {
+                                val result = runCatching {
+                                    val unit = startDownloadingFiles(it.shareFiles, remoteAddress).blockingGet()
+                                }
+                                if (result.isFailure) {
+                                    Log.e(
+                                        "Download Files Fail",
+                                        "Download Files Fail",
+                                        result.exceptionOrNull()
+                                    )
                                 }
                             }
-
-                        }
-                        is RequestFolderModel -> {
-                            val shareFolder = bindState().firstOrError().blockingGet().shareMyDir
-                            val parentPath = it.requestPath
-                            val path = Paths.get(FileConstants.homePathString + parentPath)
-                            val children = if (shareFolder && Files.isReadable(path)) {
-                                Files.list(path)
-                                    .filter { Files.isReadable(it) }
-                                    .map { p ->
-                                        val name = p.fileName.toString()
-                                        val lastModify = OffsetDateTime.ofInstant(
-                                            Instant.ofEpochMilli(
-                                                Files.getLastModifiedTime(p).toMillis()
-                                            ), ZoneId.systemDefault()
-                                        )
-                                        val pathString =
-                                            if (parentPath.endsWith(FileConstants.FILE_SEPARATOR)) parentPath + name else parentPath + FileConstants.FILE_SEPARATOR + name
-                                        if (Files.isDirectory(p)) {
-                                            Folder(
-                                                name = name,
-                                                path = pathString,
-                                                childCount = p.let {
-                                                    val s = Files.list(it)
-                                                    val size = s.count()
-                                                    s.close()
-                                                    size
-                                                },
-                                                lastModify = lastModify
-                                            )
-                                        } else {
-                                            File(
-                                                name = name,
-                                                path = pathString,
-                                                size = Files.size(p),
-                                                lastModify = lastModify
-                                            )
-                                        }
-                                    }.toList()
-
-                            } else {
-                                emptyList()
+                            is ShareFolderModel -> {
+                                fileTransportScopeData.remoteFolderModelEvent.onNext(ResponseFolderModel(
+                                    path = it.path,
+                                    childrenFolders = it.childrenFolders,
+                                    childrenFiles = it.childrenFiles
+                                ))
                             }
-                            fileConnection.sendFileExploreContentToRemote(
-                                fileExploreContent = ShareFolderModel(
-                                    path = parentPath,
-                                    childrenFolders = children.filterIsInstance<Folder>(),
-                                    childrenFiles = children.filterIsInstance<File>()
-                                )
-                            )
+                            else -> {}
                         }
-                        is ShareFilesModel -> {
-                            val result = runCatching {
-                                val unit = startDownloadingFiles(it.shareFiles, remoteAddress).blockingGet()
-                            }
-                            if (result.isFailure) {
-                                Log.e(
-                                    "Download Files Fail",
-                                    "Download Files Fail",
-                                    result.exceptionOrNull()
-                                )
-                            }
-                        }
-                        is ShareFolderModel -> {
-                            fileTransportScopeData.remoteFolderModelEvent.onNext(ResponseFolderModel(
-                                path = it.path,
-                                childrenFolders = it.childrenFolders,
-                                childrenFiles = it.childrenFiles
-                            ))
-                        }
-                        else -> {}
                     }
-                }
-                .ignoreElements()
-                .await()
+                    .ignoreElements()
+                    .await()
+            }
 
             withContext(Dispatchers.Main) {
                 showNoOptionalDialog(
