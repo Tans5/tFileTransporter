@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
@@ -64,6 +65,7 @@ enum class DirTabType {
 
 sealed class ConnectionStatus {
     object Connecting : ConnectionStatus()
+    object Error : ConnectionStatus()
     data class Connected(
         val localAddress: InetAddress,
         val remoteAddress: InetAddress,
@@ -114,8 +116,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 null
             }
 
-            if (handshakeModel != null) {
-                updateState { oldState ->
+            updateState { oldState ->
+                if (handshakeModel != null) {
                     oldState.copy(
                         connectionStatus = ConnectionStatus.Connected(
                             localAddress = localAddress,
@@ -124,8 +126,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                             fileExploreConnection = fileConnection
                         )
                     )
-                }.await()
+                } else {
+                    oldState.copy(connectionStatus = ConnectionStatus.Error)
+                }
+            }.await()
 
+            if (handshakeModel != null) {
 
                 fileConnection.observeRemoteFileExploreContent()
                     .doOnNext {
@@ -258,109 +264,110 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             binding.toolBar.subtitle = remoteAddress.hostAddress
 
             val loadingDialog = showLoadingDialog(cancelable = false)
-            withContext(Dispatchers.IO) {
+            val status = withContext(Dispatchers.IO) {
                 bindState()
                 .map { it.connectionStatus }
-                .filter { it is ConnectionStatus.Connected }
-                .cast<ConnectionStatus.Connected>()
+                .filter { it is ConnectionStatus.Connected || it is ConnectionStatus.Error }
                 .firstOrError()
                 .await()
             }
             loadingDialog.cancel()
 
-            render({ it.shareMyDir }) { binding.toolBar.menu.findItem(R.id.share_my_folder).isChecked = it }.bindLife()
+            if (status is ConnectionStatus.Connected) {
+                render({ it.shareMyDir }) { binding.toolBar.menu.findItem(R.id.share_my_folder).isChecked = it }.bindLife()
 
-            binding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
-                override fun getItemCount(): Int = fragments.size
-                override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
-            }
-
-            TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-                tab.text = when (DirTabType.values()[position]) {
-                    DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
-                    DirTabType.MyImages -> getString(R.string.file_transport_activity_tab_my_images)
-                    DirTabType.MyDir -> getString(R.string.file_transport_activity_tab_my_dir)
-                    DirTabType.RemoteDir -> getString(R.string.file_transport_activity_tab_remote_dir)
-                    DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
+                binding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
+                    override fun getItemCount(): Int = fragments.size
+                    override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
                 }
-            }.attach()
 
-            binding.toolBar.setOnMenuItemClickListener {
-                if (it.itemId == R.id.share_my_folder) {
-                    updateState { oldState ->
-                        oldState.copy(shareMyDir = !oldState.shareMyDir)
-                    }.bindLife()
-                    true
-                } else {
-                    false
-                }
-            }
+                TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+                    tab.text = when (DirTabType.values()[position]) {
+                        DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
+                        DirTabType.MyImages -> getString(R.string.file_transport_activity_tab_my_images)
+                        DirTabType.MyDir -> getString(R.string.file_transport_activity_tab_my_dir)
+                        DirTabType.RemoteDir -> getString(R.string.file_transport_activity_tab_remote_dir)
+                        DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
+                    }
+                }.attach()
 
-            binding.tabLayout.addOnTabSelectedListener(object :
-                    TabLayout.OnTabSelectedListener {
-                override fun onTabSelected(tab: TabLayout.Tab?) {
-                    when (tab?.position) {
-                        DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
-                        DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
-                        DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
-                        DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
-                        DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
+                binding.toolBar.setOnMenuItemClickListener {
+                    if (it.itemId == R.id.share_my_folder) {
+                        updateState { oldState ->
+                            oldState.copy(shareMyDir = !oldState.shareMyDir)
+                        }.bindLife()
+                        true
+                    } else {
+                        false
                     }
                 }
 
-                override fun onTabUnselected(tab: TabLayout.Tab?) {
-                }
+                binding.tabLayout.addOnTabSelectedListener(object :
+                    TabLayout.OnTabSelectedListener {
+                    override fun onTabSelected(tab: TabLayout.Tab?) {
+                        when (tab?.position) {
+                            DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
+                            DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
+                            DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
+                            DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
+                            DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
+                        }
+                    }
 
-                override fun onTabReselected(tab: TabLayout.Tab?) {
-                }
-            })
+                    override fun onTabUnselected(tab: TabLayout.Tab?) {
+                    }
 
-            binding.floatingActionBt.clicks()
+                    override fun onTabReselected(tab: TabLayout.Tab?) {
+                    }
+                })
+
+                binding.floatingActionBt.clicks()
                     .doOnNext { fileTransportScopeData.floatBtnEvent.onNext(Unit) }
                     .bindLife()
-            render({ it.connectionStatus }) {
-                when (it) {
-                    ConnectionStatus.Connecting -> {
-                        binding.toolBar.title = ""
-                        binding.toolBar.subtitle = ""
+                render({ it.connectionStatus }) {
+                    when (it) {
+                        ConnectionStatus.Connecting -> {
+                            binding.toolBar.title = ""
+                            binding.toolBar.subtitle = ""
+                        }
+                        is ConnectionStatus.Connected -> {
+                            binding.toolBar.title = it.handshakeModel.deviceName
+                            binding.toolBar.subtitle = it.remoteAddress.hostAddress
+                        }
                     }
-                    is ConnectionStatus.Connected -> {
-                        binding.toolBar.title = it.handshakeModel.deviceName
-                        binding.toolBar.subtitle = it.remoteAddress.hostAddress
-                    }
-                }
-            }.bindLife()
+                }.bindLife()
 
-            render({ it.selectedTabType }) {
+                render({ it.selectedTabType }) {
 
-                when (it) {
-                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
-                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
-                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
-                        binding.collapsingLayout.layoutParams = lpCollapsing
+                    when (it) {
+                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
+                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
+                            binding.collapsingLayout.layoutParams = lpCollapsing
+                        }
+                        DirTabType.Message -> {
+                            val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                            lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
+                            binding.collapsingLayout.layoutParams = lpCollapsing
+                        }
                     }
-                    DirTabType.Message -> {
-                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
-                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
-                        binding.collapsingLayout.layoutParams = lpCollapsing
-                    }
-                }
 
-                when (it) {
-                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
-                        binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
-                        binding.floatingActionBt.visibility = View.VISIBLE
+                    when (it) {
+                        DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
+                            binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
+                            binding.floatingActionBt.visibility = View.VISIBLE
+                        }
+                        DirTabType.RemoteDir -> {
+                            binding.floatingActionBt.setImageResource(R.drawable.download_outline)
+                            binding.floatingActionBt.visibility = View.VISIBLE
+                        }
+                        DirTabType.Message -> {
+                            binding.floatingActionBt.visibility = View.GONE
+                        }
                     }
-                    DirTabType.RemoteDir -> {
-                        binding.floatingActionBt.setImageResource(R.drawable.download_outline)
-                        binding.floatingActionBt.visibility = View.VISIBLE
-                    }
-                    DirTabType.Message -> {
-                        binding.floatingActionBt.visibility = View.GONE
-                    }
-                }
-                binding.appbarLayout.setExpanded(true, true)
-            }.bindLife()
+                    binding.appbarLayout.setExpanded(true, true)
+                }.bindLife()
+            }
         }
     }
 
@@ -369,9 +376,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             val tabType = withContext(Dispatchers.IO) { bindState().firstOrError().map { it.selectedTabType }.await() }
             if (fragments[tabType]?.onBackPressed() != true) {
                 ioExecutor.execute {
-                    fileTransportScopeData.fileExploreConnection.let {
-                        if (it.isConnectionActive()) {
-                            it.close(true)
+                    val status = bindState().firstOrError().map { it.connectionStatus }.blockingGet()
+                    if (status is ConnectionStatus.Connected) {
+                        fileTransportScopeData.fileExploreConnection.let {
+                            if (it.isConnectionActive()) {
+                                it.close(true)
+                            }
                         }
                     }
                 }
@@ -382,9 +392,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     override fun onDestroy() {
         super.onDestroy()
-        fileTransportScopeData.fileExploreConnection.let {
-            if (it.isConnectionActive()) {
-                it.close(false)
+        ioExecutor.execute {
+            val status = bindState().firstOrError().map { it.connectionStatus }.blockingGet()
+            if (status is ConnectionStatus.Connected) {
+                fileTransportScopeData.fileExploreConnection.let {
+                    if (it.isConnectionActive()) {
+                        it.close(false)
+                    }
+                }
             }
         }
     }
