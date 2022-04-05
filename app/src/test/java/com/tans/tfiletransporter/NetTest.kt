@@ -1,22 +1,22 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.net.netty.common.NettyPkg
-import com.tans.tfiletransporter.net.netty.common.handler.writePkg
-import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
-import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
-import com.tans.tfiletransporter.utils.ioExecutor
-import io.netty.bootstrap.Bootstrap
-import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.Channel
-import io.netty.channel.ChannelDuplexHandler
-import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.SocketChannel
-import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.channel.socket.nio.NioSocketChannel
-import org.junit.Test
-import java.net.InetSocketAddress
+//import com.tans.tfiletransporter.net.netty.common.NettyPkg
+//import com.tans.tfiletransporter.net.netty.common.handler.writePkg
+//import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
+//import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
+//import com.tans.tfiletransporter.utils.ioExecutor
+//import io.netty.bootstrap.Bootstrap
+//import io.netty.bootstrap.ServerBootstrap
+//import io.netty.channel.Channel
+//import io.netty.channel.ChannelDuplexHandler
+//import io.netty.channel.ChannelHandlerContext
+//import io.netty.channel.ChannelInitializer
+//import io.netty.channel.nio.NioEventLoopGroup
+//import io.netty.channel.socket.SocketChannel
+//import io.netty.channel.socket.nio.NioServerSocketChannel
+//import io.netty.channel.socket.nio.NioSocketChannel
+//import org.junit.Test
+//import java.net.InetSocketAddress
 
 class NetTest {
 
