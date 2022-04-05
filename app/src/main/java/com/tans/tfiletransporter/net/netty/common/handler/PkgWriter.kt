@@ -47,7 +47,7 @@ fun Channel.writePkg(pkg: NettyPkg): UInt? {
     }
 }
 
-fun Channel.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 12 * 1000L): UInt {
+fun Channel.writePkgBlockReply(pkg: NettyPkg, timeoutMillis: Long = 30 * 1000L): UInt {
     val writer = pipeline().get(PkgWriter::class.java) ?: error("Didn't find Pkg writer.")
     return with(writer) {
         writePkgBlockReplyWriter(pkg, timeoutMillis)

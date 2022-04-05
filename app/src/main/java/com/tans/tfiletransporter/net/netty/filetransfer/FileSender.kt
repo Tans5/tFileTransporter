@@ -34,8 +34,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 
 
-// 512KB
-private const val WRITE_BUFFER_SIZE = 1024 * 256
+// 128KB
+private const val WRITE_BUFFER_SIZE = 1024 * 128
 private const val BUFFER_SIZE = 40
 
 val fileTransporterPool = NetBufferPool(
