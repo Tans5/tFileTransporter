@@ -109,7 +109,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 connectToFileExploreServer(remoteAddress)
             }
             val handshakeModel = try {
-                fileConnection.observeConnected().timeout(30 * 1000, TimeUnit.MILLISECONDS).await()
+                fileConnection.observeConnected().timeout(12 * 1000, TimeUnit.MILLISECONDS).await()
             } catch (t: Throwable) {
                 t.printStackTrace()
                 null
