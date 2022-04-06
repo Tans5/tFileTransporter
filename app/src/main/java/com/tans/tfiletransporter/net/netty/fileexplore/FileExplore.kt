@@ -241,7 +241,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                                                 pathSeparator = File.separator,
                                                                 deviceName = "${Build.BRAND} ${Build.MODEL}"
                                                             )
-                                                            ctx.channel().writePkgBlockReply(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))
+                                                            ctx.channel().writePkg(NettyPkg.JsonPkg(handshakeModel.toFileExploreBaseJsonString()))
                                                             connection.connectionActive(model)
                                                         }
                                                         else -> {

@@ -27,7 +27,6 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.utils.ioExecutor
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
-import io.reactivex.rxkotlin.cast
 import io.reactivex.rxkotlin.ofType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -326,7 +325,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     .bindLife()
                 render({ it.connectionStatus }) {
                     when (it) {
-                        ConnectionStatus.Connecting -> {
+                        ConnectionStatus.Connecting, ConnectionStatus.Error -> {
                             binding.toolBar.title = ""
                             binding.toolBar.subtitle = ""
                         }

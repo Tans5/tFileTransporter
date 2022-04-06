@@ -16,6 +16,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
+import com.tans.tfiletransporter.logs.Log
 import com.tans.tfiletransporter.net.FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.net.connection.RemoteDevice
@@ -62,13 +63,15 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                 WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {
                     val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
-                    if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
+                    if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
+                        Log.d("WIFI State disable.")
                         updateState { WifiP2pConnectionState() }.bindLife()
                     }
                 }
 
                 WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
                     val wifiDevicesList = intent.getParcelableExtra<WifiP2pDeviceList>(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
+                    Log.d("WIFI P2P devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                     updateState { oldState ->
                         oldState.copy(peers = Optional.ofNullable(wifiDevicesList))
                     }.bindLife()
@@ -76,6 +79,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val wifiP2pInfo = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
+                    Log.d("WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
                     updateState { oldState ->
                         oldState.copy(currentConnection = if (wifiP2pInfo?.groupOwnerAddress == null) Optional.empty() else Optional.of(wifiP2pInfo))
                     }.bindLife()
@@ -155,7 +159,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 updateState { oldState -> oldState.copy(peers = peers) }.await()
                             }
                         }
-                        delay(1000 * 8)
+                        delay(1500)
                     }
                 }
 
@@ -209,10 +213,8 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                     if (state == WIFI_P2P_SUCCESS_CODE) {
                                         bindState().map { it.connectedRemoteDevice }.skip(1).firstOrError().await()
                                     }
-                                    println("Connect State: $state")
+                                    Log.d("Connect State: $state")
                                 }
-                                    .observeOn(AndroidSchedulers.mainThread())
-                                    .loadingDialog(requireActivity())
                             }
                         }
                 ).emptyView<WifiP2pDevice, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
@@ -238,7 +240,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 }
                                 Unit
                             }
-                                .timeout(5000L, TimeUnit.MILLISECONDS)
+                                .timeout(10000L, TimeUnit.MILLISECONDS)
                                 .onErrorResumeNext {
                                 it.printStackTrace()
                                 rxSingle { closeCurrentConnection() }
