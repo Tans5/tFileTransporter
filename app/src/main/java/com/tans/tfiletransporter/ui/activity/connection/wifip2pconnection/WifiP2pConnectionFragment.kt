@@ -148,7 +148,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 }
             }.bindLife()
             val grant = RxPermissions(requireActivity())
-                .request(Manifest.permission.ACCESS_FINE_LOCATION)
+                .request(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                 .firstOrError()
                 .await()
             if (grant) {
