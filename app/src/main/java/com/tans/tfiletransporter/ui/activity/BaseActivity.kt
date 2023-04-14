@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity
 
 import android.os.Bundle
+import androidx.activity.addCallback
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
@@ -42,7 +43,7 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     private val viewModel: ActivityViewModel<State> by lazy {
         ViewModelProvider(this, object : ViewModelProvider.Factory{
-            override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return ActivityViewModel(defaultState) as T
             }
         }).get(ActivityViewModel::class.java) as ActivityViewModel<State>
@@ -65,6 +66,14 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
             firstLaunchInitData()
         }
         initViews(binding)
+        onBackPressedDispatcher.addCallback {
+            for (f in supportFragmentManager.fragments) {
+                if (!f.isHidden && f is BaseFragment<*, *> && f.onBackPressed()) {
+                    return@addCallback
+                }
+            }
+            finish()
+        }
     }
 
     open fun firstLaunchInitData() {
@@ -73,15 +82,6 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     open fun initViews(binding: Binding) {
 
-    }
-
-    override fun onBackPressed() {
-        for (f in supportFragmentManager.fragments) {
-            if (!f.isHidden && f is BaseFragment<*, *> && f.onBackPressed()) {
-                return
-            }
-        }
-        super.onBackPressed()
     }
 
     override fun onDestroy() {

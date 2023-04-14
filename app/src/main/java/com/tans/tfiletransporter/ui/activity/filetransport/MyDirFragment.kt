@@ -192,7 +192,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                     }
                 }
         )).toAdapter { list ->
-            val position = recyclerViewScrollChannel.poll()
+            val position = recyclerViewScrollChannel.tryReceive().getOrNull()
             if (position != null && position < list.size) {
                 (binding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
             }
@@ -270,7 +270,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
                                 R.id.sort_by_date -> {
                                     if (oldState.sortType != FileSortType.SortByDate) {
-                                        recyclerViewScrollChannel.offer(0)
+                                        recyclerViewScrollChannel.trySend(0).isSuccess
                                         oldState.copy(
                                             sortType = FileSortType.SortByDate
                                         )
@@ -281,7 +281,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
 
                                 R.id.sort_by_name -> {
                                     if (oldState.sortType != FileSortType.SortByName) {
-                                        recyclerViewScrollChannel.offer(0)
+                                        recyclerViewScrollChannel.trySend(0).isSuccess
                                         oldState.copy(sortType = FileSortType.SortByName)
                                     } else {
                                         oldState
@@ -314,7 +314,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             updateState { state ->
                 val i = folderPositionDeque.poll()
                 if (i != null) {
-                    recyclerViewScrollChannel.offer(i)
+                    recyclerViewScrollChannel.trySend(i).isSuccess
                 }
                 if (state.fileTree.parentTree == null) state else MyDirFragmentState(state.fileTree.parentTree, emptySet())
             }.bindLife()

@@ -98,7 +98,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                     }
                 }
             ).toAdapter {
-                val position = recyclerViewScrollChannel.poll()
+                val position = recyclerViewScrollChannel.tryReceive().getOrNull()
                 if (position != null && it.isNotEmpty()) {
                     (binding.myImagesRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
                 }
@@ -122,7 +122,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                 refreshImages()
                     .switchThread()
                     .doFinally {
-                        recyclerViewScrollChannel.offer(0)
+                        recyclerViewScrollChannel.trySend(0).isSuccess
                         if (binding.imagesRefreshLayout.isRefreshing)
                             binding.imagesRefreshLayout.isRefreshing = false
                     }

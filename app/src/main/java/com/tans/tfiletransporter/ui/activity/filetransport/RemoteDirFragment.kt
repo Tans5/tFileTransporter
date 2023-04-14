@@ -178,7 +178,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                     }
                 }
         )).toAdapter { list ->
-            val position = recyclerViewScrollChannel.poll()
+            val position = recyclerViewScrollChannel.tryReceive().getOrNull()
             if (position != null && position < list.size) {
                 (binding.remoteFileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
             }
@@ -267,7 +267,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
 
                                     R.id.sort_by_date -> {
                                         if (oldState.sortType != FileSortType.SortByDate) {
-                                            recyclerViewScrollChannel.offer(0)
+                                            recyclerViewScrollChannel.trySend(0).isSuccess
                                             oldState.copy(sortType = FileSortType.SortByDate)
                                         } else {
                                             oldState
@@ -276,7 +276,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
 
                                     R.id.sort_by_name -> {
                                         if (oldState.sortType != FileSortType.SortByName) {
-                                            recyclerViewScrollChannel.offer(0)
+                                            recyclerViewScrollChannel.trySend(0).isSuccess
                                             oldState.copy(sortType = FileSortType.SortByName)
                                         } else {
                                             oldState
@@ -311,7 +311,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
             updateState { state ->
                 val i = folderPositionDeque.poll()
                 if (i != null) {
-                    recyclerViewScrollChannel.offer(i)
+                    recyclerViewScrollChannel.trySend(i).isSuccess
                 }
                 val parent = state.fileTree.get().parentTree
                 if (parent != null) state.copy(fileTree = Optional.of(parent), selectedFiles = emptySet()) else state

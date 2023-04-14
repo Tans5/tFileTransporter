@@ -40,12 +40,18 @@ import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.optionals.getOrNull
 
+
+data class Peer(
+    val deviceName: String,
+    val macAddress: String,
+)
 
 data class WifiP2pConnectionState(
     val isP2pEnabled: Boolean = false,
     val p2pLocalAddress: Optional<InetAddress> = Optional.empty(),
-    val peers: Optional<WifiP2pDeviceList> = Optional.empty(),
+    val peers: List<Peer> = emptyList(),
     val p2pConnection: Optional<WifiP2pInfo> = Optional.empty(),
     val p2pRemoteDevice: Optional<RemoteDevice> = Optional.empty()
 )
@@ -82,7 +88,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     }
                     Log.d(TAG, "WIFI p2p devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                     updateState { oldState ->
-                        oldState.copy(peers = Optional.ofNullable(wifiDevicesList))
+                        oldState.copy(peers = wifiDevicesList?.deviceList?.map { Peer(it.deviceName, it.deviceAddress) } ?: emptyList())
                     }.bindLife()
                 }
 
@@ -161,14 +167,17 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 launch(Dispatchers.IO) {
                     while (true) {
                         val (connection, isP2pEnabled) = bindState().map { it.p2pRemoteDevice to it.isP2pEnabled }.firstOrError().await()
-                        if (!connection.isPresent && isP2pEnabled) {
+                        if (!isP2pEnabled) {
+                            updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
+                        } else if (!connection.isPresent) {
                             val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
                             if (state == WifiActionResult.Success) {
                                 Log.d(TAG, "Request discover peer success")
                                 val peers = wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
                                 Log.d(TAG, "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
-                                updateState { oldState -> oldState.copy(peers = peers) }.await()
+                                updateState { oldState -> oldState.copy(peers = peers.getOrNull()?.deviceList?.map { Peer(it.deviceName, it.deviceAddress) } ?: emptyList()) }.await()
                             } else {
+                                updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
                                 Log.e(TAG, "Request discover peer fail: $state")
                             }
                         }
@@ -211,18 +220,18 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     .bindLife()
 
                 binding.remoteDevicesRv.adapter =
-                    SimpleAdapterSpec<WifiP2pDevice, RemoteServerItemLayoutBinding>(
+                    SimpleAdapterSpec<Peer, RemoteServerItemLayoutBinding>(
                         layoutId = R.layout.remote_server_item_layout,
                         bindData = { _, device, lBinding ->
                             lBinding.device = device.deviceName
-                            lBinding.ipAddress = "Mac address: ${device.deviceAddress}"
+                            lBinding.ipAddress = "Mac address: ${device.macAddress}"
                         },
-                        dataUpdater = bindState().map { if (it.peers.isPresent) it.peers.get().deviceList.toList() else emptyList() },
+                        dataUpdater = bindState().map { it.peers }.distinctUntilChanged(),
                         itemClicks = listOf { binding, _ ->
                             binding.root to { _, data ->
                                 rxSingle {
                                     val config = WifiP2pConfig()
-                                    config.deviceAddress = data.deviceAddress
+                                    config.deviceAddress = data.macAddress
                                     val state = wifiP2pManager.connectSuspend(wifiChannel, config)
                                     if (state == WifiActionResult.Success) {
                                         Log.d(TAG, "Request P2P connection success !!!")
@@ -232,7 +241,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 }
                             }
                         }
-                    ).emptyView<WifiP2pDevice, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
+                    ).emptyView<Peer, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
                         emptyLayout = R.layout.remote_server_empty_item_layout,
                         initShowEmpty = true
                     )
