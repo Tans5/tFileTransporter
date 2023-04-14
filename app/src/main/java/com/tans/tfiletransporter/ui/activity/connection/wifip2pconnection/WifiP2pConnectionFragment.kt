@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.wifi.p2p.*
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import com.jakewharton.rxbinding3.view.clicks
@@ -42,10 +43,11 @@ import java.util.concurrent.TimeUnit
 
 
 data class WifiP2pConnectionState(
-        val localAddress: Optional<InetAddress> = Optional.empty(),
-        val peers: Optional<WifiP2pDeviceList> = Optional.empty(),
-        val currentConnection: Optional<WifiP2pInfo> = Optional.empty(),
-        val connectedRemoteDevice: Optional<RemoteDevice> = Optional.empty()
+    val isP2pEnabled: Boolean = false,
+    val p2pLocalAddress: Optional<InetAddress> = Optional.empty(),
+    val peers: Optional<WifiP2pDeviceList> = Optional.empty(),
+    val p2pConnection: Optional<WifiP2pInfo> = Optional.empty(),
+    val p2pRemoteDevice: Optional<RemoteDevice> = Optional.empty()
 )
 
 class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding, WifiP2pConnectionState>(
@@ -64,24 +66,36 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {
                     val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
                     if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-                        Log.d("WIFI State disable.")
+                        Log.e(TAG, "Wifi p2p disabled.")
                         updateState { WifiP2pConnectionState() }.bindLife()
+                    } else {
+                        Log.d(TAG, "Wifi p2p enabled.")
+                        updateState { it.copy(isP2pEnabled = true) }.bindLife()
                     }
                 }
 
                 WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
-                    val wifiDevicesList = intent.getParcelableExtra<WifiP2pDeviceList>(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
-                    Log.d("WIFI P2P devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
+                    val wifiDevicesList = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST, WifiP2pDeviceList::class.java)
+                    } else {
+                        intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
+                    }
+                    Log.d(TAG, "WIFI p2p devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                     updateState { oldState ->
                         oldState.copy(peers = Optional.ofNullable(wifiDevicesList))
                     }.bindLife()
                 }
 
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
-                    val wifiP2pInfo = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
-                    Log.d("WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
+                    val wifiP2pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO, WifiP2pInfo::class.java)
+                    } else {
+                        intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
+                    }
+                    Log.d(TAG, "WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
                     updateState { oldState ->
-                        oldState.copy(currentConnection = if (wifiP2pInfo?.groupOwnerAddress == null) Optional.empty() else Optional.of(wifiP2pInfo))
+                        val p2pConnection = if (wifiP2pInfo?.groupOwnerAddress == null) Optional.empty() else Optional.of(wifiP2pInfo)
+                        oldState.copy(p2pConnection = p2pConnection, p2pLocalAddress = Optional.empty())
                     }.bindLife()
                 }
 
@@ -112,7 +126,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             launch {
                 closeCurrentConnection()
             }
-            render({ it.localAddress }) {
+            render({ it.p2pLocalAddress }) {
                 if (it.isPresent) {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().hostAddress)
                 } else {
@@ -120,7 +134,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 }
             }.bindLife()
 
-            render({ it.connectedRemoteDevice }) {
+            render({ it.p2pRemoteDevice }) {
                 if (it.isPresent) {
                     binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
                             it.get().second, it.get().first.hostAddress)
@@ -133,11 +147,10 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     binding.remoteDevicesRv.visibility = View.VISIBLE
                 }
             }.bindLife()
-
             val grant = RxPermissions(requireActivity())
-                    .request(Manifest.permission.ACCESS_FINE_LOCATION)
-                    .firstOrError()
-                    .await()
+                .request(Manifest.permission.ACCESS_FINE_LOCATION)
+                .firstOrError()
+                .await()
             if (grant) {
 //                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 //                    launch {
@@ -150,54 +163,58 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                 launch(Dispatchers.IO) {
                     while (true) {
-                        val connection = bindState().map { it.connectedRemoteDevice }.firstOrError().await()
-                        if (!connection.isPresent) {
+                        val (connection, isP2pEnabled) = bindState().map { it.p2pRemoteDevice to it.isP2pEnabled }.firstOrError().await()
+                        if (!connection.isPresent && isP2pEnabled) {
                             val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
-                            if (state == WIFI_P2P_SUCCESS_CODE) {
-                                val peers =
-                                    wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
+                            if (state == WifiActionResult.Success) {
+                                Log.d(TAG, "Request discover peer success")
+                                val peers = wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
+                                Log.d(TAG, "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                                 updateState { oldState -> oldState.copy(peers = peers) }.await()
+                            } else {
+                                Log.e(TAG, "Request discover peer fail: $state")
                             }
                         }
-                        delay(1500)
+                        delay(5000)
                     }
                 }
 
-                binding.transferFileLayout.clicks()
-                    .switchMapSingle {
-                        rxSingle(Dispatchers.IO) {
-                            val remoteDevice = bindState().map { it.connectedRemoteDevice }.firstOrError().await()
-                            val localAddress = bindState().map { it.localAddress }.firstOrError().await()
-                            if (remoteDevice.isPresent && localAddress.isPresent) {
-                                val sc = openAsynchronousSocketChannel()
-                                sc.connectSuspend(InetSocketAddress(remoteDevice.get().first, FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT))
-                                sc.close()
-                                withContext(Dispatchers.Main) {
-                                    startActivity(
-                                        FileTransportActivity.getIntent(
-                                            context = requireContext(),
-                                            localAddress = localAddress.get(),
-                                            remoteDevice = remoteDevice.get(),
-                                            asServer = false
-                                        )
-                                    )
-                                }
-                            }
-                        }.onErrorResumeNext {
-                            it.printStackTrace()
-                            Single.just(Unit)
-                        }
+//                binding.transferFileLayout.clicks()
+//                    .switchMapSingle {
+//                        rxSingle(Dispatchers.IO) {
+//                            val remoteDevice = bindState().map { it.p2pRemoteDevice }.firstOrError().await()
+//                            val localAddress = bindState().map { it.p2pLocalAddress }.firstOrError().await()
+//                            if (remoteDevice.isPresent && localAddress.isPresent) {
+//                                val sc = openAsynchronousSocketChannel()
+//                                sc.connectSuspend(InetSocketAddress(remoteDevice.get().first, FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT))
+//                                sc.close()
+//                                withContext(Dispatchers.Main) {
+//                                    startActivity(
+//                                        FileTransportActivity.getIntent(
+//                                            context = requireContext(),
+//                                            localAddress = localAddress.get(),
+//                                            remoteDevice = remoteDevice.get(),
+//                                            asServer = false
+//                                        )
+//                                    )
+//                                }
+//                            }
+//                        }.onErrorResumeNext {
+//                            it.printStackTrace()
+//                            Single.just(Unit)
+//                        }
+//                    }
+//                    .bindLife()
+
+                binding.closeCurrentConnectionLayout.clicks()
+                    .flatMapSingle {
+                        rxSingle { closeCurrentConnection() }
+                            .loadingDialog(requireActivity())
                     }
                     .bindLife()
 
-                binding.closeCurrentConnectionLayout.clicks()
-                        .flatMapSingle {
-                            rxSingle { closeCurrentConnection() }
-                                .loadingDialog(requireActivity())
-                        }
-                        .bindLife()
-
-                binding.remoteDevicesRv.adapter = SimpleAdapterSpec<WifiP2pDevice, RemoteServerItemLayoutBinding>(
+                binding.remoteDevicesRv.adapter =
+                    SimpleAdapterSpec<WifiP2pDevice, RemoteServerItemLayoutBinding>(
                         layoutId = R.layout.remote_server_item_layout,
                         bindData = { _, device, lBinding ->
                             lBinding.device = device.deviceName
@@ -210,81 +227,83 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                     val config = WifiP2pConfig()
                                     config.deviceAddress = data.deviceAddress
                                     val state = wifiP2pManager.connectSuspend(wifiChannel, config)
-                                    if (state == WIFI_P2P_SUCCESS_CODE) {
-                                        bindState().map { it.connectedRemoteDevice }.skip(1).firstOrError().await()
+                                    if (state == WifiActionResult.Success) {
+                                        Log.d(TAG, "Request P2P connection success !!!")
+                                    } else {
+                                        Log.e(TAG, "Request P2P connection fail: $state !!!")
                                     }
-                                    Log.d("Connect State: $state")
                                 }
                             }
                         }
-                ).emptyView<WifiP2pDevice, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
+                    ).emptyView<WifiP2pDevice, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
                         emptyLayout = R.layout.remote_server_empty_item_layout,
-                        initShowEmpty = true)
+                        initShowEmpty = true
+                    )
                         .toAdapter()
 
-                bindState()
-                        .map { it.currentConnection }
-                        .distinctUntilChanged()
-                        .switchMapSingle {
-                            rxSingle(Dispatchers.IO) {
-                                if (it.isPresent) {
-                                    val connectionInfo = it.get()
-                                    val (remoteDevice, localAddress) = remoteDeviceInfo(connectionInfo = connectionInfo, localDevice = LOCAL_DEVICE)
-                                    updateState { oldState ->
-                                        oldState.copy(localAddress = Optional.of(localAddress), connectedRemoteDevice = Optional.of(remoteDevice))
-                                    }.await()
-                                } else {
-                                    updateState { oldState ->
-                                        oldState.copy(localAddress = Optional.empty(), connectedRemoteDevice = Optional.empty())
-                                    }.await()
-                                }
-                                Unit
-                            }
-                                .timeout(10000L, TimeUnit.MILLISECONDS)
-                                .onErrorResumeNext {
-                                it.printStackTrace()
-                                rxSingle { closeCurrentConnection() }
-                            }
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .loadingDialog(requireActivity())
-                        }
-                        .bindLife()
+//                bindState()
+//                        .map { it.p2pConnection }
+//                        .distinctUntilChanged()
+//                        .switchMapSingle {
+//                            rxSingle(Dispatchers.IO) {
+//                                if (it.isPresent) {
+//                                    val connectionInfo = it.get()
+//                                    val (remoteDevice, localAddress) = remoteDeviceInfo(connectionInfo = connectionInfo, localDevice = LOCAL_DEVICE)
+//                                    updateState { oldState ->
+//                                        oldState.copy(p2pLocalAddress = Optional.of(localAddress), p2pRemoteDevice = Optional.of(remoteDevice))
+//                                    }.await()
+//                                } else {
+//                                    updateState { oldState ->
+//                                        oldState.copy(p2pLocalAddress = Optional.empty(), p2pRemoteDevice = Optional.empty())
+//                                    }.await()
+//                                }
+//                                Unit
+//                            }
+//                                .timeout(10000L, TimeUnit.MILLISECONDS)
+//                                .onErrorResumeNext {
+//                                it.printStackTrace()
+//                                rxSingle { closeCurrentConnection() }
+//                            }
+//                                .observeOn(AndroidSchedulers.mainThread())
+//                                .loadingDialog(requireActivity())
+//                        }
+//                        .bindLife()
 
-                bindState()
-                    .map { it.localAddress }
-                    .distinctUntilChanged()
-                    .switchMapSingle { localAddress ->
-                        rxSingle(Dispatchers.IO) {
-                            if (localAddress.isPresent) {
-                                val ssc = openAsynchronousServerSocketChannelSuspend()
-                                ssc.use {
-                                    ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
-                                    ssc.bindSuspend(InetSocketAddress(localAddress.get(), FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT), Int.MAX_VALUE)
-                                    while (true) {
-                                        val sc = ssc.acceptSuspend()
-                                        sc.close()
-                                        val remoteDevice = bindState().map { it.connectedRemoteDevice }.firstOrError().await()
-                                        if (remoteDevice.isPresent) {
-                                            withContext(Dispatchers.Main) {
-                                                startActivity(
-                                                    FileTransportActivity.getIntent(
-                                                        context = requireContext(),
-                                                        localAddress = localAddress.get(),
-                                                        remoteDevice = remoteDevice.get(),
-                                                        asServer = true
-                                                    )
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }.onErrorResumeNext {
-                            it.printStackTrace()
-                            Single.just(Unit)
-                        }
-                    }
-                    .bindLife()
+//                bindState()
+//                    .map { it.p2pLocalAddress }
+//                    .distinctUntilChanged()
+//                    .switchMapSingle { localAddress ->
+//                        rxSingle(Dispatchers.IO) {
+//                            if (localAddress.isPresent) {
+//                                val ssc = openAsynchronousServerSocketChannelSuspend()
+//                                ssc.use {
+//                                    ssc.setOptionSuspend(StandardSocketOptions.SO_REUSEADDR, true)
+//                                    ssc.bindSuspend(InetSocketAddress(localAddress.get(), FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT), Int.MAX_VALUE)
+//                                    while (true) {
+//                                        val sc = ssc.acceptSuspend()
+//                                        sc.close()
+//                                        val remoteDevice = bindState().map { it.p2pRemoteDevice }.firstOrError().await()
+//                                        if (remoteDevice.isPresent) {
+//                                            withContext(Dispatchers.Main) {
+//                                                startActivity(
+//                                                    FileTransportActivity.getIntent(
+//                                                        context = requireContext(),
+//                                                        localAddress = localAddress.get(),
+//                                                        remoteDevice = remoteDevice.get(),
+//                                                        asServer = true
+//                                                    )
+//                                                )
+//                                            }
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        }.onErrorResumeNext {
+//                            it.printStackTrace()
+//                            Single.just(Unit)
+//                        }
+//                    }
+//                    .bindLife()
 
             }
         }
@@ -306,5 +325,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
         requireActivity().unregisterReceiver(wifiReceiver)
     }
 
-
+    companion object {
+        private const val TAG = "WifiP2pConn"
+    }
 }

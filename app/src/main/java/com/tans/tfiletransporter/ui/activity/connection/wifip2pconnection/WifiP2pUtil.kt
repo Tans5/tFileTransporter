@@ -8,17 +8,22 @@ import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-const val WIFI_P2P_SUCCESS_CODE = -1
+enum class WifiActionResult(val code: Int) {
+    Success(-1),
+    Error(WifiP2pManager.ERROR),
+    Busy(WifiP2pManager.BUSY),
+    Unsupported(WifiP2pManager.P2P_UNSUPPORTED)
+}
 
 @SuppressLint("MissingPermission")
-suspend fun WifiP2pManager.discoverPeersSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<Int> { cont ->
+suspend fun WifiP2pManager.discoverPeersSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<WifiActionResult> { cont ->
     discoverPeers(channel, object : WifiP2pManager.ActionListener {
         override fun onSuccess() {
-            cont.resume(WIFI_P2P_SUCCESS_CODE)
+            cont.resume(WifiActionResult.Success)
         }
 
         override fun onFailure(reason: Int) {
-            cont.resume(reason)
+            cont.resume(WifiActionResult.values().first { it.code == reason } ?: WifiActionResult.Error)
         }
 
     })
@@ -30,14 +35,14 @@ suspend fun WifiP2pManager.requestPeersSuspend(channel: WifiP2pManager.Channel) 
 }
 
 @SuppressLint("MissingPermission")
-suspend fun WifiP2pManager.connectSuspend(channel: WifiP2pManager.Channel, config: WifiP2pConfig) = suspendCoroutine<Int> { cont ->
+suspend fun WifiP2pManager.connectSuspend(channel: WifiP2pManager.Channel, config: WifiP2pConfig) = suspendCoroutine<WifiActionResult> { cont ->
     connect(channel, config, object : WifiP2pManager.ActionListener {
         override fun onSuccess() {
-            cont.resume(WIFI_P2P_SUCCESS_CODE)
+            cont.resume(WifiActionResult.Success)
         }
 
         override fun onFailure(reason: Int) {
-            cont.resume(reason)
+            cont.resume(WifiActionResult.values().first { it.code == reason } ?: WifiActionResult.Error)
         }
 
     })
@@ -55,28 +60,28 @@ suspend fun WifiP2pManager.requestDeviceInfoSuspend(channel: WifiP2pManager.Chan
     requestDeviceInfo(channel) { device -> cont.resume(Optional.ofNullable(device)) }
 }
 
-suspend fun WifiP2pManager.cancelConnectionSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<Int> { cont ->
+suspend fun WifiP2pManager.cancelConnectionSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<WifiActionResult> { cont ->
     cancelConnect(channel, object : WifiP2pManager.ActionListener {
 
         override fun onSuccess() {
-            cont.resume(WIFI_P2P_SUCCESS_CODE)
+            cont.resume(WifiActionResult.Success)
         }
 
         override fun onFailure(reason: Int) {
-            cont.resume(reason)
+            cont.resume(WifiActionResult.values().first { it.code == reason } ?: WifiActionResult.Error)
         }
 
     })
 }
 
-suspend fun WifiP2pManager.removeGroupSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<Int> { cont ->
+suspend fun WifiP2pManager.removeGroupSuspend(channel: WifiP2pManager.Channel) = suspendCoroutine<WifiActionResult> { cont ->
     removeGroup(channel, object : WifiP2pManager.ActionListener {
         override fun onSuccess() {
-            cont.resume(WIFI_P2P_SUCCESS_CODE)
+            cont.resume(WifiActionResult.Success)
         }
 
         override fun onFailure(reason: Int) {
-            cont.resume(reason)
+            cont.resume(WifiActionResult.values().first { it.code == reason } ?: WifiActionResult.Error)
         }
 
     })

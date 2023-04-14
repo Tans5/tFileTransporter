@@ -58,7 +58,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
 
     override fun firstLaunchInitData() {
         launch {
-            val grant = RxPermissions(this@ConnectionActivity).let {
+            RxPermissions(this@ConnectionActivity).let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION)
                 } else {
@@ -69,9 +69,6 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                 val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                 i.data = Uri.fromParts("package", packageName, null)
                 startActivity(i)
-            }
-            if (!grant) {
-                finish()
             }
         }
 

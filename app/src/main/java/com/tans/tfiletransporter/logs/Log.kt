@@ -6,11 +6,19 @@ object Log {
     private const val TAG = "tFileTransfer"
 
     fun d(msg: String) {
-        Log.d(TAG, msg)
+        d(TAG, msg)
     }
 
     fun e(msg: String, throwable: Throwable?) {
-        Log.d(TAG, msg, throwable)
+        e(TAG, msg, throwable)
+    }
+
+    fun d(tag: String, msg: String) {
+        Log.d(tag, msg)
+    }
+
+    fun e(tag: String, msg: String, throwable: Throwable? = null) {
+        Log.e(tag, msg, throwable)
     }
 
 }
