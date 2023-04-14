@@ -18,42 +18,44 @@ import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
 import com.tans.tfiletransporter.logs.Log
-import com.tans.tfiletransporter.net.FILE_WIFI_P2P_FILE_TRANSFER_LISTEN_PORT
-import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.net.connection.RemoteDevice
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.utils.*
 import com.tbruyelle.rxpermissions2.RxPermissions
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
+import io.netty.channel.local.LocalAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
 import org.kodein.di.instance
 import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.StandardSocketOptions
 import java.util.*
-import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 
 
-data class Peer(
+data class P2pPeer(
     val deviceName: String,
     val macAddress: String,
 )
 
+data class P2pConnection(
+    val isGroupOwner: Boolean,
+    val groupOwnerAddress: InetAddress
+)
+
+data class P2pHandshake(
+    val localAddress: InetAddress,
+    val remoteAddress: InetAddress,
+    val remoteDeviceName: String
+)
+
 data class WifiP2pConnectionState(
     val isP2pEnabled: Boolean = false,
-    val p2pLocalAddress: Optional<InetAddress> = Optional.empty(),
-    val peers: List<Peer> = emptyList(),
-    val p2pConnection: Optional<WifiP2pInfo> = Optional.empty(),
-    val p2pRemoteDevice: Optional<RemoteDevice> = Optional.empty()
+    val peers: List<P2pPeer> = emptyList(),
+    val p2pConnection: Optional<P2pConnection> = Optional.empty(),
+    val p2pHandshake: Optional<P2pHandshake> = Optional.empty()
 )
 
 class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding, WifiP2pConnectionState>(
@@ -88,7 +90,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     }
                     Log.d(TAG, "WIFI p2p devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                     updateState { oldState ->
-                        oldState.copy(peers = wifiDevicesList?.deviceList?.map { Peer(it.deviceName, it.deviceAddress) } ?: emptyList())
+                        oldState.copy(peers = wifiDevicesList?.deviceList?.map { P2pPeer(it.deviceName, it.deviceAddress) } ?: emptyList())
                     }.bindLife()
                 }
 
@@ -100,8 +102,13 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     }
                     Log.d(TAG, "WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
                     updateState { oldState ->
-                        val p2pConnection = if (wifiP2pInfo?.groupOwnerAddress == null) Optional.empty() else Optional.of(wifiP2pInfo)
-                        oldState.copy(p2pConnection = p2pConnection, p2pLocalAddress = Optional.empty())
+                        val isGroupOwner = wifiP2pInfo?.isGroupOwner
+                        val ownerAddress = wifiP2pInfo?.groupOwnerAddress
+                        if (isGroupOwner != null && ownerAddress != null) {
+                            oldState.copy(p2pConnection = Optional.of(P2pConnection(isGroupOwner = isGroupOwner, groupOwnerAddress = ownerAddress)), p2pHandshake = Optional.empty())
+                        } else {
+                            oldState.copy(p2pConnection = Optional.empty(), p2pHandshake = Optional.empty())
+                        }
                     }.bindLife()
                 }
 
@@ -132,18 +139,18 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             launch {
                 closeCurrentConnection()
             }
-            render({ it.p2pLocalAddress }) {
+            render({ it.p2pHandshake }) {
                 if (it.isPresent) {
-                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().hostAddress)
+                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().localAddress)
                 } else {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
                 }
             }.bindLife()
 
-            render({ it.p2pRemoteDevice }) {
+            render({ it.p2pHandshake }) {
                 if (it.isPresent) {
                     binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                            it.get().second, it.get().first.hostAddress)
+                            it.get().remoteDeviceName, it.get().remoteAddress)
                     binding.connectedActionsLayout.visibility = View.VISIBLE
                     binding.remoteDevicesRv.visibility = View.GONE
                 } else {
@@ -166,7 +173,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             if (grant) {
                 launch(Dispatchers.IO) {
                     while (true) {
-                        val (connection, isP2pEnabled) = bindState().map { it.p2pRemoteDevice to it.isP2pEnabled }.firstOrError().await()
+                        val (connection, isP2pEnabled) = bindState().map { it.p2pConnection to it.isP2pEnabled }.firstOrError().await()
                         if (!isP2pEnabled) {
                             updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
                         } else if (!connection.isPresent) {
@@ -175,7 +182,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 Log.d(TAG, "Request discover peer success")
                                 val peers = wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
                                 Log.d(TAG, "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
-                                updateState { oldState -> oldState.copy(peers = peers.getOrNull()?.deviceList?.map { Peer(it.deviceName, it.deviceAddress) } ?: emptyList()) }.await()
+                                updateState { oldState -> oldState.copy(peers = peers.getOrNull()?.deviceList?.map { P2pPeer(it.deviceName, it.deviceAddress) } ?: emptyList()) }.await()
                             } else {
                                 updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
                                 Log.e(TAG, "Request discover peer fail: $state")
@@ -219,8 +226,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     }
                     .bindLife()
 
+                val connectionMutex = Mutex()
                 binding.remoteDevicesRv.adapter =
-                    SimpleAdapterSpec<Peer, RemoteServerItemLayoutBinding>(
+                    SimpleAdapterSpec<P2pPeer, RemoteServerItemLayoutBinding>(
                         layoutId = R.layout.remote_server_item_layout,
                         bindData = { _, device, lBinding ->
                             lBinding.device = device.deviceName
@@ -230,18 +238,24 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         itemClicks = listOf { binding, _ ->
                             binding.root to { _, data ->
                                 rxSingle {
-                                    val config = WifiP2pConfig()
-                                    config.deviceAddress = data.macAddress
-                                    val state = wifiP2pManager.connectSuspend(wifiChannel, config)
-                                    if (state == WifiActionResult.Success) {
-                                        Log.d(TAG, "Request P2P connection success !!!")
-                                    } else {
-                                        Log.e(TAG, "Request P2P connection fail: $state !!!")
+                                    if (connectionMutex.isLocked) { return@rxSingle }
+                                    connectionMutex.lock()
+                                    val connection = bindState().map { it.p2pConnection }.firstOrError().await()
+                                    if (!connection.isPresent) {
+                                        val config = WifiP2pConfig()
+                                        config.deviceAddress = data.macAddress
+                                        val state = wifiP2pManager.connectSuspend(wifiChannel, config)
+                                        if (state == WifiActionResult.Success) {
+                                            Log.d(TAG, "Request P2P connection success !!!")
+                                        } else {
+                                            Log.e(TAG, "Request P2P connection fail: $state !!!")
+                                        }
                                     }
-                                }
+                                    connectionMutex.unlock()
+                                }.loadingDialog(requireActivity())
                             }
                         }
-                    ).emptyView<Peer, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
+                    ).emptyView<P2pPeer, RemoteServerItemLayoutBinding, RemoteServerEmptyItemLayoutBinding>(
                         emptyLayout = R.layout.remote_server_empty_item_layout,
                         initShowEmpty = true
                     )
