@@ -148,19 +148,16 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 }
             }.bindLife()
             val grant = RxPermissions(requireActivity())
-                .request(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                .let {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        it.request(Manifest.permission.NEARBY_WIFI_DEVICES)
+                    } else {
+                        it.request(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    }
+                }
                 .firstOrError()
                 .await()
             if (grant) {
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                    launch {
-//                        val localDevice = wifiP2pManager.requestDeviceInfoSuspend(wifiChannel)
-//                        updateState { oldState ->
-//                            oldState.copy(localDevice = localDevice)
-//                        }.await()
-//                    }
-//                }
-
                 launch(Dispatchers.IO) {
                     while (true) {
                         val (connection, isP2pEnabled) = bindState().map { it.p2pRemoteDevice to it.isP2pEnabled }.firstOrError().await()
