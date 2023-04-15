@@ -69,7 +69,6 @@ class NettyTcpServerConnectionTask(
                 })
             val channel = bootstrap.bind(InetSocketAddress(bindAddress, bindPort)).sync().channel()
             if (NettyTaskState.ConnectionClosed != getCurrentState()) {
-                dispatchState(NettyTaskState.Init)
                 dispatchState(NettyTaskState.ConnectionActive(channel))
             } else {
                 channel.close()
@@ -121,81 +120,80 @@ class NettyTcpServerConnectionTask(
 
         override fun runTask() {
             try {
-                val remoteAddress = socketChannel.remoteAddress()
-                val localAddress = socketChannel.localAddress()
                 if (NettyTaskState.ConnectionClosed != getCurrentState()) {
-                    dispatchState(NettyTaskState.Init)
                     dispatchState(NettyTaskState.ConnectionActive(socketChannel))
-                }
-                socketChannel.pipeline()
-                    .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
-                    .addLast(
-                        LengthFieldBasedFrameDecoder(Int.MAX_VALUE,
-                            /** length 长度偏移量 **/ /** length 长度偏移量 **/0,
-                            /** 长度 **/ /** 长度 **/4, 0, 4)
-                    )
-                    .addLast(LengthFieldPrepender(4))
-                    .addLast(BytesToPackageDataDecoder())
-                    .addLast(PackageDataToBytesEncoder())
-                    .addLast(object : ChannelDuplexHandler() {
+                    socketChannel.pipeline()
+                        .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
+                        .addLast(
+                            LengthFieldBasedFrameDecoder(Int.MAX_VALUE,
+                                /** length 长度偏移量 **/ /** length 长度偏移量 **/0,
+                                /** 长度 **/ /** 长度 **/4, 0, 4)
+                        )
+                        .addLast(LengthFieldPrepender(4))
+                        .addLast(BytesToPackageDataDecoder())
+                        .addLast(PackageDataToBytesEncoder())
+                        .addLast(object : ChannelDuplexHandler() {
 
-                        override fun channelInactive(ctx: ChannelHandlerContext?) {
-                            super.channelInactive(ctx)
-                            ctx?.close()
-                        }
-
-                        override fun channelRead(
-                            ctx: ChannelHandlerContext,
-                            msg: Any?
-                        ) {
-                            if (msg != null && msg is PackageData) {
-                                for (o in observers) {
-                                    o.onNewMessage(
-                                        localAddress,
-                                        remoteAddress,
-                                        msg,
-                                        this@ChildConnectionTask
-                                    )
-                                }
-                            }
-                            super.channelRead(ctx, msg)
-                        }
-
-                        override fun write(
-                            ctx: ChannelHandlerContext?,
-                            msg: Any?,
-                            promise: ChannelPromise?
-                        ) {
-                            if (getCurrentState() is NettyTaskState.ConnectionActive) {
-                                if (msg is PackageData) {
-                                    super.write(ctx, msg, promise)
-                                }
-                            }
-                        }
-
-                        override fun userEventTriggered(
-                            ctx: ChannelHandlerContext?,
-                            evt: Any?
-                        ) {
-                            super.userEventTriggered(ctx, evt)
-                            // 读写超时
-                            if (evt is IdleStateEvent) {
+                            override fun channelInactive(ctx: ChannelHandlerContext?) {
+                                super.channelInactive(ctx)
                                 ctx?.close()
-                                error("Connection read/write timeout: $evt")
                             }
-                        }
 
-                        override fun exceptionCaught(
-                            ctx: ChannelHandlerContext,
-                            cause: Throwable
-                        ) {
-                            ctx.close()
-                            throw cause
-                        }
-                    })
-                socketChannel.closeFuture().sync()
-                if (getCurrentState() !is NettyTaskState.Error) {
-                    dispatchState(NettyTaskState.ConnectionClosed)
+                            override fun channelRead(
+                                ctx: ChannelHandlerContext,
+                                msg: Any?
+                            ) {
+                                val remoteAddress = socketChannel.remoteAddress()
+                                val localAddress = socketChannel.localAddress()
+                                if (msg != null && msg is PackageData) {
+                                    for (o in observers) {
+                                        o.onNewMessage(
+                                            localAddress,
+                                            remoteAddress,
+                                            msg,
+                                            this@ChildConnectionTask
+                                        )
+                                    }
+                                }
+                                super.channelRead(ctx, msg)
+                            }
+
+                            override fun write(
+                                ctx: ChannelHandlerContext?,
+                                msg: Any?,
+                                promise: ChannelPromise?
+                            ) {
+                                if (getCurrentState() is NettyTaskState.ConnectionActive) {
+                                    if (msg is PackageData) {
+                                        super.write(ctx, msg, promise)
+                                    }
+                                }
+                            }
+
+                            override fun userEventTriggered(
+                                ctx: ChannelHandlerContext?,
+                                evt: Any?
+                            ) {
+                                super.userEventTriggered(ctx, evt)
+                                // 读写超时
+                                if (evt is IdleStateEvent) {
+                                    ctx?.close()
+                                    error("Connection read/write timeout: $evt")
+                                }
+                            }
+
+                            override fun exceptionCaught(
+                                ctx: ChannelHandlerContext,
+                                cause: Throwable
+                            ) {
+                                ctx.close()
+                                throw cause
+                            }
+                        })
+                    socketChannel.closeFuture().sync()
+                    if (getCurrentState() !is NettyTaskState.Error) {
+                        dispatchState(NettyTaskState.ConnectionClosed)
+                    }
                 }
             } catch (e: Throwable) {
                 if (getCurrentState() != NettyTaskState.ConnectionClosed) {

@@ -55,11 +55,6 @@ class NettyTcpClientConnectionTask(
                 .option(ChannelOption.TCP_NODELAY, true)
                 .handler(object : ChannelInitializer<NioSocketChannel>() {
                     override fun initChannel(ch: NioSocketChannel) {
-                        if (NettyTaskState.ConnectionClosed != getCurrentState()) {
-                            dispatchState(NettyTaskState.Init)
-                        } else {
-                            ch.close()
-                        }
                         ch.pipeline()
                             .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
                             .addLast(LengthFieldBasedFrameDecoder(Int.MAX_VALUE, /** length 长度偏移量 **/0, /** 长度 **/4, 0, 4))
@@ -70,7 +65,7 @@ class NettyTcpClientConnectionTask(
                                 override fun channelActive(ctx: ChannelHandlerContext) {
                                     super.channelActive(ctx)
                                     val currentState = getCurrentState()
-                                    if (currentState != NettyTaskState.Init) {
+                                    if (currentState == NettyTaskState.ConnectionClosed || currentState is NettyTaskState.Error) {
                                         ctx.close()
                                     } else {
                                         dispatchState(NettyTaskState.ConnectionActive(ch))

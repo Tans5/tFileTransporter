@@ -10,11 +10,6 @@ sealed class NettyTaskState {
     object NotExecute : NettyTaskState()
 
     /**
-     * 初始化
-     */
-    object Init : NettyTaskState()
-
-    /**
      * 连接可用
      */
     data class ConnectionActive(
