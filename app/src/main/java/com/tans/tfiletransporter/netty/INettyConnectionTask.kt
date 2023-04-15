@@ -24,6 +24,14 @@ interface INettyConnectionTask : Runnable {
     }
 
     fun sendData(data: PackageData, sendDataCallback: SendDataCallback?) {
+        sendDataInner(data, sendDataCallback)
+    }
+
+    fun sendData(data: PackageDataWithAddress, sendDataCallback: SendDataCallback?) {
+        sendDataInner(data, sendDataCallback)
+    }
+
+    private fun sendDataInner(data: Any, sendDataCallback: SendDataCallback?) {
         if (isExecuted()) {
             val state = getCurrentState()
             if (state is NettyTaskState.ConnectionActive) {

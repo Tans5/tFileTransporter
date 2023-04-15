@@ -3,8 +3,8 @@ package com.tans.tfiletransporter.netty.tcp
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
-import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.handlers.BytesToPackageDataDecoder
+import com.tans.tfiletransporter.netty.handlers.CheckerHandler
 import com.tans.tfiletransporter.netty.handlers.PackageDataToBytesEncoder
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.*
@@ -12,7 +12,6 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
-import io.netty.handler.timeout.IdleStateEvent
 import io.netty.handler.timeout.IdleStateHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -61,73 +60,7 @@ class NettyTcpClientConnectionTask(
                             .addLast(LengthFieldPrepender(4))
                             .addLast(BytesToPackageDataDecoder())
                             .addLast(PackageDataToBytesEncoder())
-                            .addLast(object : ChannelDuplexHandler() {
-                                override fun channelActive(ctx: ChannelHandlerContext) {
-                                    super.channelActive(ctx)
-                                    val currentState = getCurrentState()
-                                    if (currentState == NettyTaskState.ConnectionClosed || currentState is NettyTaskState.Error) {
-                                        ctx.close()
-                                    } else {
-                                        dispatchState(NettyTaskState.ConnectionActive(ch))
-                                    }
-                                }
-
-                                override fun channelInactive(ctx: ChannelHandlerContext?) {
-                                    super.channelInactive(ctx)
-                                    ctx?.close()
-                                }
-
-                                override fun channelRead(
-                                    ctx: ChannelHandlerContext,
-                                    msg: Any?
-                                ) {
-                                    val remoteAddress = ch.remoteAddress()
-                                    val localAddress = ch.localAddress()
-                                    if (msg != null && msg is PackageData) {
-                                        for (o in observers) {
-                                            o.onNewMessage(
-                                                localAddress,
-                                                remoteAddress,
-                                                msg,
-                                                this@NettyTcpClientConnectionTask
-                                            )
-                                        }
-                                    }
-                                    super.channelRead(ctx, msg)
-                                }
-
-                                override fun write(
-                                    ctx: ChannelHandlerContext?,
-                                    msg: Any?,
-                                    promise: ChannelPromise?
-                                ) {
-                                    if (getCurrentState() is NettyTaskState.ConnectionActive) {
-                                        if (msg is PackageData) {
-                                            super.write(ctx, msg, promise)
-                                        }
-                                    }
-                                }
-
-                                override fun userEventTriggered(
-                                    ctx: ChannelHandlerContext?,
-                                    evt: Any?
-                                ) {
-                                    super.userEventTriggered(ctx, evt)
-                                    // 读写超时
-                                    if (evt is IdleStateEvent) {
-                                        ctx?.close()
-                                        error("Connection read/write timeout: $evt")
-                                    }
-                                }
-
-                                override fun exceptionCaught(
-                                    ctx: ChannelHandlerContext,
-                                    cause: Throwable
-                                ) {
-                                    ctx.close()
-                                    throw cause
-                                }
-                            })
+                            .addLast(CheckerHandler(this@NettyTcpClientConnectionTask, ch))
                     }
                 })
             val channel = bootstrap.connect(InetSocketAddress(serverAddress, serverPort)).sync().channel()
@@ -145,7 +78,7 @@ class NettyTcpClientConnectionTask(
     }
 
     companion object {
-        private const val DEFAULT_LOOP_THREAD_COUNT = 2
+        private const val DEFAULT_LOOP_THREAD_COUNT = 10
     }
 
 }
