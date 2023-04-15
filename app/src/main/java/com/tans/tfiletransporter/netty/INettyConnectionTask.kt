@@ -23,17 +23,17 @@ interface INettyConnectionTask : Runnable {
         ioExecutor.execute(this)
     }
 
-    fun sendData(data: PackageData, sendDataCallback: SendDataCallback) {
+    fun sendData(data: PackageData, sendDataCallback: SendDataCallback?) {
         if (isExecuted()) {
             val state = getCurrentState()
             if (state is NettyTaskState.ConnectionActive) {
-                state.channel.write(data)
-                sendDataCallback.onSuccess()
+                state.channel.writeAndFlush(data)
+                sendDataCallback?.onSuccess()
             } else {
-                sendDataCallback.onFail("Wrong task state: $state")
+                sendDataCallback?.onFail("Wrong task state: $state")
             }
         } else {
-            sendDataCallback.onFail("Task not execute.")
+            sendDataCallback?.onFail("Task not execute.")
         }
     }
 

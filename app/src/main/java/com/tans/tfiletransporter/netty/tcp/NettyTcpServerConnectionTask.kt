@@ -99,9 +99,9 @@ class NettyTcpServerConnectionTask(
 
     override fun sendData(
         data: PackageData,
-        sendDataCallback: INettyConnectionTask.SendDataCallback
+        sendDataCallback: INettyConnectionTask.SendDataCallback?
     ) {
-        sendDataCallback.onFail("Server task not support send data")
+        sendDataCallback?.onFail("Server task not support send data")
     }
 
     override fun stopTask() {
@@ -125,27 +125,19 @@ class NettyTcpServerConnectionTask(
                 val localAddress = socketChannel.localAddress()
                 if (NettyTaskState.ConnectionClosed != getCurrentState()) {
                     dispatchState(NettyTaskState.Init)
+                    dispatchState(NettyTaskState.ConnectionActive(socketChannel))
                 }
                 socketChannel.pipeline()
                     .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
                     .addLast(
                         LengthFieldBasedFrameDecoder(Int.MAX_VALUE,
                             /** length 长度偏移量 **/ /** length 长度偏移量 **/0,
-                            /** 长度 **/ /** 长度 **/4, 0, 8)
+                            /** 长度 **/ /** 长度 **/4, 0, 4)
                     )
                     .addLast(LengthFieldPrepender(4))
                     .addLast(BytesToPackageDataDecoder())
                     .addLast(PackageDataToBytesEncoder())
                     .addLast(object : ChannelDuplexHandler() {
-                        override fun channelActive(ctx: ChannelHandlerContext) {
-                            super.channelActive(ctx)
-                            val currentState = getCurrentState()
-                            if (currentState != NettyTaskState.Init) {
-                                ctx.close()
-                            } else {
-                                dispatchState(NettyTaskState.ConnectionActive(socketChannel))
-                            }
-                        }
 
                         override fun channelInactive(ctx: ChannelHandlerContext?) {
                             super.channelInactive(ctx)
@@ -156,18 +148,14 @@ class NettyTcpServerConnectionTask(
                             ctx: ChannelHandlerContext,
                             msg: Any?
                         ) {
-                            if (getCurrentState() !is NettyTaskState.ConnectionActive) {
-                                ctx.close()
-                            } else {
-                                if (msg != null && msg is PackageData) {
-                                    for (o in observers) {
-                                        o.onNewMessage(
-                                            localAddress,
-                                            remoteAddress,
-                                            msg,
-                                            this@ChildConnectionTask
-                                        )
-                                    }
+                            if (msg != null && msg is PackageData) {
+                                for (o in observers) {
+                                    o.onNewMessage(
+                                        localAddress,
+                                        remoteAddress,
+                                        msg,
+                                        this@ChildConnectionTask
+                                    )
                                 }
                             }
                             super.channelRead(ctx, msg)
@@ -178,9 +166,7 @@ class NettyTcpServerConnectionTask(
                             msg: Any?,
                             promise: ChannelPromise?
                         ) {
-                            if (getCurrentState() !is NettyTaskState.ConnectionActive) {
-                                ctx?.close()
-                            } else {
+                            if (getCurrentState() is NettyTaskState.ConnectionActive) {
                                 if (msg is PackageData) {
                                     super.write(ctx, msg, promise)
                                 }

@@ -60,11 +60,9 @@ class NettyTcpClientConnectionTask(
                         } else {
                             ch.close()
                         }
-                        val remoteAddress = ch.remoteAddress()
-                        val localAddress = ch.localAddress()
                         ch.pipeline()
                             .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
-                            .addLast(LengthFieldBasedFrameDecoder(Int.MAX_VALUE, /** length 长度偏移量 **/0, /** 长度 **/4, 0, 8))
+                            .addLast(LengthFieldBasedFrameDecoder(Int.MAX_VALUE, /** length 长度偏移量 **/0, /** 长度 **/4, 0, 4))
                             .addLast(LengthFieldPrepender(4))
                             .addLast(BytesToPackageDataDecoder())
                             .addLast(PackageDataToBytesEncoder())
@@ -88,18 +86,16 @@ class NettyTcpClientConnectionTask(
                                     ctx: ChannelHandlerContext,
                                     msg: Any?
                                 ) {
-                                    if (getCurrentState() !is NettyTaskState.ConnectionActive) {
-                                        ctx.close()
-                                    } else {
-                                        if (msg != null && msg is PackageData) {
-                                            for (o in observers) {
-                                                o.onNewMessage(
-                                                    localAddress,
-                                                    remoteAddress,
-                                                    msg,
-                                                    this@NettyTcpClientConnectionTask
-                                                )
-                                            }
+                                    val remoteAddress = ch.remoteAddress()
+                                    val localAddress = ch.localAddress()
+                                    if (msg != null && msg is PackageData) {
+                                        for (o in observers) {
+                                            o.onNewMessage(
+                                                localAddress,
+                                                remoteAddress,
+                                                msg,
+                                                this@NettyTcpClientConnectionTask
+                                            )
                                         }
                                     }
                                     super.channelRead(ctx, msg)
@@ -110,9 +106,7 @@ class NettyTcpClientConnectionTask(
                                     msg: Any?,
                                     promise: ChannelPromise?
                                 ) {
-                                    if (getCurrentState() !is NettyTaskState.ConnectionActive) {
-                                        ctx?.close()
-                                    } else {
+                                    if (getCurrentState() is NettyTaskState.ConnectionActive) {
                                         if (msg is PackageData) {
                                             super.write(ctx, msg, promise)
                                         }
