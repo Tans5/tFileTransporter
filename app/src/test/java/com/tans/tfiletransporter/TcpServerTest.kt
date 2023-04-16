@@ -1,53 +1,70 @@
 package com.tans.tfiletransporter
 
+import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
+import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
+import com.tans.tfiletransporter.netty.extensions.IServer
+import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
-import java.util.concurrent.Executor
 
 object TcpServerTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val ioExecutor: Executor = Dispatchers.IO.asExecutor()
         val localAddress = findLocalAddressV4()[0]
         val serverTask = NettyTcpServerConnectionTask(
             bindAddress = localAddress,
             bindPort = 1996,
             newClientTaskCallback = { newClientTask ->
                 println("NewClientTask: $newClientTask")
-                newClientTask.addObserver(object : NettyConnectionObserver {
+                val serverConnection = newClientTask
+                    .withServer<ConnectionServerImpl>(log = TestLog)
+                serverConnection
+                    .registerServer(object : IServer<PackageData, PackageData> {
+                        override val requestClass: Class<PackageData> = PackageData::class.java
+                        override val responseClass: Class<PackageData> = PackageData::class.java
+                        override val replyType: Int = 1
+                        override val log: ILog = TestLog
+
+                        override fun couldHandle(requestType: Int): Boolean {
+                            return requestType == 0
+                        }
+
+                        override fun onRequest(
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            r: PackageData
+                        ): PackageData {
+                            return PackageData(
+                                type = replyType,
+                                messageId = r.messageId,
+                                body = "Hello, Client".toByteArray(Charsets.UTF_8)
+                            )
+                        }
+
+                        override fun onNewRequest(
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            r: PackageData
+                        ) {
+                            println("Receive client request: ${r.body.toString(Charsets.UTF_8)} from $remoteAddress")
+                        }
+
+                    })
+                serverConnection.addObserver(object : NettyConnectionObserver {
                     override fun onNewState(
                         nettyState: NettyTaskState,
                         task: INettyConnectionTask
                     ) {
                         println("ClientTaskState: $nettyState")
-                        if (nettyState is NettyTaskState.ConnectionActive) {
-                            ioExecutor.execute {
-                                repeat(1000) {
-                                    Thread.sleep(2000)
-                                    task.sendData(PackageData(0, it.toLong(), "Hello, Client".toByteArray(Charsets.UTF_8)), null)
-                                }
-                            }
-                        }
-                    }
-
-                    override fun onNewMessage(
-                        localAddress: InetSocketAddress?,
-                        remoteAddress: InetSocketAddress?,
-                        msg: PackageData,
-                        task: INettyConnectionTask
-                    ) {
-                        println("Receive message from client: ${msg.body.toString(Charsets.UTF_8)}")
                     }
                 })
             }
