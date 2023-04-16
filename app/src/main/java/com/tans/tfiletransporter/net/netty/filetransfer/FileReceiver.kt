@@ -1,6 +1,6 @@
 package com.tans.tfiletransporter.net.netty.filetransfer
 
-import com.tans.tfiletransporter.logs.Log
+import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.FileMd5
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
@@ -63,11 +63,11 @@ fun downloadFileObservable(
             if (downloadState.get()) {
                 val p = downloadProgress.get()
                 if (!emitter.isDisposed) {
-                    Log.d("Receive file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
+                    AndroidLog.d("Receive file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
                     emitter.onNext(p)
                 }
                 if (p >= fileSize) {
-                    Log.d("Receive file ${fileData.name} finish.")
+                    AndroidLog.d("Receive file ${fileData.name} finish.")
                     downloadState.set(false)
                     if (!emitter.isDisposed) {
                         emitter.onComplete()
@@ -81,7 +81,7 @@ fun downloadFileObservable(
                 if (downloadProgress.get() >= fileSize) {
                     emitterNextOrComplete()
                 } else {
-                    Log.e("Receive file error", throwable)
+                    AndroidLog.e("Receive file error", throwable)
                     var hasSendToServer = false
                     for (o in connectionCancelObserver) {
                         if (notifyToServer) {

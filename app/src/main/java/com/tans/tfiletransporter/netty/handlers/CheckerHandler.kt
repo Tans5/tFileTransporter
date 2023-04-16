@@ -39,25 +39,19 @@ class CheckerHandler(
         val localAddress = channel.localAddress() as? InetSocketAddress
         if (msg is PackageData) {
             val remoteAddress = channel.remoteAddress() as? InetSocketAddress
-            for (o in task.observers) {
-                o.onNewMessage(
-                    localAddress,
-                    remoteAddress,
-                    msg,
-                    task
-                )
-            }
+            task.dispatchDownloadData(
+                localAddress,
+                remoteAddress,
+                msg,
+            )
         }
         if (msg is PackageDataWithAddress) {
             val remoteAddress = msg.address
-            for (o in task.observers) {
-                o.onNewMessage(
-                    localAddress,
-                    remoteAddress,
-                    msg.data,
-                    task
-                )
-            }
+            task.dispatchDownloadData(
+                localAddress,
+                remoteAddress,
+                msg.data
+            )
         }
         super.channelRead(ctx, msg)
     }

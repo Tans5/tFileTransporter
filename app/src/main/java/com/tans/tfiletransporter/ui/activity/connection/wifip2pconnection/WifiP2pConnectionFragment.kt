@@ -17,12 +17,10 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
-import com.tans.tfiletransporter.logs.Log
-import com.tans.tfiletransporter.net.connection.RemoteDevice
+import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tbruyelle.rxpermissions2.RxPermissions
-import io.netty.channel.local.LocalAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -74,10 +72,10 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {
                     val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
                     if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-                        Log.e(TAG, "Wifi p2p disabled.")
+                        AndroidLog.e(TAG, "Wifi p2p disabled.")
                         updateState { WifiP2pConnectionState() }.bindLife()
                     } else {
-                        Log.d(TAG, "Wifi p2p enabled.")
+                        AndroidLog.d(TAG, "Wifi p2p enabled.")
                         updateState { it.copy(isP2pEnabled = true) }.bindLife()
                     }
                 }
@@ -88,7 +86,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     } else {
                         intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
                     }
-                    Log.d(TAG, "WIFI p2p devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
+                    AndroidLog.d(TAG, "WIFI p2p devices: ${wifiDevicesList?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                     updateState { oldState ->
                         oldState.copy(peers = wifiDevicesList?.deviceList?.map { P2pPeer(it.deviceName, it.deviceAddress) } ?: emptyList())
                     }.bindLife()
@@ -100,7 +98,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     } else {
                         intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
                     }
-                    Log.d(TAG, "WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
+                    AndroidLog.d(TAG, "WIFI P2P new connection: OwnerAddress ->${wifiP2pInfo?.groupOwnerAddress.toString()}, IsOwner -> ${wifiP2pInfo?.isGroupOwner}")
                     updateState { oldState ->
                         val isGroupOwner = wifiP2pInfo?.isGroupOwner
                         val ownerAddress = wifiP2pInfo?.groupOwnerAddress
@@ -179,13 +177,13 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         } else if (!connection.isPresent) {
                             val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
                             if (state == WifiActionResult.Success) {
-                                Log.d(TAG, "Request discover peer success")
+                                AndroidLog.d(TAG, "Request discover peer success")
                                 val peers = wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
-                                Log.d(TAG, "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
+                                AndroidLog.d(TAG, "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}")
                                 updateState { oldState -> oldState.copy(peers = peers.getOrNull()?.deviceList?.map { P2pPeer(it.deviceName, it.deviceAddress) } ?: emptyList()) }.await()
                             } else {
                                 updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
-                                Log.e(TAG, "Request discover peer fail: $state")
+                                AndroidLog.e(TAG, "Request discover peer fail: $state")
                             }
                         }
                         delay(5000)
@@ -246,9 +244,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                         config.deviceAddress = data.macAddress
                                         val state = wifiP2pManager.connectSuspend(wifiChannel, config)
                                         if (state == WifiActionResult.Success) {
-                                            Log.d(TAG, "Request P2P connection success !!!")
+                                            AndroidLog.d(TAG, "Request P2P connection success !!!")
                                         } else {
-                                            Log.e(TAG, "Request P2P connection fail: $state !!!")
+                                            AndroidLog.e(TAG, "Request P2P connection fail: $state !!!")
                                         }
                                     }
                                     connectionMutex.unlock()

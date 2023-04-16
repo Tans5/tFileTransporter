@@ -1,7 +1,7 @@
 package com.tans.tfiletransporter.net.netty.filetransfer
 
 import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.logs.Log
+import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.net.MULTI_CONNECTIONS_FILES_TRANSFER_LISTEN_PORT
 import com.tans.tfiletransporter.net.NetBufferPool
 import com.tans.tfiletransporter.net.model.File
@@ -82,10 +82,10 @@ fun sendFileObservable(
                 val p = sendProgress.get()
                 if (!emitter.isDisposed) {
                     emitter.onNext(p)
-                    Log.d("Send file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
+                    AndroidLog.d("Send file ${fileData.name} process: ${String.format("%.2f", p.toDouble() / fileSize.toDouble() * 100.0)}%")
                 }
                 if (p >= fileSize) {
-                    Log.d("Send file ${fileData.name} finish.")
+                    AndroidLog.d("Send file ${fileData.name} finish.")
                     sendState.set(false)
                     channel?.close()?.sync()
                     if (!emitter.isDisposed) {
@@ -100,7 +100,7 @@ fun sendFileObservable(
                 if (sendProgress.get() >= fileSize) {
                     emitterNextOrComplete()
                 } else {
-                    Log.e("Send file canceled", throwable)
+                    AndroidLog.e("Send file canceled", throwable)
                     var hasSendToClient = false
                     for (o in connectionCancelObserver) {
                         if (notifyToClient) {
@@ -230,13 +230,13 @@ fun sendFileObservable(
                                                 }
                                                 NettyPkg.TimeoutPkg -> {
                                                     ioExecutor.execute {
-                                                        Log.e("Send files timeout", null)
+                                                        AndroidLog.e("Send files timeout", null)
                                                         tryCancelConnection(false, Throwable("Timeout!"))
                                                     }
                                                 }
                                                 is NettyPkg.ServerFinishPkg -> {
                                                     ioExecutor.execute {
-                                                        Log.d("Send files finish")
+                                                        AndroidLog.d("Send files finish")
                                                         tryCancelConnection(false, Throwable("Send file finish."))
                                                     }
                                                 }
@@ -250,7 +250,7 @@ fun sendFileObservable(
                                         cause: Throwable?
                                     ) {
                                         tryCancelConnection(false, cause)
-                                        Log.e("Send file error", cause)
+                                        AndroidLog.e("Send file error", cause)
                                     }
                                 })
                         }

@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.netty
 
+import java.net.InetSocketAddress
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
@@ -72,7 +73,6 @@ interface INettyConnectionTask : Runnable {
                 state.channel.close()
             }
             dispatchState(NettyTaskState.ConnectionClosed)
-            observers.clear()
         }
     }
 
@@ -84,6 +84,23 @@ interface INettyConnectionTask : Runnable {
         this.state.set(state)
         for (o in observers) {
             o.onNewState(state, this)
+        }
+        if (state is NettyTaskState.ConnectionClosed || state is NettyTaskState.Error) {
+            observers.clear()
+        }
+    }
+
+    fun dispatchDownloadData(
+        localAddress: InetSocketAddress?,
+        remoteAddress: InetSocketAddress?,
+        msg: PackageData) {
+        for (o in observers) {
+            o.onNewMessage(
+                localAddress,
+                remoteAddress,
+                msg,
+                this
+            )
         }
     }
 

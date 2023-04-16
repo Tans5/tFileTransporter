@@ -2,7 +2,7 @@ package com.tans.tfiletransporter.logs
 
 import android.util.Log
 
-object Log {
+object AndroidLog : ILog {
     private const val TAG = "tFileTransfer"
 
     fun d(msg: String) {
@@ -13,11 +13,11 @@ object Log {
         e(TAG, msg, throwable)
     }
 
-    fun d(tag: String, msg: String) {
+    override fun d(tag: String, msg: String) {
         Log.d(tag, msg)
     }
 
-    fun e(tag: String, msg: String, throwable: Throwable? = null) {
+    override fun e(tag: String, msg: String, throwable: Throwable?) {
         Log.e(tag, msg, throwable)
     }
 

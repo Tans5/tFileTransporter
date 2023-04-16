@@ -1,8 +1,8 @@
 package com.tans.tfiletransporter.net.netty.fileexplore
 
 import android.os.Build
-import com.tans.tfiletransporter.logs.Log
-import com.tans.tfiletransporter.moshi
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.defaultMoshi
 import com.tans.tfiletransporter.net.FILE_TRANSPORT_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.*
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
@@ -29,30 +29,30 @@ private const val FILE_EXPLORE_VERSION = 2
 
 private fun FileExploreContentModel.toFileExploreBaseJsonString(): String {
     val (type, content) = when (this) {
-        is FileExploreHandshakeModel-> FILE_MODEL_TYPE_HANDSHAKE to moshi.adapter(FileExploreHandshakeModel::class.java).toJson(this)
-        is RequestFolderModel-> FILE_MODEL_TYPE_REQUEST_FOLDER to moshi.adapter(RequestFolderModel::class.java).toJson(this)
-        is ShareFolderModel -> FILE_MODEL_TYPE_SHARE_FOLDER to moshi.adapter(ShareFolderModel::class.java).toJson(this)
-        is RequestFilesModel -> FILE_MODEL_TYPE_REQUEST_FILES to moshi.adapter(RequestFilesModel::class.java).toJson(this)
-        is ShareFilesModel -> FILE_MODEL_TYPE_SHARE_FILES to moshi.adapter(ShareFilesModel::class.java).toJson(this)
-        is MessageModel -> FILE_MODEL_TYPE_MESSAGE to moshi.adapter(MessageModel::class.java).toJson(this)
+        is FileExploreHandshakeModel-> FILE_MODEL_TYPE_HANDSHAKE to defaultMoshi.adapter(FileExploreHandshakeModel::class.java).toJson(this)
+        is RequestFolderModel-> FILE_MODEL_TYPE_REQUEST_FOLDER to defaultMoshi.adapter(RequestFolderModel::class.java).toJson(this)
+        is ShareFolderModel -> FILE_MODEL_TYPE_SHARE_FOLDER to defaultMoshi.adapter(ShareFolderModel::class.java).toJson(this)
+        is RequestFilesModel -> FILE_MODEL_TYPE_REQUEST_FILES to defaultMoshi.adapter(RequestFilesModel::class.java).toJson(this)
+        is ShareFilesModel -> FILE_MODEL_TYPE_SHARE_FILES to defaultMoshi.adapter(ShareFilesModel::class.java).toJson(this)
+        is MessageModel -> FILE_MODEL_TYPE_MESSAGE to defaultMoshi.adapter(MessageModel::class.java).toJson(this)
     }
     val model = FileExploreBaseModel(
         type = type,
         content = content
     )
-    return moshi.adapter(FileExploreBaseModel::class.java).toJson(model)
+    return defaultMoshi.adapter(FileExploreBaseModel::class.java).toJson(model)
 }
 
 inline fun <reified T> String.fromJson(): T? {
-    return moshi.adapter(T::class.java).fromJson(this)
+    return defaultMoshi.adapter(T::class.java).fromJson(this)
 }
 
 inline fun <reified T> T.toJson(): String? {
-    return moshi.adapter(T::class.java).toJson(this)
+    return defaultMoshi.adapter(T::class.java).toJson(this)
 }
 
 private fun String.toFileContentModel(): FileExploreContentModel? {
-    val baseModel = moshi.adapter(FileExploreBaseModel::class.java).fromJson(this)
+    val baseModel = defaultMoshi.adapter(FileExploreBaseModel::class.java).fromJson(this)
     return if (baseModel != null) {
         when (baseModel.type) {
             FILE_MODEL_TYPE_HANDSHAKE -> {
@@ -151,10 +151,10 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
                                                     }
                                                     is NettyPkg.ServerFinishPkg, is NettyPkg.TimeoutPkg -> {
                                                         connection.close(false)
-                                                        Log.e("File explore close or heartbeat timeout", null)
+                                                        AndroidLog.e("File explore close or heartbeat timeout", null)
                                                     }
                                                     is NettyPkg.HeartBeatPkg -> {
-                                                        Log.d("File explore receive heartbeat.")
+                                                        AndroidLog.d("File explore receive heartbeat.")
                                                     }
                                                     else -> {
                                                     }
@@ -170,7 +170,7 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
 
                                     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
                                         connection.close(false)
-                                        Log.e("File explore error.", cause)
+                                        AndroidLog.e("File explore error.", cause)
                                     }
                                 })
                         } else {
@@ -182,7 +182,7 @@ fun startFileExploreServer(localAddress: InetAddress): FileExploreConnection {
             serverChannel = channel
             channel.closeFuture().sync()
         } catch (t: Throwable) {
-            Log.e("File transfer start error", t)
+            AndroidLog.e("File transfer start error", t)
             connection.close(false)
         } finally {
             connectionEventGroup.shutdownGracefully()
@@ -253,10 +253,10 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                                 }
                                                 is NettyPkg.ClientFinishPkg, is NettyPkg.TimeoutPkg -> {
                                                     connection.close(false)
-                                                    Log.e("File explore close or heartbeat timeout", null)
+                                                    AndroidLog.e("File explore close or heartbeat timeout", null)
                                                 }
                                                 is NettyPkg.HeartBeatPkg -> {
-                                                    Log.d("File explore receive heartbeat.")
+                                                    AndroidLog.d("File explore receive heartbeat.")
                                                 }
                                                 else -> {}
                                             }
@@ -270,7 +270,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
                                 }
                                 override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
                                     connection.close(false)
-                                    Log.e("File explore error.", cause)
+                                    AndroidLog.e("File explore error.", cause)
                                 }
                             })
                     }
@@ -280,7 +280,7 @@ fun connectToFileExploreServer(remoteAddress: InetAddress): FileExploreConnectio
             channel = channelLocal
             channelLocal.closeFuture().sync()
         } catch (t: Throwable) {
-            Log.e("File transfer start error", t)
+            AndroidLog.e("File transfer start error", t)
             connection.close(false)
         } finally {
             eventGroup.shutdownGracefully()
