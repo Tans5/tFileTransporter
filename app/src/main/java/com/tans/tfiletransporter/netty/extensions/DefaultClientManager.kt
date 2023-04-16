@@ -17,11 +17,11 @@ import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicLong
 
-class DefaultRequestManager(
+class DefaultClientManager(
     val connectionTask: INettyConnectionTask,
     val converterFactory: IConverterFactory = DefaultConverterFactory(),
     val log: ILog = AndroidLog
-) : IRequestManager, NettyConnectionObserver {
+) : IClientManager, NettyConnectionObserver {
 
     private val waitingRspTasks: LinkedBlockingDeque<Task<*, *>> by lazy {
         LinkedBlockingDeque()
@@ -72,7 +72,7 @@ class DefaultRequestManager(
         requestClass: Class<Request>,
         responseClass: Class<Response>,
         retryTimes: Int,
-        callback: IRequestManager.RequestCallback<Response>
+        callback: IClientManager.RequestCallback<Response>
     ) {
         enqueueTask(
             Task(
@@ -96,7 +96,7 @@ class DefaultRequestManager(
         responseClass: Class<Response>,
         targetAddress: InetSocketAddress,
         retryTimes: Int,
-        callback: IRequestManager.RequestCallback<Response>
+        callback: IClientManager.RequestCallback<Response>
     ) {
         enqueueTask(
             Task(
@@ -141,7 +141,7 @@ class DefaultRequestManager(
         private val responseClass: Class<Response>,
         private val retryTimes: Int,
         val delay: Long = 0L,
-        private val callback: IRequestManager.RequestCallback<Response>
+        private val callback: IClientManager.RequestCallback<Response>
     ) : Runnable {
 
         private val timeoutHandler: Handler by lazy {
@@ -288,6 +288,6 @@ class DefaultRequestManager(
 
         private const val RETRY_DELAY = 100L
         private const val WAIT_RSP_TIMEOUT = 1000L
-        private const val TAG = "RequestManager"
+        private const val TAG = "DefaultClientManager"
     }
 }

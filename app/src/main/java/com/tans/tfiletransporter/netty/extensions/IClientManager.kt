@@ -2,7 +2,7 @@ package com.tans.tfiletransporter.netty.extensions
 
 import java.net.InetSocketAddress
 
-interface IRequestManager {
+interface IClientManager {
 
     /**
      * For Tcp
