@@ -55,6 +55,10 @@ class DefaultServerManager(
         servers.remove(s)
     }
 
+    override fun clearAllServers() {
+        servers.clear()
+    }
+
     companion object {
         private const val TAG = "DefaultServerManager"
     }
