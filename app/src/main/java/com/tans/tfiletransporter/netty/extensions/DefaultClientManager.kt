@@ -1,9 +1,5 @@
 package com.tans.tfiletransporter.netty.extensions
 
-import android.os.Handler
-import android.os.HandlerThread
-import android.os.Looper
-import android.os.Message
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
@@ -13,9 +9,10 @@ import com.tans.tfiletransporter.netty.PackageDataWithAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import java.net.InetSocketAddress
-import java.util.concurrent.Executor
-import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 class DefaultClientManager(
     val connectionTask: INettyConnectionTask,
@@ -29,18 +26,6 @@ class DefaultClientManager(
 
     private val ioExecutor: Executor by lazy {
         Dispatchers.IO.asExecutor()
-    }
-
-    private val taskExecuteHandler: Handler by lazy {
-        object : Handler(taskLooper) {
-            override fun handleMessage(msg: Message) {
-                super.handleMessage(msg)
-                val t = msg.obj as? Task<*, *>
-                if (t != null) {
-                    ioExecutor.execute(t)
-                }
-            }
-        }
     }
 
     private val messageId: AtomicLong by lazy {
@@ -114,12 +99,12 @@ class DefaultClientManager(
     }
 
     private fun enqueueTask(task: Task<*, *>) {
-        val msg = taskExecuteHandler.obtainMessage()
-        msg.obj = task
         if (task.delay > 0) {
-            taskExecuteHandler.sendMessageDelayed(msg, task.delay)
+            taskScheduleExecutor.schedule({
+                ioExecutor.execute(task)
+            }, task.delay, TimeUnit.MILLISECONDS)
         } else {
-            taskExecuteHandler.sendMessage(msg)
+            ioExecutor.execute(task)
         }
         log.d(TAG, "Current waiting task size: ${waitingRspTasks.size}")
     }
@@ -144,14 +129,9 @@ class DefaultClientManager(
         private val callback: IClientManager.RequestCallback<Response>
     ) : Runnable {
 
-        private val timeoutHandler: Handler by lazy {
-            object : Handler(taskLooper) {
-                override fun handleMessage(msg: Message) {
-                    super.handleMessage(msg)
-                    handleError("Waiting Response timeout: $WAIT_RSP_TIMEOUT ms.")
-                }
-            }
-        }
+        private val taskIsDone: AtomicBoolean = AtomicBoolean(false)
+
+        private val timeoutTask: AtomicReference<ScheduledFuture<*>?> = AtomicReference(null)
 
         fun onNewDownloadData(
             localAddress: InetSocketAddress?,
@@ -159,7 +139,8 @@ class DefaultClientManager(
             downloadData: PackageData
         ) {
             if (downloadData.messageId == this.messageId) {
-                timeoutHandler.removeMessages(0)
+                timeoutTask.get()?.cancel(true)
+                timeoutTask.set(null)
                 log.d(TAG, "Received response: msgId -> ${downloadData.messageId}, type -> $type")
                 val converter = converterFactory.findBodyConverter(downloadData.type, responseClass)
                 if (converter != null) {
@@ -170,13 +151,15 @@ class DefaultClientManager(
                     )
                     if (response != null) {
                         removeWaitingTask(this)
-                        callback.onSuccess(
-                            type = type,
-                            messageId = messageId,
-                            localAddress = localAddress,
-                            remoteAddress = remoteAddress,
-                            d = response
-                        )
+                        if (taskIsDone.compareAndSet(false, true)) {
+                            callback.onSuccess(
+                                type = type,
+                                messageId = messageId,
+                                localAddress = localAddress,
+                                remoteAddress = remoteAddress,
+                                d = response
+                            )
+                        }
                     } else {
                         val errorMsg = "${converter::class.java} convert $responseClass fail."
                         log.e(TAG, errorMsg)
@@ -209,7 +192,14 @@ class DefaultClientManager(
                     dataClass = requestClass
                 )
                 if (pckData != null) {
-                    timeoutHandler.sendEmptyMessageDelayed(0, WAIT_RSP_TIMEOUT)
+                    val timeoutTask = taskScheduleExecutor.schedule(
+                        {
+                            handleError("Waiting Response timeout: $WAIT_RSP_TIMEOUT ms.")
+                        },
+                        WAIT_RSP_TIMEOUT,
+                        TimeUnit.MILLISECONDS
+                    )
+                    this.timeoutTask.set(timeoutTask)
                     if (udpTargetAddress != null) {
                         connectionTask.sendData(
                             data = PackageDataWithAddress(
@@ -248,22 +238,26 @@ class DefaultClientManager(
             removeWaitingTask(this)
             log.e(TAG, "Send request error: msgId -> $messageId, cmdType -> $type, error -> $e")
             if (retryTimes > 0) {
-                log.e(TAG, "Retry send request")
-                enqueueTask(
-                    Task(
-                        type = type,
-                        messageId = messageId,
-                        request = request,
-                        requestClass = requestClass,
-                        responseClass = responseClass,
-                        callback = callback,
-                        retryTimes = retryTimes - 1,
-                        delay = RETRY_DELAY,
-                        udpTargetAddress = udpTargetAddress
+                if (taskIsDone.compareAndSet(false, true)) {
+                    log.e(TAG, "Retry send request")
+                    enqueueTask(
+                        Task(
+                            type = type,
+                            messageId = messageId,
+                            request = request,
+                            requestClass = requestClass,
+                            responseClass = responseClass,
+                            callback = callback,
+                            retryTimes = retryTimes - 1,
+                            delay = RETRY_DELAY,
+                            udpTargetAddress = udpTargetAddress
+                        )
                     )
-                )
+                }
             } else {
-                callback.onFail(e)
+                if (taskIsDone.compareAndSet(false, true)) {
+                    callback.onFail(e)
+                }
             }
         }
 
@@ -271,19 +265,10 @@ class DefaultClientManager(
 
     companion object {
 
-        private val taskLooper: Looper by lazy {
-            createDefaultTaskLooper()
-        }
-
-
-        private fun createDefaultTaskLooper(): Looper {
-            val handlerThread = HandlerThread("RequestTaskHandlerThread", Thread.MAX_PRIORITY)
-            handlerThread.start()
-            var looper: Looper? = handlerThread.looper
-            while (looper == null) {
-                looper = handlerThread.looper
+        private val taskScheduleExecutor: ScheduledExecutorService by lazy {
+            Executors.newScheduledThreadPool(2) {
+                Thread(it, "ClientTaskThread")
             }
-            return looper
         }
 
         private const val RETRY_DELAY = 100L

@@ -5,29 +5,33 @@ import com.tans.tfiletransporter.netty.PackageData
 
 open class DefaultConverterFactory : IConverterFactory {
 
-    override fun findBodyConverter(type: Int, dataClass: Class<*>): IToBodyConverter? {
+    override fun findBodyConverter(type: Int, dataClass: Class<*>): IBodyConverter? {
         return defaultToBodyConverters.find { it.couldHandle(type, dataClass) }
     }
 
-    override fun findPackageDataConverter(type: Int, dataClass: Class<*>): IToPackageDataConverter? {
+    override fun findPackageDataConverter(type: Int, dataClass: Class<*>): IPackageDataConverter? {
         return defaultToPackageDataConverters.find { it.couldHandle(type, dataClass) }
     }
 
 
     companion object {
 
-        private val defaultToBodyConverters: List<IToBodyConverter> = listOf(
-            PackageDataToBodyConverter(),
-            MoshiToBodyConverter()
+        private val defaultToBodyConverters: List<IBodyConverter> = listOf(
+            StringDataBodyConverter(),
+            UnitDataBodyConverter(),
+            PackageDataBodyConverter(),
+            MoshiBodyConverter()
         )
 
-        private val defaultToPackageDataConverters: List<IToPackageDataConverter> = listOf(
-            PackageDataToPackageDataConverter(),
-            MoshiToPackageDataConverter()
+        private val defaultToPackageDataConverters: List<IPackageDataConverter> = listOf(
+            StringPackageDataConverter(),
+            UnitPackageDataConverter(),
+            PackageDataPackageDataConverter(),
+            MoshiPackageDataConverter()
         )
 
         @Suppress("UNCHECKED_CAST")
-        private class PackageDataToBodyConverter : IToBodyConverter {
+        private class PackageDataBodyConverter : IBodyConverter {
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
                 return dataClass === PackageData::class.java
             }
@@ -37,7 +41,29 @@ open class DefaultConverterFactory : IConverterFactory {
             }
         }
 
-        private class MoshiToBodyConverter : IToBodyConverter {
+        @Suppress("UNCHECKED_CAST")
+        private class StringDataBodyConverter : IBodyConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === String::class.java
+            }
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T {
+                return packageData.body.toString(Charsets.UTF_8) as T
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private class UnitDataBodyConverter : IBodyConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === Unit::class.java
+            }
+
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T {
+                return Unit as T
+            }
+
+        }
+
+        private class MoshiBodyConverter : IBodyConverter {
 
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean = true
 
@@ -51,7 +77,45 @@ open class DefaultConverterFactory : IConverterFactory {
             }
         }
 
-        private class PackageDataToPackageDataConverter : IToPackageDataConverter {
+        private class StringPackageDataConverter : IPackageDataConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === String::class.java
+            }
+
+            override fun <T> convert(
+                type: Int,
+                messageId: Long,
+                data: T,
+                dataClass: Class<T>
+            ): PackageData {
+                return PackageData(
+                    type = type,
+                    messageId = messageId,
+                    body = (data as String).toByteArray(Charsets.UTF_8)
+                )
+            }
+        }
+
+        private class UnitPackageDataConverter : IPackageDataConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === Unit::class.java
+            }
+
+            override fun <T> convert(
+                type: Int,
+                messageId: Long,
+                data: T,
+                dataClass: Class<T>
+            ): PackageData {
+                return PackageData(
+                    type = type,
+                    messageId = messageId,
+                    body = byteArrayOf()
+                )
+            }
+        }
+
+        private class PackageDataPackageDataConverter : IPackageDataConverter {
 
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
                 return dataClass === PackageData::class.java
@@ -62,7 +126,7 @@ open class DefaultConverterFactory : IConverterFactory {
             }
         }
 
-        private class MoshiToPackageDataConverter : IToPackageDataConverter {
+        private class MoshiPackageDataConverter : IPackageDataConverter {
 
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean = true
 

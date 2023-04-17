@@ -2,7 +2,7 @@ package com.tans.tfiletransporter.netty.extensions
 
 import com.tans.tfiletransporter.netty.PackageData
 
-interface IToPackageDataConverter {
+interface IPackageDataConverter {
 
     fun couldHandle(type: Int, dataClass: Class<*>): Boolean
 
