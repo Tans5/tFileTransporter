@@ -4,7 +4,6 @@ import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
-import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.withServer
@@ -28,9 +27,9 @@ object TcpServerTest {
                 val serverConnection = newClientTask
                     .withServer<ConnectionServerImpl>(log = TestLog)
                 serverConnection
-                    .registerServer(object : IServer<PackageData, PackageData> {
-                        override val requestClass: Class<PackageData> = PackageData::class.java
-                        override val responseClass: Class<PackageData> = PackageData::class.java
+                    .registerServer(object : IServer<String, String> {
+                        override val requestClass: Class<String> = String::class.java
+                        override val responseClass: Class<String> = String::class.java
                         override val replyType: Int = 1
                         override val log: ILog = TestLog
 
@@ -41,21 +40,17 @@ object TcpServerTest {
                         override fun onRequest(
                             localAddress: InetSocketAddress?,
                             remoteAddress: InetSocketAddress?,
-                            r: PackageData
-                        ): PackageData {
-                            return PackageData(
-                                type = replyType,
-                                messageId = r.messageId,
-                                body = "Hello, Client".toByteArray(Charsets.UTF_8)
-                            )
+                            r: String
+                        ): String {
+                            return "Hello, Client."
                         }
 
                         override fun onNewRequest(
                             localAddress: InetSocketAddress?,
                             remoteAddress: InetSocketAddress?,
-                            r: PackageData
+                            r: String
                         ) {
-                            println("Receive client request: ${r.body.toString(Charsets.UTF_8)} from $remoteAddress")
+                            println("Receive client request: $r from $remoteAddress")
                         }
 
                     })

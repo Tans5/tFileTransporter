@@ -4,6 +4,9 @@ import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
+import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
+import com.tans.tfiletransporter.netty.extensions.IClientManager
+import com.tans.tfiletransporter.netty.extensions.witchClient
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -20,7 +23,7 @@ object TcpClientTest {
         val t = NettyTcpClientConnectionTask(
             serverAddress = localAddress,
             serverPort = 1996
-        )
+        ).witchClient<ConnectionClientImpl>(log = TestLog)
         t.addObserver(object : NettyConnectionObserver {
             override fun onNewState(
                 nettyState: NettyTaskState,
@@ -31,7 +34,29 @@ object TcpClientTest {
                     ioExecutor.execute {
                         repeat(1000) {
                             Thread.sleep(2000)
-                            task.sendData(PackageData(0, it.toLong(), "Hello, Server".toByteArray(Charsets.UTF_8)), null)
+                            t.request(
+                                type = 0,
+                                request = "Hello, Server",
+                                requestClass = String::class.java,
+                                responseClass = String::class.java,
+                                callback = object : IClientManager.RequestCallback<String> {
+                                    override fun onSuccess(
+                                        type: Int,
+                                        messageId: Long,
+                                        localAddress: InetSocketAddress?,
+                                        remoteAddress: InetSocketAddress?,
+                                        d: String
+                                    ) {
+                                        println("Request result: $d from $remoteAddress reply")
+                                    }
+
+                                    override fun onFail(errorMsg: String) {
+                                       println("Request fail: $errorMsg")
+                                    }
+
+
+                                }
+                            )
                         }
                     }
                 }
