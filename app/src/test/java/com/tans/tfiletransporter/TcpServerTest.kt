@@ -4,9 +4,7 @@ import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
-import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
-import com.tans.tfiletransporter.netty.extensions.IServer
-import com.tans.tfiletransporter.netty.extensions.withServer
+import com.tans.tfiletransporter.netty.extensions.*
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -26,6 +24,7 @@ object TcpServerTest {
                 println("NewClientTask: $newClientTask")
                 val serverConnection = newClientTask
                     .withServer<ConnectionServerImpl>(log = TestLog)
+                    .witchClient<ConnectionServerClientImpl>(log = TestLog)
                 serverConnection
                     .registerServer(object : IServer<String, String> {
                         override val requestClass: Class<String> = String::class.java

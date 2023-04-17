@@ -48,6 +48,7 @@ class NettyUdpConnectionTask(
                 .group(loopEventGroup)
                 .channel(NioDatagramChannel::class.java)
                 .option(ChannelOption.SO_BROADCAST, receiveBroadCast)
+                .option(ChannelOption.SO_REUSEADDR, true)
                 .handler(object : ChannelInitializer<NioDatagramChannel>() {
                     override fun initChannel(ch: NioDatagramChannel) {
                         ch.pipeline()

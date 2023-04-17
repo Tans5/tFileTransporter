@@ -4,9 +4,7 @@ import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
-import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
-import com.tans.tfiletransporter.netty.extensions.IClientManager
-import com.tans.tfiletransporter.netty.extensions.witchClient
+import com.tans.tfiletransporter.netty.extensions.*
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -23,7 +21,9 @@ object TcpClientTest {
         val t = NettyTcpClientConnectionTask(
             serverAddress = localAddress,
             serverPort = 1996
-        ).witchClient<ConnectionClientImpl>(log = TestLog)
+        )
+            .witchClient<ConnectionClientImpl>(log = TestLog)
+            .withServer<ConnectionServerClientImpl>(log = TestLog)
         t.addObserver(object : NettyConnectionObserver {
             override fun onNewState(
                 nettyState: NettyTaskState,
