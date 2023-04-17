@@ -34,6 +34,7 @@ object TcpClientTest {
                     ioExecutor.execute {
                         repeat(1000) {
                             Thread.sleep(2000)
+                            if (t.getCurrentState() !is NettyTaskState.ConnectionActive) return@execute
                             t.request(
                                 type = 0,
                                 request = "Hello, Server",
