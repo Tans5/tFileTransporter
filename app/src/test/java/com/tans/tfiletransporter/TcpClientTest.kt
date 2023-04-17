@@ -55,7 +55,6 @@ object TcpClientTest {
                                        println("Request fail: $errorMsg")
                                     }
 
-
                                 }
                             )
                         }

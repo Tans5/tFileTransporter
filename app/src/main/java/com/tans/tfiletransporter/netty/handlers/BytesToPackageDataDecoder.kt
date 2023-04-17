@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.netty.handlers
 
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.readBytes
+import com.tans.tfiletransporter.utils.deGzip
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
@@ -13,7 +14,7 @@ class BytesToPackageDataDecoder : ByteToMessageDecoder() {
         try {
             val type = buffer.readInt()
             val messageId = buffer.readLong()
-            val body = buffer.readBytes()
+            val body = buffer.readBytes().deGzip()
             out.add(PackageData(type = type, messageId = messageId, body = body))
         } catch (e: Throwable) {
             e.printStackTrace()
