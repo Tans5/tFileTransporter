@@ -1,9 +1,6 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.netty.INettyConnectionTask
-import com.tans.tfiletransporter.netty.NettyConnectionObserver
-import com.tans.tfiletransporter.netty.NettyTaskState
-import com.tans.tfiletransporter.netty.PackageData
+import com.tans.tfiletransporter.netty.*
 import com.tans.tfiletransporter.netty.extensions.*
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +14,7 @@ object TcpClientTest {
     @JvmStatic
     fun main(args: Array<String>) {
         val ioExecutor: Executor = Dispatchers.IO.asExecutor()
-        val localAddress = TcpServerTest.findLocalAddressV4()[0]
+        val localAddress = findLocalAddressV4()[0]
         val t = NettyTcpClientConnectionTask(
             serverAddress = localAddress,
             serverPort = 1996

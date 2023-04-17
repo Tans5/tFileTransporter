@@ -19,7 +19,7 @@ class DatagramDataToPckAddrDataDecoder : ChannelInboundHandlerAdapter() {
                 val body = buffer.readBytes().deGzip()
                 super.channelRead(
                     ctx, PackageDataWithAddress(
-                        address = msg.sender(),
+                        receiverAddress = msg.sender(),
                         data = PackageData(type, messageId, body)
                     )
                 )

@@ -14,8 +14,8 @@ object UdpServerTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val localAddress = TcpServerTest.findLocalAddressV4()[0]
-        val task = NettyUdpConnectionTask(localAddress, 9999)
+        val localAddress = findLocalAddressV4()[0]
+        val task = NettyUdpConnectionTask(localAddress, 9999, true)
             .withServer<ConnectionServerImpl>(log = TestLog)
 
         task.registerServer(object : IServer<String, String> {

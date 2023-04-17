@@ -46,7 +46,7 @@ class CheckerHandler(
             )
         }
         if (msg is PackageDataWithAddress) {
-            val remoteAddress = msg.address
+            val remoteAddress = msg.receiverAddress
             task.dispatchDownloadData(
                 localAddress,
                 remoteAddress,

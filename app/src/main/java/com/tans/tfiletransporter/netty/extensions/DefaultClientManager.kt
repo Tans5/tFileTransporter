@@ -64,6 +64,7 @@ class DefaultClientManager(
                 type = type,
                 messageId = messageId.addAndGet(1),
                 udpTargetAddress = null,
+                udpSenderAddress = null,
                 request = request,
                 requestClass = requestClass,
                 responseClass = responseClass,
@@ -80,6 +81,7 @@ class DefaultClientManager(
         requestClass: Class<Request>,
         responseClass: Class<Response>,
         targetAddress: InetSocketAddress,
+        senderAddress: InetSocketAddress?,
         retryTimes: Int,
         callback: IClientManager.RequestCallback<Response>
     ) {
@@ -88,6 +90,7 @@ class DefaultClientManager(
                 type = type,
                 messageId = messageId.addAndGet(1),
                 udpTargetAddress = targetAddress,
+                udpSenderAddress = senderAddress,
                 request = request,
                 requestClass = requestClass,
                 responseClass = responseClass,
@@ -121,6 +124,7 @@ class DefaultClientManager(
         private val type: Int,
         private val messageId: Long,
         private val udpTargetAddress: InetSocketAddress?,
+        private val udpSenderAddress: InetSocketAddress?,
         private val request: Request,
         private val requestClass: Class<Request>,
         private val responseClass: Class<Response>,
@@ -203,7 +207,8 @@ class DefaultClientManager(
                     if (udpTargetAddress != null) {
                         connectionTask.sendData(
                             data = PackageDataWithAddress(
-                                address = udpTargetAddress,
+                                receiverAddress = udpTargetAddress,
+                                senderAddress = udpSenderAddress,
                                 data = pckData
                             ),
                             sendDataCallback = object :  INettyConnectionTask.SendDataCallback {
@@ -250,7 +255,8 @@ class DefaultClientManager(
                             callback = callback,
                             retryTimes = retryTimes - 1,
                             delay = RETRY_DELAY,
-                            udpTargetAddress = udpTargetAddress
+                            udpTargetAddress = udpTargetAddress,
+                            udpSenderAddress = udpSenderAddress
                         )
                     )
                 }

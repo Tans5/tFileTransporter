@@ -25,6 +25,7 @@ interface IClientManager {
         requestClass: Class<Request>,
         responseClass: Class<Response>,
         targetAddress: InetSocketAddress,
+        senderAddress: InetSocketAddress? = null,
         retryTimes: Int = 2,
         callback: RequestCallback<Response>
     )

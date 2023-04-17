@@ -50,7 +50,7 @@ interface IServer<Request, Response> {
                                 if (remoteAddress != null) {
                                     connectionTask.sendData(
                                         data = PackageDataWithAddress(
-                                            address = remoteAddress,
+                                            receiverAddress = remoteAddress,
                                             data = pckData
                                         ),
                                         sendDataCallback = object : INettyConnectionTask.SendDataCallback {
