@@ -9,13 +9,14 @@ import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
+import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask.Companion.ConnectionType
 
 object UdpServerTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
         val localAddress = findLocalAddressV4()[0]
-        val task = NettyUdpConnectionTask(localAddress, 9999, true)
+        val task = NettyUdpConnectionTask(ConnectionType.Bind(localAddress, 9999), true)
             .withServer<ConnectionServerImpl>(log = TestLog)
 
         task.registerServer(object : IServer<String, String> {

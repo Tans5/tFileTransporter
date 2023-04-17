@@ -12,7 +12,6 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioDatagramChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
-import java.net.DatagramPacket
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.Executor
@@ -21,9 +20,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class NettyUdpConnectionTask(
-    private val bindAddress: InetAddress?,
-    private val bindPort: Int?,
-    private val receiveBroadCast: Boolean = false
+    private val connectionType: ConnectionType,
+    private val enableBroadcast: Boolean = false
 ) : INettyConnectionTask {
 
     override val isExecuted: AtomicBoolean = AtomicBoolean(false)
@@ -47,7 +45,7 @@ class NettyUdpConnectionTask(
             val bootStrap = Bootstrap()
                 .group(loopEventGroup)
                 .channel(NioDatagramChannel::class.java)
-                .option(ChannelOption.SO_BROADCAST, receiveBroadCast)
+                .option(ChannelOption.SO_BROADCAST, enableBroadcast)
                 .option(ChannelOption.SO_REUSEADDR, true)
                 .handler(object : ChannelInitializer<NioDatagramChannel>() {
                     override fun initChannel(ch: NioDatagramChannel) {
@@ -57,10 +55,10 @@ class NettyUdpConnectionTask(
                             .addLast(CheckerHandler(this@NettyUdpConnectionTask, ch, true))
                     }
                 })
-            val channel = if (bindAddress != null && bindPort != null) {
-                bootStrap.bind(InetSocketAddress(bindAddress, bindPort)).sync().channel()
-            } else {
-                bootStrap.bind().sync().channel()
+
+            val channel = when (connectionType) {
+                is ConnectionType.Bind -> bootStrap.bind(InetSocketAddress(connectionType.address, connectionType.port)).sync().channel()
+                is ConnectionType.Connect -> bootStrap.connect(InetSocketAddress(connectionType.address, connectionType.port)).sync().channel()
             }
             channel.closeFuture().sync()
             if (getCurrentState() !is NettyTaskState.Error) {
@@ -77,5 +75,16 @@ class NettyUdpConnectionTask(
 
     companion object {
         private const val DEFAULT_LOOP_THREAD_COUNT = 10
+        sealed class ConnectionType {
+            data class Bind(
+                val address: InetAddress,
+                val port: Int
+            ) : ConnectionType()
+
+            data class Connect(
+                val address: InetAddress,
+                val port: Int
+            ) : ConnectionType()
+        }
     }
 }
