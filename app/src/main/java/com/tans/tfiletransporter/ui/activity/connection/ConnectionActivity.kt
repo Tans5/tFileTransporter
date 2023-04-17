@@ -58,7 +58,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
 
     override fun firstLaunchInitData() {
         launch {
-            val grant = RxPermissions(this@ConnectionActivity).let {
+            val grantStorage = RxPermissions(this@ConnectionActivity).let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         it.request(Manifest.permission.READ_MEDIA_IMAGES,
@@ -70,9 +70,19 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
                     it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 }
             }.firstOrError().await()
-            if (!grant) {
+            if (!grantStorage) {
                 finish()
             }
+            RxPermissions(this@ConnectionActivity)
+                .let {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        it.request(Manifest.permission.NEARBY_WIFI_DEVICES)
+                    } else {
+                        it.request(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    }
+                }
+                .firstOrError()
+                .await()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
                 val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                 i.data = Uri.fromParts("package", packageName, null)
