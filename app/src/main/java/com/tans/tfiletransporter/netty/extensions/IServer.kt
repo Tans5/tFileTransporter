@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.netty.extensions
 
+import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.PackageData
@@ -107,4 +108,37 @@ interface IServer<Request, Response> {
         remoteAddress: InetSocketAddress?,
         r: Request
     )
+}
+
+inline fun <reified Request, reified Response> simplifyServer(
+    requestType: Int,
+    responseType: Int,
+    log: ILog = AndroidLog,
+    crossinline onRequest: (localAddress: InetSocketAddress?, remoteAddress: InetSocketAddress?, r: Request) -> Response?,
+    crossinline onNewRequest: (localAddress: InetSocketAddress?, remoteAddress: InetSocketAddress?, r: Request) -> Unit
+): IServer<Request, Response> {
+    return object : IServer<Request, Response> {
+        override val requestClass: Class<Request> = Request::class.java
+        override val responseClass: Class<Response> = Response::class.java
+        override val replyType: Int = responseType
+        override val log: ILog = log
+        override fun couldHandle(t: Int): Boolean = requestType == t
+
+        override fun onRequest(
+            localAddress: InetSocketAddress?,
+            remoteAddress: InetSocketAddress?,
+            r: Request
+        ): Response? {
+            return onRequest(localAddress, remoteAddress, r)
+        }
+
+        override fun onNewRequest(
+            localAddress: InetSocketAddress?,
+            remoteAddress: InetSocketAddress?,
+            r: Request
+        ) {
+            onNewRequest(localAddress, remoteAddress, r)
+        }
+
+    }
 }
