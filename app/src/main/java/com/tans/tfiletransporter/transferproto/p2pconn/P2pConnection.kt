@@ -37,6 +37,7 @@ class P2pConnection(
         simplifyServer(
             requestType = P2pDataType.HandshakeReq.type,
             responseType = P2pDataType.HandshakeResp.type,
+            log = log,
             onRequest = { _, rd, r ->
                 val remoteRawAddress = rd?.address?.address
                 if (remoteRawAddress != null
@@ -71,6 +72,7 @@ class P2pConnection(
         simplifyServer(
             requestType = P2pDataType.TransferFileReq.type,
             responseType = P2pDataType.TransferFileResp.type,
+            log = log,
             onRequest = { _, _, _ -> },
             onNewRequest = { _, _, _ ->
                 log.d(TAG, "Receive transfer file request.")
@@ -90,7 +92,7 @@ class P2pConnection(
     private val activeCommunicationTaskObserver: NettyConnectionObserver by lazy {
         object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
-                if (nettyState is NettyTaskState.ConnectionClosed && nettyState is NettyTaskState.Error) {
+                if (nettyState is NettyTaskState.ConnectionClosed || nettyState is NettyTaskState.Error) {
                     log.d(TAG, "Connection closed: $nettyState")
                     closeConnectionIfActive()
                 }
@@ -152,8 +154,8 @@ class P2pConnection(
             bindPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT,
             newClientTaskCallback = { client ->
                 if (hasClientConnection.compareAndSet(false, true)) {
-                    val fixedClientConnection = client.withServer<ConnectionServerImpl>()
-                        .witchClient<ConnectionServerClientImpl>()
+                    val fixedClientConnection = client.withServer<ConnectionServerImpl>(log = log)
+                        .witchClient<ConnectionServerClientImpl>(log = log)
                     fixedClientConnection.registerServer(handShakeServer)
                     fixedClientConnection.registerServer(transferFileServer)
                     fixedClientConnection.addObserver(stateCallback)
@@ -176,7 +178,7 @@ class P2pConnection(
         val clientTask = NettyTcpClientConnectionTask(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT
-        ).withServer<ConnectionServerImpl>().witchClient<ConnectionServerClientImpl>()
+        ).withServer<ConnectionServerImpl>(log = log).witchClient<ConnectionServerClientImpl>(log = log)
         clientTask.registerServer(transferFileServer)
         clientTask.addObserver(
             object : NettyConnectionObserver {
