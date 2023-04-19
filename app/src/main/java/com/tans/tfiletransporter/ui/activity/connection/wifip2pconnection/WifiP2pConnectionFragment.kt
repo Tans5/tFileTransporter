@@ -74,7 +74,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     AndroidLog.d(TAG, "Connection state change.")
                     launch {
-                        checkConnection()
+                        checkWifiConnection()
                     }
                 }
 
@@ -99,25 +99,30 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
     override fun initViews(binding: WifiP2pConnectionFragmentBinding) {
         launch {
             launch {
-                closeCurrentConnection()
+                closeCurrentWifiConnection()
             }
             render({ it.p2pHandshake }) {
                 if (it.isPresent) {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().localAddress.toString().removePrefix("/"))
+                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+                        it.get().remoteDeviceName, it.get().remoteAddress.toString().removePrefix("/"))
                 } else {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
+                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+                        "Not Available", "Not Available")
                 }
             }.bindLife()
 
-            render({ it.p2pHandshake }) {
-                if (it.isPresent) {
-                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                            it.get().remoteDeviceName, it.get().remoteAddress.toString().removePrefix("/"))
+            render({ it.wifiP2PConnection to it.p2pHandshake }) { (wifiP2pConnection, handshake) ->
+                if (wifiP2pConnection.isPresent) {
                     binding.connectedActionsLayout.visibility = View.VISIBLE
                     binding.remoteDevicesRv.visibility = View.GONE
+                    if (handshake.isPresent) {
+                        binding.transferFileLayout.visibility = View.VISIBLE
+                    } else {
+                        binding.transferFileLayout.visibility = View.INVISIBLE
+                    }
                 } else {
-                    binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                            "Not Available", "Not Available")
                     binding.connectedActionsLayout.visibility = View.GONE
                     binding.remoteDevicesRv.visibility = View.VISIBLE
                 }
@@ -125,11 +130,10 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
             launch(Dispatchers.IO) {
                 while (true) {
-                    val isP2pEnabled = bindState().map { it.isP2pEnabled }.firstOrError().await()
+                    val (isP2pEnabled, connection) = bindState().map { it.isP2pEnabled to it.wifiP2PConnection.getOrNull() }.firstOrError().await()
                     if (!isP2pEnabled) {
                         updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
                     } else {
-                        val connection = checkConnection()
                         if (connection == null) {
                             val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
                             if (state == WifiActionResult.Success) {
@@ -189,7 +193,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 bindState().firstOrError().await().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
                             }
                         }
-                        closeCurrentConnection()
+                        closeCurrentWifiConnection()
                     }
                 }
                 .bindLife()
@@ -202,7 +206,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                         lBinding.device = device.deviceName
                         lBinding.ipAddress = "Mac address: ${device.macAddress}"
                     },
-                    dataUpdater = bindState().map { if (!it.wifiP2PConnection.isPresent) it.peers else emptyList() }.distinctUntilChanged(),
+                    dataUpdater = bindState().map { it.peers }.distinctUntilChanged(),
                     itemClicks = listOf { binding, _ ->
                         binding.root to { _, data ->
                             rxSingle(Dispatchers.IO) {
@@ -234,6 +238,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                     rxSingle(Dispatchers.IO) {
                         val lastHandshake = bindState().firstOrError().await().p2pHandshake
                         if (lastHandshake.isPresent) {
+                            runCatching {
+                                lastHandshake.get().p2pConnection.closeSuspend()
+                            }
                             lastHandshake.get().p2pConnection.closeConnectionIfActive()
                             updateState { it.copy(p2pHandshake = Optional.empty()) }.await()
                         }
@@ -271,10 +278,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                             }
                             if (connectionResult.isFailure) {
                                 connection.closeConnectionIfActive()
-                                closeCurrentConnection()
                             } else {
-                                val handshakeResult = withTimeout(1000) {
-                                    runCatching {
+                                val handshakeResult = runCatching {
+                                    withTimeout(1000) {
                                         connection.waitHandshaking()
                                     }
                                 }
@@ -307,7 +313,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                     })
                                     connection.waitClose()
                                 }
-                                closeCurrentConnection()
+                                updateState { it.copy(p2pHandshake = Optional.empty()) }.await()
                             }
                         }
                     }
@@ -316,19 +322,15 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
         }
     }
 
-    private suspend fun closeCurrentConnection() {
+    private suspend fun closeCurrentWifiConnection() {
         updateState {  oldState ->
-            oldState.p2pHandshake.getOrNull()?.p2pConnection?.closeConnectionIfActive()
-            oldState.copy(
-                wifiP2PConnection = Optional.empty(),
-                p2pHandshake = Optional.empty()
-            )
+            oldState.copy(wifiP2PConnection = Optional.empty())
         }.await()
         wifiP2pManager.cancelConnectionSuspend(wifiChannel)
         wifiP2pManager.removeGroupSuspend(wifiChannel)
     }
 
-    private suspend fun checkConnection(): WifiP2pConnection? {
+    private suspend fun checkWifiConnection(): WifiP2pConnection? {
         val connectionOld = bindState().map { it.wifiP2PConnection }.firstOrError().await().getOrNull()
         val connectionNew = wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()?.let {
             WifiP2pConnection(
@@ -337,10 +339,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             )
         }
         AndroidLog.d(TAG, "Connection group address: ${connectionNew?.groupOwnerAddress}, is group owner: ${connectionNew?.isGroupOwner}")
-        if (connectionNew?.isGroupOwner != connectionOld?.isGroupOwner && connectionNew?.groupOwnerAddress != connectionOld?.groupOwnerAddress) {
+        if (connectionNew != connectionOld) {
             updateState {
-                it.p2pHandshake.getOrNull()?.p2pConnection?.closeConnectionIfActive()
-                it.copy(wifiP2PConnection = Optional.ofNullable(connectionNew), p2pHandshake = Optional.empty())
+                it.copy(wifiP2PConnection = Optional.ofNullable(connectionNew))
             }.await()
         }
         return connectionNew
