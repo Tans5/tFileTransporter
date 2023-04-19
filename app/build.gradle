@@ -99,4 +99,5 @@ dependencies {
 
     implementation deps.netty.runtime
 
+    implementation "com.squareup.okio:okio:3.3.0"
 }
