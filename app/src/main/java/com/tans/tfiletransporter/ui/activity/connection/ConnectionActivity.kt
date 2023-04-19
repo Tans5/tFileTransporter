@@ -20,42 +20,10 @@ import org.kodein.di.instance
 import java.net.InetAddress
 import java.util.*
 
-data class ConnectionActivityState(
-    val address: Optional<InetAddress> = Optional.empty()
-)
-
-class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionActivityState>(
+class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     layoutId = R.layout.connection_activity,
-    defaultState = ConnectionActivityState()
+    defaultState = Unit
 ) {
-
-    private val wifiManager: WifiManager by instance()
-    private val connectivityManager: ConnectivityManager by instance()
-
-    private val networkRequest: NetworkRequest by lazy {
-        NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
-    }
-
-    private val netWorkerCallback: ConnectivityManager.NetworkCallback by lazy {
-        object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                val address = InetAddress.getByAddress(wifiManager.dhcpInfo.ipAddress.toBytes(isRevert = true))
-                updateState { it.copy(address = Optional.of(address)) }.bindLife()
-            }
-
-            override fun onLost(network: Network) {
-                // to deal as hotspot host situation, ugly code.
-                launch {
-                    updateState {
-                        it.copy(address = Optional.empty())
-                    }.await()
-                }
-            }
-        }
-    }
-
     override fun firstLaunchInitData() {
         launch {
             val grantStorage = RxPermissions(this@ConnectionActivity).let {
@@ -90,23 +58,6 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, ConnectionAct
             }
         }
 
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
-    }
-
-    override fun initViews(binding: ConnectionActivityBinding) {
-        binding.deviceTv.text = getString(R.string.broadcast_connection_local_device, LOCAL_DEVICE)
-        render ({ it.address }) {
-            binding.ipAddressTv.text = getString(R.string.broadcast_connection_local_ip_address, if (it.isPresent) it.get().hostAddress else "Not available")
-        }.bindLife()
-    }
-
-    override fun onDestroy() {
-        connectivityManager.unregisterNetworkCallback(netWorkerCallback)
-        super.onDestroy()
     }
 
 }

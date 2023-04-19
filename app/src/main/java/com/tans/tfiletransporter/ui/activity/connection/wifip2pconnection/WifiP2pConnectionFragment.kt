@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
@@ -165,6 +166,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             }
 
             binding.transferFileLayout.clicks()
+                .ignoreSeveralClicks(duration = 1000)
                 .withLatestFrom(bindState().map { it.p2pHandshake })
                 .switchMapSingle { (_, handshake) ->
                     rxSingle(Dispatchers.IO) {
