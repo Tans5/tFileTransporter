@@ -90,7 +90,7 @@ class CheckerHandler(
         ctx: ChannelHandlerContext,
         cause: Throwable
     ) {
+        cause.printStackTrace()
         ctx.close()
-        throw cause
     }
 }
