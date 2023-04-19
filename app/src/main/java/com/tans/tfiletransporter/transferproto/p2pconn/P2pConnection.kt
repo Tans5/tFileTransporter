@@ -15,6 +15,8 @@ import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.p2pconn.model.P2pDataType
 import com.tans.tfiletransporter.transferproto.p2pconn.model.P2pHandshakeReq
 import com.tans.tfiletransporter.transferproto.p2pconn.model.P2pHandshakeResp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -77,6 +79,22 @@ class P2pConnection(
             onNewRequest = { _, _, _ ->
                 log.d(TAG, "Receive transfer file request.")
                 dispatchTransferFile(true)
+            }
+        )
+    }
+
+    private val closeServer: IServer<Unit, Unit> by lazy {
+        simplifyServer(
+            requestType = P2pDataType.CloseConnReq.type,
+            responseType = P2pDataType.CloseConnResp.type,
+            log = log,
+            onRequest = { _, _, _ -> },
+            onNewRequest = { _, _, _ ->
+                log.d(TAG, "Receive close request.")
+                Dispatchers.IO.asExecutor().runCatching {
+                    Thread.sleep(100)
+                    closeConnectionIfActive()
+                }
             }
         )
     }
@@ -158,6 +176,7 @@ class P2pConnection(
                         .witchClient<ConnectionServerClientImpl>(log = log)
                     fixedClientConnection.registerServer(handShakeServer)
                     fixedClientConnection.registerServer(transferFileServer)
+                    fixedClientConnection.registerServer(closeServer)
                     fixedClientConnection.addObserver(stateCallback)
                     communicationTask = fixedClientConnection
                 } else {
@@ -180,6 +199,7 @@ class P2pConnection(
             serverPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT
         ).withServer<ConnectionServerImpl>(log = log).witchClient<ConnectionServerClientImpl>(log = log)
         clientTask.registerServer(transferFileServer)
+        clientTask.registerServer(closeServer)
         clientTask.addObserver(
             object : NettyConnectionObserver {
                 override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
@@ -233,6 +253,40 @@ class P2pConnection(
                 ) {
                     simpleCallback.onSuccess(state)
                     dispatchTransferFile(false)
+                }
+
+                override fun onFail(errorMsg: String) {
+                    simpleCallback.onError(errorMsg)
+                }
+
+            }
+        )
+    }
+
+    fun requestClose(simpleCallback: SimpleCallback<Unit>) {
+        val activeConnection = getActiveCommunicationTask()
+        if (activeConnection == null) {
+            simpleCallback.onError("Active connection is null")
+            return
+        }
+        val state = getCurrentState()
+        if (state !is P2pConnectionState.Handshake) {
+            simpleCallback.onError("Current is not handshake: $state")
+            return
+        }
+        activeConnection.requestSimplify(
+            type = P2pDataType.CloseConnReq.type,
+            request = Unit,
+            callback = object : IClientManager.RequestCallback<Unit> {
+
+                override fun onSuccess(
+                    type: Int,
+                    messageId: Long,
+                    localAddress: InetSocketAddress?,
+                    remoteAddress: InetSocketAddress?,
+                    d: Unit
+                ) {
+                    simpleCallback.onSuccess(Unit)
                 }
 
                 override fun onFail(errorMsg: String) {

@@ -143,6 +143,23 @@ suspend fun P2pConnection.connectSuspend(address: InetAddress) = suspendCancella
     })
 }
 
+suspend fun P2pConnection.closeSuspend()  = suspendCancellableCoroutine { cont ->
+    requestClose(object : SimpleCallback<Unit> {
+
+        override fun onSuccess(data: Unit) {
+            if (cont.isActive) {
+                cont.resume(Unit)
+            }
+        }
+
+        override fun onError(errorMsg: String) {
+            if (cont.isActive) {
+                cont.resumeWithException(Throwable(errorMsg))
+            }
+        }
+    })
+}
+
 suspend fun P2pConnection.transferFileSuspend() = suspendCancellableCoroutine<Unit> { cont ->
     requestTransferFile(object : SimpleCallback<P2pConnectionState.Handshake> {
 

@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.kodein.di.instance
 import java.net.InetAddress
@@ -207,7 +208,14 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
             binding.closeCurrentConnectionLayout.clicks()
                 .flatMapSingle {
-                    rxSingle { closeCurrentConnection() }
+                    rxSingle {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                bindState().firstOrError().await().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
+                            }
+                        }
+                        closeCurrentConnection()
+                    }
                 }
                 .bindLife()
 
