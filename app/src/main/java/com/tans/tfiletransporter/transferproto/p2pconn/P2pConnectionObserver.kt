@@ -6,7 +6,7 @@ interface P2pConnectionObserver {
 
     }
 
-    fun requestTransferFile(handshake: P2pConnectionState.Handshake) {
+    fun requestTransferFile(handshake: P2pConnectionState.Handshake, isReceiver: Boolean) {
 
     }
 }

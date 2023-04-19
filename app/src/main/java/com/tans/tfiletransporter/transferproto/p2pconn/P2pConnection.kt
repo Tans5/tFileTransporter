@@ -76,7 +76,7 @@ class P2pConnection(
             onRequest = { _, _, _ -> },
             onNewRequest = { _, _, _ ->
                 log.d(TAG, "Receive transfer file request.")
-                dispatchTransferFile()
+                dispatchTransferFile(true)
             }
         )
     }
@@ -138,7 +138,7 @@ class P2pConnection(
                             )
                         )
                     }
-                    log.e(TAG, "Bind $address success: $nettyState")
+                    log.d(TAG, "Bind $address success: $nettyState")
                     task.removeObserver(this)
                 }
                 if (task is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
@@ -232,7 +232,7 @@ class P2pConnection(
                     d: Unit
                 ) {
                     simpleCallback.onSuccess(state)
-                    dispatchTransferFile()
+                    dispatchTransferFile(false)
                 }
 
                 override fun onFail(errorMsg: String) {
@@ -303,11 +303,11 @@ class P2pConnection(
         }
     }
 
-    private fun dispatchTransferFile() {
+    private fun dispatchTransferFile(isReceiver: Boolean) {
         val currentState = getCurrentState()
         if (currentState is P2pConnectionState.Handshake) {
             for (o in observers) {
-                o.requestTransferFile(currentState)
+                o.requestTransferFile(currentState, isReceiver)
             }
         }
     }
