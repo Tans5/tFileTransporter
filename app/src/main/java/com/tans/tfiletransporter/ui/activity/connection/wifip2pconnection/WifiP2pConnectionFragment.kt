@@ -136,28 +136,28 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
             launch(Dispatchers.IO) {
                 while (true) {
-                    val (connection, isP2pEnabled) = bindState().map { it.wifiP2PConnection to it.isP2pEnabled }.firstOrError().await()
-                    val connectionNow =
-                        wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()
-                    AndroidLog.d(TAG, "Connection group address: ${connectionNow?.groupOwnerAddress}, is group owner: ${connectionNow?.isGroupOwner}")
-                    updateState {
-                        if (connectionNow != null) {
-                            it.copy(
-                                wifiP2PConnection = Optional.of(
-                                    WifiP2pConnection(
-                                        isGroupOwner = connectionNow.isGroupOwner,
-                                        groupOwnerAddress = connectionNow.groupOwnerAddress
-                                    )
-                                )
-                            )
-                        } else {
-                            it.copy(wifiP2PConnection = Optional.empty(), p2pHandshake = Optional.empty())
-                        }
-                    }.await()
+                    val isP2pEnabled = bindState().map { it.isP2pEnabled }.firstOrError().await()
                     if (!isP2pEnabled) {
                         updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
-                    } else if (!connection.isPresent) {
-                        if (connectionNow == null) {
+                    } else {
+                        val connection =
+                        wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()
+                        AndroidLog.d(TAG, "Connection group address: ${connection?.groupOwnerAddress}, is group owner: ${connection?.isGroupOwner}")
+                        updateState {
+                            if (connection != null) {
+                                it.copy(
+                                    wifiP2PConnection = Optional.of(
+                                        WifiP2pConnection(
+                                            isGroupOwner = connection.isGroupOwner,
+                                            groupOwnerAddress = connection.groupOwnerAddress
+                                        )
+                                    )
+                                )
+                            } else {
+                                it.copy(wifiP2PConnection = Optional.empty(), p2pHandshake = Optional.empty())
+                            }
+                        }.await()
+                        if (connection == null) {
                             val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
                             if (state == WifiActionResult.Success) {
                                 AndroidLog.d(TAG, "Request discover peer success")
@@ -181,7 +181,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                             }
                         }
                     }
-                    delay(5000)
+                    delay(4000)
                 }
             }
 

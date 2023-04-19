@@ -229,70 +229,64 @@ class P2pConnection(
     }
 
     fun requestTransferFile(simpleCallback: SimpleCallback<P2pConnectionState.Handshake>) {
-        val activeConnection = getActiveCommunicationTask()
-        if (activeConnection == null) {
-            simpleCallback.onError("Active connection is null")
-            return
-        }
-        val state = getCurrentState()
-        if (state !is P2pConnectionState.Handshake) {
-            simpleCallback.onError("Current is not handshake: $state")
-            return
-        }
-        activeConnection.requestSimplify<Unit, Unit>(
-            type = P2pDataType.TransferFileReq.type,
-            request = Unit,
-            callback = object : IClientManager.RequestCallback<Unit> {
+        assertConnectionAndState(
+            onSuccess = { activeConnection, handshake ->
+                activeConnection.requestSimplify<Unit, Unit>(
+                    type = P2pDataType.TransferFileReq.type,
+                    request = Unit,
+                    callback = object : IClientManager.RequestCallback<Unit> {
 
-                override fun onSuccess(
-                    type: Int,
-                    messageId: Long,
-                    localAddress: InetSocketAddress?,
-                    remoteAddress: InetSocketAddress?,
-                    d: Unit
-                ) {
-                    simpleCallback.onSuccess(state)
-                    dispatchTransferFile(false)
-                }
+                        override fun onSuccess(
+                            type: Int,
+                            messageId: Long,
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            d: Unit
+                        ) {
+                            simpleCallback.onSuccess(handshake)
+                            dispatchTransferFile(false)
+                        }
 
-                override fun onFail(errorMsg: String) {
-                    simpleCallback.onError(errorMsg)
-                }
+                        override fun onFail(errorMsg: String) {
+                            simpleCallback.onError(errorMsg)
+                        }
 
+                    }
+                )
+            },
+            onError = {
+                simpleCallback.onError(it)
             }
         )
     }
 
     fun requestClose(simpleCallback: SimpleCallback<Unit>) {
-        val activeConnection = getActiveCommunicationTask()
-        if (activeConnection == null) {
-            simpleCallback.onError("Active connection is null")
-            return
-        }
-        val state = getCurrentState()
-        if (state !is P2pConnectionState.Handshake) {
-            simpleCallback.onError("Current is not handshake: $state")
-            return
-        }
-        activeConnection.requestSimplify(
-            type = P2pDataType.CloseConnReq.type,
-            request = Unit,
-            callback = object : IClientManager.RequestCallback<Unit> {
+        assertConnectionAndState(
+            onSuccess = { activeConnection, _ ->
+                activeConnection.requestSimplify(
+                    type = P2pDataType.CloseConnReq.type,
+                    request = Unit,
+                    callback = object : IClientManager.RequestCallback<Unit> {
 
-                override fun onSuccess(
-                    type: Int,
-                    messageId: Long,
-                    localAddress: InetSocketAddress?,
-                    remoteAddress: InetSocketAddress?,
-                    d: Unit
-                ) {
-                    simpleCallback.onSuccess(Unit)
-                }
+                        override fun onSuccess(
+                            type: Int,
+                            messageId: Long,
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            d: Unit
+                        ) {
+                            simpleCallback.onSuccess(Unit)
+                        }
 
-                override fun onFail(errorMsg: String) {
-                    simpleCallback.onError(errorMsg)
-                }
+                        override fun onFail(errorMsg: String) {
+                            simpleCallback.onError(errorMsg)
+                        }
 
+                    }
+                )
+            },
+            onError = { errorMsg ->
+                simpleCallback.onError(errorMsg)
             }
         )
     }
@@ -308,6 +302,23 @@ class P2pConnection(
         }
         dispatchState(P2pConnectionState.NoConnection)
         clearObserves()
+    }
+
+    private fun assertConnectionAndState(
+        onSuccess: (activeConnection: ConnectionServerClientImpl, handshake: P2pConnectionState.Handshake) -> Unit,
+        onError: (msg: String) -> Unit
+    ) {
+        val activeConnection = getActiveCommunicationTask()
+        if (activeConnection == null) {
+            onError("Active connection is null")
+            return
+        }
+        val state = getCurrentState()
+        if (state !is P2pConnectionState.Handshake) {
+            onError("Current is not handshake: $state")
+            return
+        }
+        onSuccess(activeConnection, state)
     }
 
     private fun requestHandshake(client: ConnectionServerClientImpl) {
