@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.logs.ILog
 
 object TestLog : ILog {
 

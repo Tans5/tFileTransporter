@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.logs
 
 import android.util.Log
+import com.tans.tfiletransporter.ILog
 
 object AndroidLog : ILog {
     private const val TAG = "tFileTransfer"

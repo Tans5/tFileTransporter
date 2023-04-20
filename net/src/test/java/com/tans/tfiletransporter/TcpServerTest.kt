@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.logs.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState

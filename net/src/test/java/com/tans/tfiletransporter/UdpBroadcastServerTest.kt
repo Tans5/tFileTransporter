@@ -1,28 +1,35 @@
 package com.tans.tfiletransporter
 
-import com.tans.tfiletransporter.logs.ILog
-import com.tans.tfiletransporter.netty.*
+import com.tans.tfiletransporter.netty.INettyConnectionTask
+import com.tans.tfiletransporter.netty.NettyConnectionObserver
+import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.withServer
+import com.tans.tfiletransporter.netty.findLocalAddressV4
+import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
-import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask.Companion.ConnectionType
 
-object UdpServerTest {
+object UdpBroadcastServerTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
         val localAddress = findLocalAddressV4()[0]
-        val task = NettyUdpConnectionTask(ConnectionType.Bind(localAddress, 9999), true)
-            .withServer<ConnectionServerImpl>(log = TestLog)
+        val broadcastAddress = localAddress.getBroadcastAddress().first
+        val task = NettyUdpConnectionTask(
+            connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
+                address = broadcastAddress,
+                port = 9997
+            ),
+            enableBroadcast = true
+        ).withServer<ConnectionServerImpl>(log = TestLog)
 
-        task.registerServer(object : IServer<String, String> {
-
+        task.registerServer(object : IServer<String, Unit> {
             override val requestClass: Class<String> = String::class.java
-            override val responseClass: Class<String> = String::class.java
+            override val responseClass: Class<Unit> = Unit::class.java
             override val replyType: Int = 1
             override val log: ILog = TestLog
 
@@ -34,27 +41,25 @@ object UdpServerTest {
                 localAddress: InetSocketAddress?,
                 remoteAddress: InetSocketAddress?,
                 r: String
-            ): String {
-                return "Hello, Client"
-            }
+            ): Unit? = null
 
             override fun onNewRequest(
                 localAddress: InetSocketAddress?,
                 remoteAddress: InetSocketAddress?,
                 r: String
             ) {
-                println("Receive request $r from $remoteAddress")
+                println("UdpBroadcastServer receive broadcast $r from $remoteAddress")
             }
 
         })
+
         task.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 super.onNewState(nettyState, task)
-                println("UpdServerState: $nettyState")
+                println("UpdBroadcastServerState: $nettyState")
             }
         })
         task.startTask()
-
         runBlocking {
             delay(60 * 1000 * 5)
         }

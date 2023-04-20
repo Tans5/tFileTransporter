@@ -97,7 +97,5 @@ dependencies {
     implementation deps.lifecycle.viewmodel
     kapt deps.lifecycle.compiler
 
-    implementation deps.netty.runtime
-
-    implementation "com.squareup.okio:okio:3.3.0"
+    implementation project(":net")
 }

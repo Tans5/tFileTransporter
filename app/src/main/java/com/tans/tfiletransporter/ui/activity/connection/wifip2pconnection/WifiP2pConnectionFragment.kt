@@ -17,6 +17,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
 import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnection
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionObserver
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionState
@@ -249,7 +250,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
                         if (wifiConnection.isPresent) {
                             val (isGroupOwner, groupOwnerAddress) = wifiConnection.get()
-                            val connection = P2pConnection()
+                            val connection = P2pConnection(currentDeviceName = LOCAL_DEVICE, log = AndroidLog)
                             val connectionResult = if (isGroupOwner) {
                                 val connectionResult = runCatching {
                                     withTimeout(5000) {
