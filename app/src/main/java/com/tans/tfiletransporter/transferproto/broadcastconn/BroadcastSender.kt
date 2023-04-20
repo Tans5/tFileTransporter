@@ -128,7 +128,7 @@ class BroadcastSender(
         val requestReceiverTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Bind(
                 address = localAddress,
-                port = TransferProtoConstant.BROADCAST_TRANSFER_PORT
+                port = TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT
             )
         ).withServer<ConnectionServerImpl>(log = log)
         requestReceiverTask.registerServer(transferServer)
