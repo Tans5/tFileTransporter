@@ -8,7 +8,9 @@ import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
+import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
+import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.witchClient
 import com.tans.tfiletransporter.netty.extensions.withServer
@@ -20,6 +22,8 @@ import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastDataType
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileReq
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -134,7 +138,7 @@ class BroadcastReceiver(
                                             transferRequestTask.addObserver(closeObserver)
                                             receiverTask.registerServer(receiveBroadcastServer)
                                             receiverTask.addObserver(closeObserver)
-                                            onNewState(
+                                            newState(
                                                 BroadcastReceiverState.Active(
                                                     transferRequestTask = transferRequestTask,
                                                     receiverTask = receiverTask
@@ -152,6 +156,40 @@ class BroadcastReceiver(
         })
 
         receiverTask.startTask()
+    }
+
+
+    fun requestFileTransfer(targetAddress: InetAddress, simpleCallback: SimpleCallback<BroadcastTransferFileResp>) {
+        val currentState = getCurrentState()
+        if (currentState !is BroadcastReceiverState.Active) {
+            simpleCallback.onError("Current state is not active: $currentState")
+            return
+        }
+        currentState.transferRequestTask.requestSimplify<BroadcastTransferFileReq, BroadcastTransferFileResp>(
+            type = BroadcastDataType.TransferFileReq.type,
+            request = BroadcastTransferFileReq(
+                version = TransferProtoConstant.VERSION,
+                deviceName = deviceName
+            ),
+            targetAddress = InetSocketAddress(targetAddress, TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT),
+            callback = object : IClientManager.RequestCallback<BroadcastTransferFileResp> {
+
+                override fun onSuccess(
+                    type: Int,
+                    messageId: Long,
+                    localAddress: InetSocketAddress?,
+                    remoteAddress: InetSocketAddress?,
+                    d: BroadcastTransferFileResp
+                ) {
+                    simpleCallback.onSuccess(d)
+                }
+
+                override fun onFail(errorMsg: String) {
+                    simpleCallback.onError(errorMsg)
+                }
+
+            }
+        )
     }
 
     fun closeConnectionIfActive() {

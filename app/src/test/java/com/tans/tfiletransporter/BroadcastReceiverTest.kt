@@ -6,6 +6,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiver
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverObserver
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverState
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
@@ -30,7 +31,20 @@ object BroadcastReceiverTest {
                 remoteAddress: InetSocketAddress,
                 broadcastMsg: BroadcastMsg
             ) {
-               println("Receiver receive broadcast: $broadcastMsg, $remoteAddress")
+                println("Receiver receive broadcast: $broadcastMsg, $remoteAddress")
+                receiver.requestFileTransfer(
+                    targetAddress = remoteAddress.address,
+                    simpleCallback = object : SimpleCallback<BroadcastTransferFileResp> {
+
+                        override fun onError(errorMsg: String) {
+                            println("Receiver request transfer fail: $errorMsg")
+                        }
+
+                        override fun onSuccess(data: BroadcastTransferFileResp) {
+                            println("Receiver request transfer success: $data")
+                        }
+                    }
+                )
             }
         })
 
