@@ -2,13 +2,13 @@ package com.tans.tfiletransporter.net.netty.fileexplore
 
 import android.os.Build
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.defaultMoshi
 import com.tans.tfiletransporter.net.FILE_TRANSPORT_LISTEN_PORT
 import com.tans.tfiletransporter.net.model.*
 import com.tans.tfiletransporter.net.netty.common.NettyPkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkg
 import com.tans.tfiletransporter.net.netty.common.handler.writePkgBlockReply
 import com.tans.tfiletransporter.net.netty.common.setDefaultHandler
+import com.tans.tfiletransporter.netty.extensions.DefaultConverterFactory.Companion.defaultMoshi
 import io.netty.bootstrap.Bootstrap
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.*

@@ -21,6 +21,12 @@ import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnection
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionObserver
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionState
+import com.tans.tfiletransporter.transferproto.p2pconn.bindSuspend
+import com.tans.tfiletransporter.transferproto.p2pconn.closeSuspend
+import com.tans.tfiletransporter.transferproto.p2pconn.connectSuspend
+import com.tans.tfiletransporter.transferproto.p2pconn.transferFileSuspend
+import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
+import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
