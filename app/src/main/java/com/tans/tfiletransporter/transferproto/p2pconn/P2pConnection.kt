@@ -11,6 +11,7 @@ import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
+import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.p2pconn.model.P2pDataType
 import com.tans.tfiletransporter.transferproto.p2pconn.model.P2pHandshakeReq
@@ -26,10 +27,9 @@ import java.util.concurrent.atomic.AtomicReference
 class P2pConnection(
     private val currentDeviceName: String = LOCAL_DEVICE,
     private val log: ILog = AndroidLog
-) : SimpleObservable<P2pConnectionObserver> {
+) : SimpleObservable<P2pConnectionObserver>, SimpleStateable<P2pConnectionState> {
 
-    private val state: AtomicReference<P2pConnectionState> =
-        AtomicReference(P2pConnectionState.NoConnection)
+    override val state: AtomicReference<P2pConnectionState> = AtomicReference(P2pConnectionState.NoConnection)
 
     override val observers: LinkedBlockingDeque<P2pConnectionObserver> by lazy {
         LinkedBlockingDeque()
@@ -41,13 +41,10 @@ class P2pConnection(
             responseType = P2pDataType.HandshakeResp.type,
             log = log,
             onRequest = { _, rd, r ->
-                val remoteRawAddress = rd?.address?.address
-                if (remoteRawAddress != null
-                    && getCurrentState() is P2pConnectionState.Active
+                if (getCurrentState() is P2pConnectionState.Active
                     && r.version == TransferProtoConstant.VERSION) {
                     P2pHandshakeResp(
-                        deviceName = currentDeviceName,
-                        clientAddress = remoteRawAddress
+                        deviceName = currentDeviceName
                     )
                 } else {
                     null
@@ -58,10 +55,10 @@ class P2pConnection(
                 if (ld is InetSocketAddress
                     && rd is InetSocketAddress
                     && getCurrentState() is P2pConnectionState.Active) {
-                    dispatchState(P2pConnectionState.Handshake(
+                    newState(P2pConnectionState.Handshake(
                         localAddress = ld,
                         remoteAddress = rd,
-                        remoteDeviceName = r.devicesName
+                        remoteDeviceName = r.deviceName
                     ))
                 } else {
                     closeConnectionIfActive()
@@ -123,46 +120,51 @@ class P2pConnection(
         o.onNewState(getCurrentState())
     }
 
-    fun getCurrentState(): P2pConnectionState = state.get()
-
     fun bind(address: InetAddress, simpleCallback: SimpleCallback<Unit>) {
-        if (getActiveCommunicationTask() != null) {
-            simpleCallback.onError("Has active connection task.")
+        val currentState = getCurrentState()
+        if (currentState != P2pConnectionState.NoConnection) {
+            simpleCallback.onError("Wrong current state: $currentState")
             return
         }
+        newState(P2pConnectionState.Requesting)
         val hasInvokeCallback = AtomicBoolean(false)
         var serverTask: NettyTcpServerConnectionTask? = null
         var communicationTask: ConnectionServerClientImpl? = null
         val stateCallback = object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
-                if (nettyState is NettyTaskState.Error ||
-                    nettyState is NettyTaskState.ConnectionClosed
+                if (nettyState is NettyTaskState.Error
+                    || nettyState is NettyTaskState.ConnectionClosed
+                    || getCurrentState() !is P2pConnectionState.Requesting
                 ) {
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(nettyState.toString())
                     }
+                    serverTask?.stopTask()
+                    communicationTask?.stopTask()
                     log.e(TAG, "Bind $address fail: $nettyState")
                     task.removeObserver(this)
-                }
-                if (task !is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
-                    if (hasInvokeCallback.compareAndSet(false, true)) {
+                    newState(P2pConnectionState.NoConnection)
+                } else {
+                    if (task !is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
                         task.addObserver(activeCommunicationTaskObserver)
                         activeCommunicationNettyTask.set(communicationTask)
-                        simpleCallback.onSuccess(Unit)
-                        dispatchState(
+                        if (hasInvokeCallback.compareAndSet(false, true)) {
+                            simpleCallback.onSuccess(Unit)
+                        }
+                        newState(
                             P2pConnectionState.Active(
                                 localAddress = nettyState.channel.localAddress() as? InetSocketAddress,
                                 remoteAddress = nettyState.channel.remoteAddress() as? InetSocketAddress
                             )
                         )
+                        log.d(TAG, "Bind $address success: $nettyState")
+                        task.removeObserver(this)
                     }
-                    log.d(TAG, "Bind $address success: $nettyState")
-                    task.removeObserver(this)
-                }
-                if (task is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
-                    activeServerNettyTask.set(serverTask)
-                    log.d(TAG, "Server is active.")
-                    task.removeObserver(this)
+                    if (task is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
+                        activeServerNettyTask.set(serverTask)
+                        log.d(TAG, "Server is active.")
+                        task.removeObserver(this)
+                    }
                 }
             }
         }
@@ -189,38 +191,50 @@ class P2pConnection(
     }
 
     fun connect(serverAddress: InetAddress, simpleCallback: SimpleCallback<Unit>) {
-        if (getActiveCommunicationTask() != null) {
-            simpleCallback.onError("Has active connection task.")
+        val currentState = getCurrentState()
+        if (currentState != P2pConnectionState.NoConnection) {
+            simpleCallback.onError("Wrong current state: $currentState")
             return
         }
-
+        newState(P2pConnectionState.Requesting)
         val clientTask = NettyTcpClientConnectionTask(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT
         ).withServer<ConnectionServerImpl>(log = log).witchClient<ConnectionServerClientImpl>(log = log)
         clientTask.registerServer(transferFileServer)
         clientTask.registerServer(closeServer)
+        val hasInvokeCallback = AtomicBoolean(false)
         clientTask.addObserver(
             object : NettyConnectionObserver {
                 override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
-                    if (nettyState is NettyTaskState.ConnectionActive) {
-                        task.addObserver(activeCommunicationTaskObserver)
-                        activeCommunicationNettyTask.set(clientTask)
-                        simpleCallback.onSuccess(Unit)
-                        dispatchState(
-                            P2pConnectionState.Active(
-                                localAddress = nettyState.channel.localAddress() as? InetSocketAddress,
-                                remoteAddress = nettyState.channel.remoteAddress() as? InetSocketAddress
-                            )
-                        )
+
+                    if (nettyState is NettyTaskState.Error
+                        || nettyState is NettyTaskState.ConnectionClosed
+                        || getCurrentState() !is P2pConnectionState.Requesting) {
+                        if (hasInvokeCallback.compareAndSet(false, true)) {
+                            simpleCallback.onError(nettyState.toString())
+                        }
                         task.removeObserver(this)
-                        log.d(TAG, "Connection $serverAddress success.")
-                        requestHandshake(clientTask)
-                    }
-                    if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
-                        simpleCallback.onError(nettyState.toString())
-                        task.removeObserver(this)
+                        clientTask.stopTask()
                         log.e(TAG, "Connect $serverAddress fail: $nettyState")
+                        newState(P2pConnectionState.NoConnection)
+                    } else {
+                        if (nettyState is NettyTaskState.ConnectionActive) {
+                            task.addObserver(activeCommunicationTaskObserver)
+                            activeCommunicationNettyTask.set(clientTask)
+                            if (hasInvokeCallback.compareAndSet(false, true)) {
+                                simpleCallback.onSuccess(Unit)
+                            }
+                            newState(
+                                P2pConnectionState.Active(
+                                    localAddress = nettyState.channel.localAddress() as? InetSocketAddress,
+                                    remoteAddress = nettyState.channel.remoteAddress() as? InetSocketAddress
+                                )
+                            )
+                            task.removeObserver(this)
+                            log.d(TAG, "Connection $serverAddress success.")
+                            requestHandshake(clientTask)
+                        }
                     }
                 }
             }
@@ -300,7 +314,7 @@ class P2pConnection(
             it.stopTask()
             activeServerNettyTask.set(null)
         }
-        dispatchState(P2pConnectionState.NoConnection)
+        newState(P2pConnectionState.NoConnection)
         clearObserves()
     }
 
@@ -326,7 +340,7 @@ class P2pConnection(
             type = P2pDataType.HandshakeReq.type,
             request = P2pHandshakeReq(
                 version = TransferProtoConstant.VERSION,
-                devicesName = currentDeviceName
+                deviceName = currentDeviceName
             ),
             callback = object : IClientManager.RequestCallback<P2pHandshakeResp> {
                 override fun onSuccess(
@@ -340,7 +354,7 @@ class P2pConnection(
                     if (localAddress is InetSocketAddress
                         && remoteAddress is InetSocketAddress
                         && getCurrentState() is P2pConnectionState.Active) {
-                        dispatchState(P2pConnectionState.Handshake(
+                        newState(P2pConnectionState.Handshake(
                             localAddress = localAddress,
                             remoteAddress = remoteAddress,
                             remoteDeviceName = d.deviceName
@@ -358,13 +372,9 @@ class P2pConnection(
         )
     }
 
-    private fun dispatchState(state: P2pConnectionState) {
-        val oldState = this.state.get()
-        if (oldState != state) {
-            for (o in observers) {
-                o.onNewState(state)
-            }
-            this.state.set(state)
+    override fun onNewState(s: P2pConnectionState) {
+        for (o in observers) {
+            o.onNewState(s)
         }
     }
 

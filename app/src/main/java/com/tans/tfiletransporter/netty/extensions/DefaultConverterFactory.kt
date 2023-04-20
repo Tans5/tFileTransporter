@@ -20,6 +20,7 @@ open class DefaultConverterFactory : IConverterFactory {
             StringDataBodyConverter(),
             UnitDataBodyConverter(),
             PackageDataBodyConverter(),
+            ByteArrayDataBodyConverter(),
             MoshiBodyConverter()
         )
 
@@ -27,6 +28,7 @@ open class DefaultConverterFactory : IConverterFactory {
             StringPackageDataConverter(),
             UnitPackageDataConverter(),
             PackageDataPackageDataConverter(),
+            ByteArrayPackageDataConverter(),
             MoshiPackageDataConverter()
         )
 
@@ -49,6 +51,18 @@ open class DefaultConverterFactory : IConverterFactory {
             override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T {
                 return packageData.body.toString(Charsets.UTF_8) as T
             }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private class ByteArrayDataBodyConverter : IBodyConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === ByteArray::class.java
+            }
+
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T? {
+                return packageData.body as T
+            }
+
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -113,6 +127,27 @@ open class DefaultConverterFactory : IConverterFactory {
                     body = byteArrayOf()
                 )
             }
+        }
+
+        private class ByteArrayPackageDataConverter : IPackageDataConverter {
+            override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
+                return dataClass === ByteArray::class.java
+            }
+
+            override fun <T> convert(
+                type: Int,
+                messageId: Long,
+                data: T,
+                dataClass: Class<T>
+            ): PackageData {
+                return PackageData(
+                    type = type,
+                    messageId = messageId,
+                    body = data as ByteArray
+                )
+            }
+
+
         }
 
         private class PackageDataPackageDataConverter : IPackageDataConverter {

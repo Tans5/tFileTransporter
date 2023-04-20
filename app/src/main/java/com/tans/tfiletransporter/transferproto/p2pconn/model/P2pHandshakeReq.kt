@@ -7,5 +7,5 @@ import com.squareup.moshi.JsonClass
 @Keep
 data class P2pHandshakeReq(
     val version: Int,
-    val devicesName: String
+    val deviceName: String
 )

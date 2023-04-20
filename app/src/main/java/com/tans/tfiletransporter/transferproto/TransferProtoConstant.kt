@@ -7,4 +7,10 @@ object TransferProtoConstant {
      * P2P Connect
      */
     const val P2P_GROUP_OWNER_PORT = 1996
+
+    /**
+     * Broadcast Connection
+     */
+    const val BROADCAST_SCANNER_PORT = 1997
+    const val BROADCAST_TRANSFER_PORT = 1998
 }
