@@ -141,7 +141,7 @@ class P2pConnection(
                     }
                     serverTask?.stopTask()
                     communicationTask?.stopTask()
-                    log.e(TAG, "Bind $address fail: $nettyState")
+                    log.e(TAG, "Bind $address fail: $nettyState, ${getCurrentState()}")
                     task.removeObserver(this)
                     newState(P2pConnectionState.NoConnection)
                 } else {
@@ -216,7 +216,7 @@ class P2pConnection(
                         }
                         task.removeObserver(this)
                         clientTask.stopTask()
-                        log.e(TAG, "Connect $serverAddress fail: $nettyState")
+                        log.e(TAG, "Connect $serverAddress fail: $nettyState, ${getCurrentState()}")
                         newState(P2pConnectionState.NoConnection)
                     } else {
                         if (nettyState is NettyTaskState.ConnectionActive) {

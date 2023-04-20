@@ -8,7 +8,10 @@ import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
+import com.tans.tfiletransporter.netty.extensions.DefaultClientManager
+import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
+import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.witchClient
 import com.tans.tfiletransporter.netty.extensions.withServer
@@ -20,11 +23,13 @@ import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastDataType
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileReq
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -69,6 +74,36 @@ class BroadcastSender(
         }
     }
 
+    private val senderBroadcastTask: Runnable by lazy {
+        Runnable {
+            val state = getCurrentState()
+            if (state is BroadcastSenderState.Active) {
+                log.d(TAG, "Send broadcast.")
+                state.broadcastSenderTask.requestSimplify<BroadcastMsg, Unit>(
+                    type = BroadcastDataType.BroadcastMsg.type,
+                    request = BroadcastMsg(
+                        version = TransferProtoConstant.VERSION,
+                        deviceName = deviceName
+                    ),
+                    retryTimes = 0,
+                    targetAddress = InetSocketAddress(state.broadcastAddress, TransferProtoConstant.BROADCAST_SCANNER_PORT),
+                    callback = object : IClientManager.RequestCallback<Unit> {
+                        override fun onSuccess(
+                            type: Int,
+                            messageId: Long,
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            d: Unit
+                        ) {}
+                        override fun onFail(errorMsg: String) {}
+                    }
+                )
+            } else {
+                log.e(TAG, "Send broadcast fail, wrong state: $state")
+            }
+        }
+    }
+
     override fun addObserver(o: BroadcastSenderObserver) {
         super.addObserver(o)
         o.onNewState(getCurrentState())
@@ -86,7 +121,8 @@ class BroadcastSender(
             connectionType = ConnectionType.Connect(
                 address = broadcastAddress,
                 port = TransferProtoConstant.BROADCAST_SCANNER_PORT
-            )
+            ),
+            enableBroadcast = true
         ).witchClient<ConnectionClientImpl>(log = log)
 
         val requestReceiverTask = NettyUdpConnectionTask(
@@ -103,7 +139,7 @@ class BroadcastSender(
                     || senderState is NettyTaskState.Error
                     || getCurrentState() !is BroadcastSenderState.Requesting
                 ) {
-                    log.e(TAG, "Sender task error: $senderState")
+                    log.e(TAG, "Sender task error: $senderState, ${getCurrentState()}")
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(senderState.toString())
                     }
@@ -123,7 +159,7 @@ class BroadcastSender(
                                     || senderTask.getCurrentState() !is NettyTaskState.ConnectionActive
                                     || getCurrentState() !is BroadcastSenderState.Requesting
                                 ) {
-                                    log.d(TAG, "Request task bind fail: $receiverState")
+                                    log.d(TAG, "Request task bind fail: $receiverState, ${senderTask.getCurrentState()}, ${getCurrentState()}")
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
                                         simpleCallback.onError(receiverState.toString())
                                     }
@@ -137,11 +173,17 @@ class BroadcastSender(
                                         if (hasInvokeCallback.compareAndSet(false, true)) {
                                             simpleCallback.onSuccess(Unit)
                                         }
+                                        val senderFuture = DefaultClientManager.taskScheduleExecutor.scheduleAtFixedRate(
+                                            senderBroadcastTask,
+                                            1000,
+                                            broadcastSendIntervalMillis, TimeUnit.MILLISECONDS
+                                        )
                                         newState(
                                             BroadcastSenderState.Active(
                                                 broadcastAddress = broadcastAddress,
                                                 broadcastSenderTask = senderTask,
-                                                requestReceiverTask = requestReceiverTask
+                                                requestReceiverTask = requestReceiverTask,
+                                                senderFuture = senderFuture
                                             )
                                         )
                                         senderTask.addObserver(closeObserver)
@@ -163,10 +205,12 @@ class BroadcastSender(
     fun closeConnectionIfActive() {
         val currentState = getCurrentState()
         if (currentState is BroadcastSenderState.Active) {
+            currentState.senderFuture.cancel(true)
             currentState.requestReceiverTask.stopTask()
             currentState.broadcastSenderTask.stopTask()
         }
         newState(BroadcastSenderState.NoConnection)
+        clearObserves()
     }
 
     override fun onNewState(s: BroadcastSenderState) {
