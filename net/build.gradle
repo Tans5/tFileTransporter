@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'kotlin'
+    id 'kotlin-kapt'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    api deps.coroutines.runtime
+
+    api deps.moshi.runtime
+    api deps.moshi.ktx
+    api deps.moshi.adapters
+    kapt deps.moshi.ktxCodegen
+
+    api deps.netty.runtime
+
+    api deps.date.runtime
+
+    api "com.squareup.okio:okio:3.3.0"
+
+    api "androidx.annotation:annotation:1.6.0"
+}
