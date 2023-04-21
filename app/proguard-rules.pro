@@ -25,3 +25,19 @@
 
 -keep, allowobfuscation, allowoptimization class * extends org.kodein.type.TypeReference
 -keep, allowobfuscation, allowoptimization class * extends org.kodein.type.JVMAbstractTypeToken$Companion$WrappingTest
+
+-keep class io.netty.** {*;}
+-keep class org.apache.** {*;}
+-keep class org.slf4j.** {*;}
+-keep class com.barchart.** {*;}
+-keep class com.fasterxml.** {*;}
+-keep class com.google.protobuf.** {*;}
+-keep class com.jcraft.** {*;}
+-keep class com.ning.** {*;}
+-keep class com.oracle.svm.** {*;}
+-keep class com.sun.nio.** {*;}
+-keep class gnu.io.** {*;}
+-keep class javax.** {*;}
+-keep class lzma.** {*;}
+-keep class net.jpountz.** {*;}
+-keep class sun.security.** {*;}
