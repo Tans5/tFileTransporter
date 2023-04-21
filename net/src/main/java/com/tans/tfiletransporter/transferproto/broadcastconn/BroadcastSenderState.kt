@@ -9,9 +9,6 @@ sealed class BroadcastSenderState {
     object NoConnection : BroadcastSenderState()
     object Requesting : BroadcastSenderState()
     data class Active(
-        val broadcastAddress: InetAddress,
-        val broadcastSenderTask: ConnectionClientImpl,
-        val requestReceiverTask: ConnectionServerImpl,
-        val senderFuture: ScheduledFuture<*>
+        val broadcastAddress: InetAddress
     ) : BroadcastSenderState()
 }

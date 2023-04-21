@@ -28,6 +28,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -63,6 +64,18 @@ class BroadcastSender(
         )
     }
 
+    private val sendFuture: AtomicReference<ScheduledFuture<*>?> by lazy {
+        AtomicReference(null)
+    }
+
+    private val broadcastSenderTask: AtomicReference<ConnectionClientImpl?> by lazy {
+        AtomicReference(null)
+    }
+
+    private val requestReceiverTask: AtomicReference<ConnectionServerImpl?> by lazy {
+        AtomicReference(null)
+    }
+
     private val closeObserver: NettyConnectionObserver by lazy {
         object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
@@ -78,7 +91,7 @@ class BroadcastSender(
             val state = getCurrentState()
             if (state is BroadcastSenderState.Active) {
                 log.d(TAG, "Send broadcast.")
-                state.broadcastSenderTask.requestSimplify<BroadcastMsg, Unit>(
+                broadcastSenderTask.get()?.requestSimplify<BroadcastMsg, Unit>(
                     type = BroadcastDataType.BroadcastMsg.type,
                     request = BroadcastMsg(
                         version = TransferProtoConstant.VERSION,
@@ -123,6 +136,8 @@ class BroadcastSender(
             ),
             enableBroadcast = true
         ).witchClient<ConnectionClientImpl>(log = log)
+        this.broadcastSenderTask.get()?.stopTask()
+        this.broadcastSenderTask.set(senderTask)
 
         val requestReceiverTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Bind(
@@ -131,6 +146,8 @@ class BroadcastSender(
             )
         ).withServer<ConnectionServerImpl>(log = log)
         requestReceiverTask.registerServer(transferServer)
+        this.requestReceiverTask.get()?.stopTask()
+        this.requestReceiverTask.set(requestReceiverTask)
 
         senderTask.addObserver(object : NettyConnectionObserver {
             override fun onNewState(senderState: NettyTaskState, task: INettyConnectionTask) {
@@ -177,13 +194,11 @@ class BroadcastSender(
                                             1000,
                                             broadcastSendIntervalMillis, TimeUnit.MILLISECONDS
                                         )
+                                        this@BroadcastSender.sendFuture.get()?.cancel(true)
+                                        this@BroadcastSender.sendFuture.set(senderFuture)
                                         newState(
                                             BroadcastSenderState.Active(
-                                                broadcastAddress = broadcastAddress,
-                                                broadcastSenderTask = senderTask,
-                                                requestReceiverTask = requestReceiverTask,
-                                                senderFuture = senderFuture
-                                            )
+                                                broadcastAddress = broadcastAddress)
                                         )
                                         senderTask.addObserver(closeObserver)
                                         requestReceiverTask.addObserver(closeObserver)
@@ -202,12 +217,12 @@ class BroadcastSender(
 
 
     fun closeConnectionIfActive() {
-        val currentState = getCurrentState()
-        if (currentState is BroadcastSenderState.Active) {
-            currentState.senderFuture.cancel(true)
-            currentState.requestReceiverTask.stopTask()
-            currentState.broadcastSenderTask.stopTask()
-        }
+        sendFuture.get()?.cancel(true)
+        sendFuture.set(null)
+        broadcastSenderTask.get()?.stopTask()
+        broadcastSenderTask.set(null)
+        requestReceiverTask.get()?.stopTask()
+        requestReceiverTask.set(null)
         newState(BroadcastSenderState.NoConnection)
         clearObserves()
     }

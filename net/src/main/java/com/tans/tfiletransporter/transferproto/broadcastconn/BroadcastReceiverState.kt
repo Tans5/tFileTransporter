@@ -8,8 +8,5 @@ sealed class BroadcastReceiverState {
 
     object Requesting : BroadcastReceiverState()
 
-    data class Active(
-        val transferRequestTask: ConnectionClientImpl,
-        val receiverTask: ConnectionServerImpl
-    ) : BroadcastReceiverState()
+    object Active : BroadcastReceiverState()
 }

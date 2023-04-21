@@ -38,6 +38,14 @@ class BroadcastReceiver(
 
     override val observers: LinkedBlockingDeque<BroadcastReceiverObserver> = LinkedBlockingDeque()
 
+    private val transferRequestTask: AtomicReference<ConnectionClientImpl?> by lazy {
+        AtomicReference(null)
+    }
+
+    private val receiverTask: AtomicReference<ConnectionServerImpl?> by lazy {
+        AtomicReference(null)
+    }
+
     private val closeObserver: NettyConnectionObserver by lazy {
         object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
@@ -84,12 +92,16 @@ class BroadcastReceiver(
             ),
             enableBroadcast = true
         ).withServer<ConnectionServerImpl>(log = log)
+        this.receiverTask.get()?.stopTask()
+        this.receiverTask.set(receiverTask)
         val transferRequestTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = localAddress,
                 port = TransferProtoConstant.BROADCAST_TRANSFER_CLIENT_PORT
             )
         ).witchClient<ConnectionClientImpl>(log = log)
+        this.transferRequestTask.get()?.stopTask()
+        this.transferRequestTask.set(transferRequestTask)
 
         val hasInvokeCallback = AtomicBoolean(false)
 
@@ -137,12 +149,7 @@ class BroadcastReceiver(
                                             transferRequestTask.addObserver(closeObserver)
                                             receiverTask.registerServer(receiveBroadcastServer)
                                             receiverTask.addObserver(closeObserver)
-                                            newState(
-                                                BroadcastReceiverState.Active(
-                                                    transferRequestTask = transferRequestTask,
-                                                    receiverTask = receiverTask
-                                                )
-                                            )
+                                            newState(BroadcastReceiverState.Active)
                                         }
                                     }
                                 }
@@ -160,11 +167,12 @@ class BroadcastReceiver(
 
     fun requestFileTransfer(targetAddress: InetAddress, simpleCallback: SimpleCallback<BroadcastTransferFileResp>) {
         val currentState = getCurrentState()
-        if (currentState !is BroadcastReceiverState.Active) {
+        val transferTask = transferRequestTask.get()
+        if (currentState !is BroadcastReceiverState.Active || transferTask == null) {
             simpleCallback.onError("Current state is not active: $currentState")
             return
         }
-        currentState.transferRequestTask.requestSimplify<BroadcastTransferFileReq, BroadcastTransferFileResp>(
+        transferTask.requestSimplify<BroadcastTransferFileReq, BroadcastTransferFileResp>(
             type = BroadcastDataType.TransferFileReq.type,
             request = BroadcastTransferFileReq(
                 version = TransferProtoConstant.VERSION,
@@ -192,11 +200,10 @@ class BroadcastReceiver(
     }
 
     fun closeConnectionIfActive() {
-        val currentState = getCurrentState()
-        if (currentState is BroadcastReceiverState.Active) {
-            currentState.receiverTask.stopTask()
-            currentState.transferRequestTask.stopTask()
-        }
+        this.receiverTask.get()?.stopTask()
+        this.receiverTask.set(null)
+        this.transferRequestTask.get()?.stopTask()
+        this.transferRequestTask.set(null)
         newState(BroadcastReceiverState.NoConnection)
         clearObserves()
     }
