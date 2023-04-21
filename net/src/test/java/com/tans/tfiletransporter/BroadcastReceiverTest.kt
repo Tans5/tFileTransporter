@@ -45,6 +45,8 @@ object BroadcastReceiverTest {
                     }
                 )
             }
+
+            override fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>) {}
         })
 
         receiver.startBroadcastReceiver(

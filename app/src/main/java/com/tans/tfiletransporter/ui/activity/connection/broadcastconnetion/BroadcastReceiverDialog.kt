@@ -65,44 +65,13 @@ class BroadcastReceiverDialog(
                 }
             }.onSuccess {
                 receiver.addObserver(object : BroadcastReceiverObserver {
-                    private val timeout = 9100L
-                    private val broadcastTimeoutHandler: Handler by lazy {
-                        object : Handler(activity.mainLooper) {
-                            override fun handleMessage(msg: Message) {
-                                val data = msg.obj as? RemoteDevice
-                                AndroidLog.d(TAG, "Remove timeout devices: $data")
-                                if (data != null) {
-                                    launch {
-                                        updateState { oldState ->
-                                            val newList = oldState.remoteDevices.filter { it.remoteAddress != data.remoteAddress }
-                                            oldState.copy(remoteDevices = newList)
-                                        }.await()
-                                    }
-                                }
-                            }
-                        }
-                    }
                     override fun onNewBroadcast(
                         remoteDevice: RemoteDevice
-                    ) {
-                        launch {
-                            updateState { oldState ->
-                                if (oldState.remoteDevices.find { it.remoteAddress == remoteDevice.remoteAddress } == null) {
-                                    oldState.copy(remoteDevices = oldState.remoteDevices + remoteDevice)
-                                } else {
-                                    oldState
-                                }
-                            }.await()
-                            val id = remoteDevice.remoteAddress.address.address.toInt()
-                            broadcastTimeoutHandler.removeMessages(id)
-                            val msg = broadcastTimeoutHandler.obtainMessage()
-                            msg.what = id
-                            msg.obj = remoteDevice
-                            broadcastTimeoutHandler.sendMessageDelayed(msg, timeout)
-                        }
-                    }
-
+                    ) {}
                     override fun onNewState(state: BroadcastReceiverState) {}
+                    override fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>) {
+                        launch { updateState { s -> s.copy(remoteDevices = remoteDevices) }.await() }
+                    }
                 })
                 binding.cancelButton.clicks()
                     .doOnNext {

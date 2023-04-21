@@ -7,6 +7,7 @@ import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
+import com.tans.tfiletransporter.netty.extensions.DefaultClientManager
 import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
@@ -26,13 +27,17 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTran
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class BroadcastReceiver(
-    val deviceName: String,
-    val log: ILog
+    private val deviceName: String,
+    private val log: ILog,
+    private val activeDeviceDuration: Long = 6000
 ) : SimpleStateable<BroadcastReceiverState>, SimpleObservable<BroadcastReceiverObserver> {
 
     override val state: AtomicReference<BroadcastReceiverState> = AtomicReference(BroadcastReceiverState.NoConnection)
@@ -45,6 +50,10 @@ class BroadcastReceiver(
 
     private val receiverTask: AtomicReference<ConnectionServerImpl?> by lazy {
         AtomicReference(null)
+    }
+
+    private val activeDevices: LinkedBlockingDeque<RemoveFutureAndRemoteDevice> by lazy {
+        LinkedBlockingDeque()
     }
 
     private val closeObserver: NettyConnectionObserver by lazy {
@@ -227,6 +236,10 @@ class BroadcastReceiver(
         this.transferRequestTask.set(null)
         newState(BroadcastReceiverState.NoConnection)
         clearObserves()
+        for (a in activeDevices) {
+            a.removeFuture.cancel(true)
+        }
+        activeDevices.clear()
     }
 
     override fun onNewState(s: BroadcastReceiverState) {
@@ -234,10 +247,43 @@ class BroadcastReceiver(
             o.onNewState(s)
         }
     }
+
+    private data class RemoveFutureAndRemoteDevice(
+        val removeFuture: ScheduledFuture<*>,
+        val remoteDevice: RemoteDevice,
+        val firstVisibleTime: Long
+    )
+
     private fun dispatchBroadcast(remoteAddress: InetSocketAddress, broadcastMsg: BroadcastMsg) {
         val rd = RemoteDevice(remoteAddress, broadcastMsg.deviceName)
         for (o in observers) {
             o.onNewBroadcast(rd)
+        }
+        val future = DefaultClientManager.taskScheduleExecutor.schedule({
+            activeDevices.removeIf { it.remoteDevice == rd }
+            val newDevices = activeDevices.sortedBy { it.firstVisibleTime }.map { it.remoteDevice }
+            for (o in observers) {
+                o.onActiveRemoteDevicesUpdate(newDevices)
+            }
+        }, activeDeviceDuration, TimeUnit.MILLISECONDS)
+        val cache = activeDevices.find { it.remoteDevice == rd }
+        if (cache != null) {
+            activeDevices.remove(cache)
+            cache.removeFuture.cancel(true)
+            val new = cache.copy(removeFuture = future)
+            activeDevices.add(new)
+        } else {
+            activeDevices.add(
+                RemoveFutureAndRemoteDevice(
+                    removeFuture = future,
+                    remoteDevice = rd,
+                    firstVisibleTime = System.currentTimeMillis()
+                )
+            )
+        }
+        val newDevices = activeDevices.sortedBy { it.firstVisibleTime }.map { it.remoteDevice }
+        for (o in observers) {
+            o.onActiveRemoteDevicesUpdate(newDevices)
         }
     }
 

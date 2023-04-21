@@ -53,5 +53,7 @@ suspend fun BroadcastReceiver.waitCloseSuspend() = suspendCancellableCoroutine<U
         }
 
         override fun onNewBroadcast(remoteDevice: RemoteDevice) {}
+
+        override fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>) {}
     })
 }

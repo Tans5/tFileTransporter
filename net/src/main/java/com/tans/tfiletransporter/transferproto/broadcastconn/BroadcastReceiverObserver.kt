@@ -7,4 +7,6 @@ interface BroadcastReceiverObserver {
     fun onNewState(state: BroadcastReceiverState)
 
     fun onNewBroadcast(remoteDevice: RemoteDevice)
+
+    fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>)
 }

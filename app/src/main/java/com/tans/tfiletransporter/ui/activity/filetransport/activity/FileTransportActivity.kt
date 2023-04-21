@@ -14,12 +14,12 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.net.connection.RemoteDevice
 import com.tans.tfiletransporter.net.model.*
 import com.tans.tfiletransporter.net.netty.fileexplore.FileExploreConnection
 import com.tans.tfiletransporter.net.netty.fileexplore.connectToFileExploreServer
 import com.tans.tfiletransporter.net.netty.fileexplore.startFileExploreServer
 import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
@@ -424,8 +424,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                       asServer: Boolean): Intent {
             val i = Intent(context, FileTransportActivity::class.java)
             i.putExtra(LOCAL_ADDRESS_EXTRA_KEY, localAddress)
-            i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, remoteDevice.first)
-            i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDevice.second)
+            i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, remoteDevice.remoteAddress.address)
+            i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDevice.deviceName)
             i.putExtra(IS_SERVER_EXTRA_KEY, asServer)
             return i
         }
