@@ -10,5 +10,7 @@ enum class FileExploreDataType(val type: Int) {
     DownloadFilesReq(6),
     DownloadFilesResp(7),
     SendMsgReq(8),
-    SendMsgResp(9)
+    SendMsgResp(9),
+    HeartbeatReq(10),
+    HeartbeatResp(11)
 }
