@@ -7,17 +7,18 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import com.jakewharton.rxbinding3.view.clicks
-import com.jakewharton.rxbinding3.widget.checkedChanges
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.connection.ConnectionActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.utils.toBytes
 import io.reactivex.Single
 import io.reactivex.rxkotlin.withLatestFrom
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.net.InetAddress
 import java.util.Optional
@@ -77,23 +78,18 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             .filter { it.isPresent }
             .map { it.get() }
             .switchMapSingle { localAddress ->
-                requireActivity().showBroadcastReceiverDialog(localAddress, true)
-                    .doOnSuccess {
-                        if (it.isPresent) {
-                            startActivity(
-                                FileTransportActivity.getIntent(
-                                    context = requireContext(),
-                                    localAddress = localAddress,
-                                    remoteDevice = it.get(),
-                                    asServer = false
-                                )
-                            )
+                rxSingle {
+                    runCatching {
+                        withContext(Dispatchers.Main) {
+                            requireActivity().showReceiverDialog(localAddress)
                         }
+                    }.onSuccess {
+                        // TODO:
+                        println(it)
+                    }.onFailure {
+
                     }
-                    .map { }
-                    .onErrorResumeNext {
-                        Single.just(Unit)
-                    }
+                }
             }
             .bindLife()
 
