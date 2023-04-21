@@ -24,7 +24,6 @@ object BroadcastReceiverTest {
 
         receiver.addObserver(object : BroadcastReceiverObserver {
             override fun onNewState(state: BroadcastReceiverState) {
-                super.onNewState(state)
                 println("Receiver state: $state")
             }
 

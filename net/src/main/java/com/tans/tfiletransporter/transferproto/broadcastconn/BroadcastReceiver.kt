@@ -4,6 +4,7 @@ import com.tans.tfiletransporter.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
+import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
 import com.tans.tfiletransporter.netty.extensions.IClientManager
@@ -52,6 +53,14 @@ class BroadcastReceiver(
                 if (nettyState is NettyTaskState.ConnectionClosed || nettyState is NettyTaskState.Error) {
                     closeConnectionIfActive()
                 }
+            }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {
             }
         }
     }
@@ -106,6 +115,12 @@ class BroadcastReceiver(
         val hasInvokeCallback = AtomicBoolean(false)
 
         receiverTask.addObserver(object : NettyConnectionObserver {
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
             override fun onNewState(receiverTaskState: NettyTaskState, task: INettyConnectionTask) {
                 if (receiverTaskState is NettyTaskState.Error
                     || receiverTaskState is NettyTaskState.ConnectionClosed
@@ -123,6 +138,12 @@ class BroadcastReceiver(
                         receiverTask.removeObserver(this)
                         transferRequestTask.addObserver(
                             object : NettyConnectionObserver {
+                                override fun onNewMessage(
+                                    localAddress: InetSocketAddress?,
+                                    remoteAddress: InetSocketAddress?,
+                                    msg: PackageData,
+                                    task: INettyConnectionTask
+                                ) {}
                                 override fun onNewState(
                                     transferTaskState: NettyTaskState,
                                     task: INettyConnectionTask

@@ -23,7 +23,6 @@ object BroadcastSenderTest {
         sender.addObserver(object : BroadcastSenderObserver {
 
             override fun onNewState(state: BroadcastSenderState) {
-                super.onNewState(state)
                 println("Sender state: $state")
             }
 
@@ -48,7 +47,7 @@ object BroadcastSenderTest {
             }
         )
         runBlocking {
-            delay(60 * 1000 * 5)
+            delay(60 * 1000 * 50)
         }
     }
 }

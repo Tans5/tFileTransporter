@@ -4,11 +4,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 
 interface BroadcastReceiverObserver {
 
-    fun onNewState(state: BroadcastReceiverState) {
+    fun onNewState(state: BroadcastReceiverState)
 
-    }
-
-    fun onNewBroadcast(remoteDevice: RemoteDevice) {
-
-    }
+    fun onNewBroadcast(remoteDevice: RemoteDevice)
 }

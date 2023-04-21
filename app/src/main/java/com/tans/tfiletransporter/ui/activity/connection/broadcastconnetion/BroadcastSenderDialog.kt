@@ -13,6 +13,7 @@ import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSender
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderObserver
+import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderState
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.startSenderSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.waitClose
@@ -57,6 +58,9 @@ class BroadcastSenderDialog(
                     override fun requestTransferFile(remoteDevice: RemoteDevice) {
                         callbackSuccessSafe(remoteDevice)
                         cancel()
+                    }
+
+                    override fun onNewState(state: BroadcastSenderState) {
                     }
                 })
 

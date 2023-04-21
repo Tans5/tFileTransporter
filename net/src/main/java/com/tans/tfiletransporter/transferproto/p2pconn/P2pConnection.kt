@@ -4,6 +4,7 @@ import com.tans.tfiletransporter.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
+import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.*
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
@@ -110,6 +111,13 @@ class P2pConnection(
                     closeConnectionIfActive()
                 }
             }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
         }
     }
 
@@ -129,6 +137,12 @@ class P2pConnection(
         var serverTask: NettyTcpServerConnectionTask? = null
         var communicationTask: ConnectionServerClientImpl? = null
         val stateCallback = object : NettyConnectionObserver {
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 if (nettyState is NettyTaskState.Error
                     || nettyState is NettyTaskState.ConnectionClosed
@@ -204,6 +218,12 @@ class P2pConnection(
         val hasInvokeCallback = AtomicBoolean(false)
         clientTask.addObserver(
             object : NettyConnectionObserver {
+                override fun onNewMessage(
+                    localAddress: InetSocketAddress?,
+                    remoteAddress: InetSocketAddress?,
+                    msg: PackageData,
+                    task: INettyConnectionTask
+                ) {}
                 override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
 
                     if (nettyState is NettyTaskState.Error

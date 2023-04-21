@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.netty.extensions
 import com.tans.tfiletransporter.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
+import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.PackageDataWithAddress
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,8 @@ class DefaultClientManager(
     init {
         connectionTask.addObserver(this)
     }
+
+    override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {}
 
     override fun onNewMessage(
         localAddress: InetSocketAddress?,

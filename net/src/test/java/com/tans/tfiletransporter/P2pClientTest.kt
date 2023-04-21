@@ -17,9 +17,15 @@ object P2pClientTest {
             log = TestLog
         )
         p2pConnection.addObserver(object : P2pConnectionObserver {
+
             override fun onNewState(state: P2pConnectionState) {
-                super.onNewState(state)
                 println("Client State: $state")
+            }
+
+            override fun requestTransferFile(
+                handshake: P2pConnectionState.Handshake,
+                isReceiver: Boolean
+            ) {
             }
         })
         p2pConnection.connect(

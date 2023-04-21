@@ -3,6 +3,7 @@ package com.tans.tfiletransporter
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
+import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.*
 import com.tans.tfiletransporter.netty.findLocalAddressV4
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
@@ -60,6 +61,14 @@ object TcpServerTest {
                     ) {
                         println("ClientTaskState: $nettyState")
                     }
+
+                    override fun onNewMessage(
+                        localAddress: InetSocketAddress?,
+                        remoteAddress: InetSocketAddress?,
+                        msg: PackageData,
+                        task: INettyConnectionTask
+                    ) {
+                    }
                 })
             }
         )
@@ -68,6 +77,13 @@ object TcpServerTest {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 println("ServerTaskState: $nettyState")
             }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
         })
         serverTask.startTask()
         runBlocking {

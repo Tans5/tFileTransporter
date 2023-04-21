@@ -19,9 +19,13 @@ object P2pServerTest {
         )
         p2pConnection.addObserver(object : P2pConnectionObserver {
             override fun onNewState(state: P2pConnectionState) {
-                super.onNewState(state)
                 println("Server State: $state")
             }
+
+            override fun requestTransferFile(
+                handshake: P2pConnectionState.Handshake,
+                isReceiver: Boolean
+            ) {}
         })
         p2pConnection.bind(
             address = localAddress,

@@ -48,9 +48,15 @@ object UdpServerTest {
         })
         task.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
-                super.onNewState(nettyState, task)
                 println("UpdServerState: $nettyState")
             }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
         })
         task.startTask()
 

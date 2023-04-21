@@ -3,6 +3,7 @@ package com.tans.tfiletransporter.netty.extensions
 import com.tans.tfiletransporter.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
+import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
@@ -25,6 +26,8 @@ class DefaultServerManager(
     private val handledMessageId: ConcurrentHashMap<Long, Unit> by lazy {
         ConcurrentHashMap()
     }
+
+    override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {}
 
     override fun onNewMessage(
         localAddress: InetSocketAddress?,

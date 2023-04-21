@@ -57,6 +57,10 @@ suspend fun P2pConnection.transferFileSuspend() = suspendCancellableCoroutine<Un
 
 suspend fun P2pConnection.waitHandshaking() = suspendCancellableCoroutine<P2pConnectionState.Handshake> { cont ->
     addObserver(object : P2pConnectionObserver {
+        init {
+            cont.invokeOnCancellation { removeObserver(this) }
+        }
+
         override fun onNewState(state: P2pConnectionState) {
             if (state is P2pConnectionState.Handshake) {
                 cont.resumeIfActive(state)
@@ -67,16 +71,31 @@ suspend fun P2pConnection.waitHandshaking() = suspendCancellableCoroutine<P2pCon
                 removeObserver(this)
             }
         }
+
+        override fun requestTransferFile(
+            handshake: P2pConnectionState.Handshake,
+            isReceiver: Boolean
+        ) {
+        }
     })
 }
 
 suspend fun P2pConnection.waitClose() = suspendCancellableCoroutine<Unit> { cont ->
     addObserver(object : P2pConnectionObserver {
+        init {
+            cont.invokeOnCancellation { removeObserver(this) }
+        }
+
         override fun onNewState(state: P2pConnectionState) {
             if (state is P2pConnectionState.NoConnection) {
                 cont.resumeIfActive(Unit)
                 removeObserver(this)
             }
         }
+
+        override fun requestTransferFile(
+            handshake: P2pConnectionState.Handshake,
+            isReceiver: Boolean
+        ) {}
     })
 }

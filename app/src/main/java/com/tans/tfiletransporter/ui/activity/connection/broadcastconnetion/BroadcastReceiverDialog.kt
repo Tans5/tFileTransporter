@@ -20,6 +20,7 @@ import com.tans.tfiletransporter.toInt
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiver
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverObserver
+import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverState
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.requestFileTransferSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.startReceiverSuspend
@@ -100,6 +101,8 @@ class BroadcastReceiverDialog(
                             broadcastTimeoutHandler.sendMessageDelayed(msg, timeout)
                         }
                     }
+
+                    override fun onNewState(state: BroadcastReceiverState) {}
                 })
                 binding.cancelButton.clicks()
                     .doOnNext {

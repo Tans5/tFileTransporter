@@ -25,7 +25,6 @@ object UdpClientTest {
 
         task.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, taskLocal: INettyConnectionTask) {
-                super.onNewState(nettyState, taskLocal)
                 println("UdpClientState: $nettyState")
                 if (nettyState is NettyTaskState.ConnectionActive) {
                     ioExecutor.execute {
@@ -60,6 +59,13 @@ object UdpClientTest {
                     }
                 }
             }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
         })
         task.startTask()
 

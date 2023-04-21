@@ -310,6 +310,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                         )
                                     }.await()
                                     connection.addObserver(object : P2pConnectionObserver {
+                                        override fun onNewState(state: P2pConnectionState) {
+                                        }
+
                                         override fun requestTransferFile(
                                             handshake: P2pConnectionState.Handshake,
                                             isReceiver: Boolean

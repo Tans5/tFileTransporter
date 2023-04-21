@@ -104,6 +104,13 @@ class NettyTcpServerConnectionTask(
         }
     }
 
+    override fun onNewMessage(
+        localAddress: InetSocketAddress?,
+        remoteAddress: InetSocketAddress?,
+        msg: PackageData,
+        task: INettyConnectionTask
+    ) {}
+
     override fun sendData(
         data: PackageData,
         sendDataCallback: INettyConnectionTask.SendDataCallback?

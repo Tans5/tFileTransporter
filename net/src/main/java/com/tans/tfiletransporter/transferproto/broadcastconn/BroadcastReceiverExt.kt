@@ -4,6 +4,7 @@ import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.InetAddress
 
@@ -38,11 +39,19 @@ suspend fun BroadcastReceiver.requestFileTransferSuspend(targetAddress: InetAddr
 
 suspend fun BroadcastReceiver.waitCloseSuspend() = suspendCancellableCoroutine<Unit> { cont ->
     addObserver(object : BroadcastReceiverObserver {
+        init {
+            cont.invokeOnCancellation {
+                removeObserver(this)
+            }
+        }
+
         override fun onNewState(state: BroadcastReceiverState) {
             if (state is BroadcastReceiverState.NoConnection) {
                 cont.resumeIfActive(Unit)
                 removeObserver(this)
             }
         }
+
+        override fun onNewBroadcast(remoteDevice: RemoteDevice) {}
     })
 }
