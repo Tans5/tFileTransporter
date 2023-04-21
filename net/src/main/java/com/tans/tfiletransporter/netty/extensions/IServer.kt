@@ -35,7 +35,7 @@ interface IServer<Request, Response> {
                 packageData = msg
             )
             if (convertedData != null) {
-                val response = onRequest(localAddress, remoteAddress, convertedData)
+                val response = onRequest(localAddress, remoteAddress, convertedData, isNewRequest)
                 if (response != null) {
                     val responseConverter = converterFactory.findPackageDataConverter(replyType, responseClass)
                     if (responseConverter != null) {
@@ -82,9 +82,6 @@ interface IServer<Request, Response> {
                         log.e("Server", "Didn't find converter $replyType, $responseClass")
                     }
                 }
-                if (isNewRequest) {
-                    onNewRequest(localAddress, remoteAddress, convertedData)
-                }
             } else {
                 log.e(
                     "Server",
@@ -99,14 +96,10 @@ interface IServer<Request, Response> {
     fun onRequest(
         localAddress: InetSocketAddress?,
         remoteAddress: InetSocketAddress?,
-        r: Request
+        r: Request,
+        isNewRequest: Boolean
     ): Response?
 
-    fun onNewRequest(
-        localAddress: InetSocketAddress?,
-        remoteAddress: InetSocketAddress?,
-        r: Request
-    )
 }
 
 @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
@@ -114,8 +107,7 @@ inline fun <reified Request, reified Response> simplifyServer(
     requestType: Int,
     responseType: Int,
     log: ILog,
-    crossinline onRequest: (localAddress: InetSocketAddress?, remoteAddress: InetSocketAddress?, r: Request) -> Response?,
-    crossinline onNewRequest: (localAddress: InetSocketAddress?, remoteAddress: InetSocketAddress?, r: Request) -> Unit
+    crossinline onRequest: (localAddress: InetSocketAddress?, remoteAddress: InetSocketAddress?, r: Request, isNewRequest: Boolean) -> Response?
 ): IServer<Request, Response> {
     return object : IServer<Request, Response> {
         override val requestClass: Class<Request> = Request::class.java
@@ -127,17 +119,10 @@ inline fun <reified Request, reified Response> simplifyServer(
         override fun onRequest(
             localAddress: InetSocketAddress?,
             remoteAddress: InetSocketAddress?,
-            r: Request
+            r: Request,
+            isNewRequest: Boolean
         ): Response? {
-            return onRequest(localAddress, remoteAddress, r)
-        }
-
-        override fun onNewRequest(
-            localAddress: InetSocketAddress?,
-            remoteAddress: InetSocketAddress?,
-            r: Request
-        ) {
-            onNewRequest(localAddress, remoteAddress, r)
+            return onRequest(localAddress, remoteAddress, r, isNewRequest)
         }
 
     }

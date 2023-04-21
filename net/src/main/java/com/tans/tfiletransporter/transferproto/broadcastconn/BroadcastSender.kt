@@ -50,16 +50,14 @@ class BroadcastSender(
             requestType = BroadcastDataType.TransferFileReq.type,
             responseType = BroadcastDataType.TransferFileResp.type,
             log = log,
-            onRequest = { _, rr, r ->
-                if (rr == null && r.version == TransferProtoConstant.VERSION) {
+            onRequest = { _, rr, r, isNewRequest ->
+                if (rr == null || r.version != TransferProtoConstant.VERSION) {
                     null
                 } else {
+                    if (isNewRequest) {
+                        dispatchTransferReq(rr, r)
+                    }
                     BroadcastTransferFileResp(deviceName = deviceName)
-                }
-            },
-            onNewRequest = { _, rr, r ->
-                if (rr != null) {
-                    dispatchTransferReq(rr, r)
                 }
             }
         )
@@ -214,7 +212,7 @@ class BroadcastSender(
                                         }
                                         val senderFuture = DefaultClientManager.taskScheduleExecutor.scheduleAtFixedRate(
                                             senderBroadcastTask,
-                                            1000,
+                                            500,
                                             broadcastSendIntervalMillis, TimeUnit.MILLISECONDS
                                         )
                                         this@BroadcastSender.sendFuture.get()?.cancel(true)

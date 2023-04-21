@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference
 class BroadcastReceiver(
     private val deviceName: String,
     private val log: ILog,
-    private val activeDeviceDuration: Long = 6000
+    private val activeDeviceDuration: Long = 8000
 ) : SimpleStateable<BroadcastReceiverState>, SimpleObservable<BroadcastReceiverObserver> {
 
     override val state: AtomicReference<BroadcastReceiverState> = AtomicReference(BroadcastReceiverState.NoConnection)
@@ -79,11 +79,11 @@ class BroadcastReceiver(
             requestType = BroadcastDataType.BroadcastMsg.type,
             responseType = BroadcastDataType.BroadcastMsg.type,
             log = log,
-            onRequest = { _, _, _ -> null },
-            onNewRequest = { _, rr, r ->
-                if (rr != null) {
+            onRequest = { _, rr, r, isNewRequest ->
+                if (rr != null && isNewRequest) {
                     dispatchBroadcast(rr, r)
                 }
+                null
             }
         )
     }

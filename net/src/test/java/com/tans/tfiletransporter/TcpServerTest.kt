@@ -40,17 +40,13 @@ object TcpServerTest {
                         override fun onRequest(
                             localAddress: InetSocketAddress?,
                             remoteAddress: InetSocketAddress?,
-                            r: String
+                            r: String,
+                            isNewRequest: Boolean
                         ): String {
+                            if (isNewRequest) {
+                                println("Receive client request: $r from $remoteAddress")
+                            }
                             return "Hello, Client."
-                        }
-
-                        override fun onNewRequest(
-                            localAddress: InetSocketAddress?,
-                            remoteAddress: InetSocketAddress?,
-                            r: String
-                        ) {
-                            println("Receive client request: $r from $remoteAddress")
                         }
 
                     })

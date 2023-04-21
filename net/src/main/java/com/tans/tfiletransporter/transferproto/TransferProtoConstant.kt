@@ -14,4 +14,14 @@ object TransferProtoConstant {
     const val BROADCAST_SCANNER_PORT = 1997
     const val BROADCAST_TRANSFER_SERVER_PORT = 1998
     const val BROADCAST_TRANSFER_CLIENT_PORT = 1999
+
+    /**
+     * File Explore
+     */
+    const val FILE_EXPLORE_PORT = 2000
+
+    /**
+     * File Transfer
+     */
+    const val FILE_TRANSFER_PORT = 2001
 }

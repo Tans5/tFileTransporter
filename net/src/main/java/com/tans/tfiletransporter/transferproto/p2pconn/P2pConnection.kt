@@ -39,9 +39,23 @@ class P2pConnection(
             requestType = P2pDataType.HandshakeReq.type,
             responseType = P2pDataType.HandshakeResp.type,
             log = log,
-            onRequest = { _, _, r ->
+            onRequest = { ld, rd, r, isNewRequest ->
                 if (getCurrentState() is P2pConnectionState.Active
                     && r.version == TransferProtoConstant.VERSION) {
+                    if (isNewRequest) {
+                        log.d(TAG, "Receive handshake: ld -> $ld, rd -> $rd, r -> $r")
+                        if (ld is InetSocketAddress
+                            && rd is InetSocketAddress
+                            && getCurrentState() is P2pConnectionState.Active) {
+                            newState(P2pConnectionState.Handshake(
+                                localAddress = ld,
+                                remoteAddress = rd,
+                                remoteDeviceName = r.deviceName
+                            ))
+                        } else {
+                            closeConnectionIfActive()
+                        }
+                    }
                     P2pHandshakeResp(
                         deviceName = currentDeviceName
                     )
@@ -49,20 +63,6 @@ class P2pConnection(
                     null
                 }
             },
-            onNewRequest = { ld, rd, r ->
-                log.d(TAG, "Receive handshake: ld -> $ld, rd -> $rd, r -> $r")
-                if (ld is InetSocketAddress
-                    && rd is InetSocketAddress
-                    && getCurrentState() is P2pConnectionState.Active) {
-                    newState(P2pConnectionState.Handshake(
-                        localAddress = ld,
-                        remoteAddress = rd,
-                        remoteDeviceName = r.deviceName
-                    ))
-                } else {
-                    closeConnectionIfActive()
-                }
-            }
         )
     }
 
@@ -71,10 +71,11 @@ class P2pConnection(
             requestType = P2pDataType.TransferFileReq.type,
             responseType = P2pDataType.TransferFileResp.type,
             log = log,
-            onRequest = { _, _, _ -> },
-            onNewRequest = { _, _, _ ->
-                log.d(TAG, "Receive transfer file request.")
-                dispatchTransferFile(true)
+            onRequest = { _, _, _, isNewRequest ->
+                if (isNewRequest) {
+                    log.d(TAG, "Receive transfer file request.")
+                    dispatchTransferFile(true)
+                }
             }
         )
     }
@@ -84,12 +85,13 @@ class P2pConnection(
             requestType = P2pDataType.CloseConnReq.type,
             responseType = P2pDataType.CloseConnResp.type,
             log = log,
-            onRequest = { _, _, _ -> },
-            onNewRequest = { _, _, _ ->
-                log.d(TAG, "Receive close request.")
-                Dispatchers.IO.asExecutor().runCatching {
-                    Thread.sleep(100)
-                    closeConnectionIfActive()
+            onRequest = { _, _, _, isNewRequest ->
+                if (isNewRequest) {
+                    log.d(TAG, "Receive close request.")
+                    Dispatchers.IO.asExecutor().runCatching {
+                        Thread.sleep(100)
+                        closeConnectionIfActive()
+                    }
                 }
             }
         )

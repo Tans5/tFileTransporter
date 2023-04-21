@@ -7,6 +7,7 @@ import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
@@ -74,6 +75,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
         }.bindLife()
 
         binding.searchServerLayout.clicks()
+            .ignoreSeveralClicks()
             .withLatestFrom(bindState().map { it.address })
             .map { it.second }
             .filter { it.isPresent }
@@ -99,6 +101,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             .bindLife()
 
         binding.asServerLayout.clicks()
+            .ignoreSeveralClicks()
             .withLatestFrom(bindState().map { it.address })
             .map { it.second }
             .filter { it.isPresent }

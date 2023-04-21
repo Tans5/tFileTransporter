@@ -32,17 +32,13 @@ object UdpServerTest {
             override fun onRequest(
                 localAddress: InetSocketAddress?,
                 remoteAddress: InetSocketAddress?,
-                r: String
+                r: String,
+                isNewRequest: Boolean
             ): String {
+                if (isNewRequest) {
+                    println("Receive request $r from $remoteAddress")
+                }
                 return "Hello, Client"
-            }
-
-            override fun onNewRequest(
-                localAddress: InetSocketAddress?,
-                remoteAddress: InetSocketAddress?,
-                r: String
-            ) {
-                println("Receive request $r from $remoteAddress")
             }
 
         })

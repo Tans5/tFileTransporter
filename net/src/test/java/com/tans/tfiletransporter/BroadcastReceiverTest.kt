@@ -31,19 +31,19 @@ object BroadcastReceiverTest {
                 remoteDevice: RemoteDevice
             ) {
                 println("Receiver receive broadcast: $remoteDevice")
-                receiver.requestFileTransfer(
-                    targetAddress = remoteDevice.remoteAddress.address,
-                    simpleCallback = object : SimpleCallback<BroadcastTransferFileResp> {
-
-                        override fun onError(errorMsg: String) {
-                            println("Receiver request transfer fail: $errorMsg")
-                        }
-
-                        override fun onSuccess(data: BroadcastTransferFileResp) {
-                            println("Receiver request transfer success: $data")
-                        }
-                    }
-                )
+//                receiver.requestFileTransfer(
+//                    targetAddress = remoteDevice.remoteAddress.address,
+//                    simpleCallback = object : SimpleCallback<BroadcastTransferFileResp> {
+//
+//                        override fun onError(errorMsg: String) {
+//                            println("Receiver request transfer fail: $errorMsg")
+//                        }
+//
+//                        override fun onSuccess(data: BroadcastTransferFileResp) {
+//                            println("Receiver request transfer success: $data")
+//                        }
+//                    }
+//                )
             }
 
             override fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>) {}

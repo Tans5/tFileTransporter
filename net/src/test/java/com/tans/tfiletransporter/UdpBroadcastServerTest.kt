@@ -41,16 +41,9 @@ object UdpBroadcastServerTest {
             override fun onRequest(
                 localAddress: InetSocketAddress?,
                 remoteAddress: InetSocketAddress?,
-                r: String
+                r: String,
+                isNewRequest: Boolean
             ): Unit? = null
-
-            override fun onNewRequest(
-                localAddress: InetSocketAddress?,
-                remoteAddress: InetSocketAddress?,
-                r: String
-            ) {
-                println("UdpBroadcastServer receive broadcast $r from $remoteAddress")
-            }
 
         })
 
