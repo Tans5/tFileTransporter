@@ -93,6 +93,7 @@ class BroadcastReceiver(
         o.onNewState(state.get())
     }
 
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     fun startBroadcastReceiver(
         localAddress: InetAddress,
         simpleCallback: SimpleCallback<Unit>

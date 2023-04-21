@@ -109,6 +109,7 @@ interface IServer<Request, Response> {
     )
 }
 
+@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
 inline fun <reified Request, reified Response> simplifyServer(
     requestType: Int,
     responseType: Int,
@@ -121,7 +122,7 @@ inline fun <reified Request, reified Response> simplifyServer(
         override val responseClass: Class<Response> = Response::class.java
         override val replyType: Int = responseType
         override val log: ILog = log
-        override fun couldHandle(t: Int): Boolean = requestType == t
+        override fun couldHandle(t: Int): Boolean = t == requestType
 
         override fun onRequest(
             localAddress: InetSocketAddress?,

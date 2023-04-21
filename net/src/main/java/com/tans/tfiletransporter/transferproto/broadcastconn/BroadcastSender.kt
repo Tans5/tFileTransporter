@@ -50,7 +50,7 @@ class BroadcastSender(
             requestType = BroadcastDataType.TransferFileReq.type,
             responseType = BroadcastDataType.TransferFileResp.type,
             log = log,
-            onRequest = { lr, rr, r ->
+            onRequest = { _, rr, r ->
                 if (rr == null && r.version == TransferProtoConstant.VERSION) {
                     null
                 } else {
@@ -129,6 +129,7 @@ class BroadcastSender(
         o.onNewState(getCurrentState())
     }
 
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     fun startBroadcastSender(localAddress: InetAddress, simpleCallback: SimpleCallback<Unit>) {
         val currentState = getCurrentState()
         if (currentState != BroadcastSenderState.NoConnection) {

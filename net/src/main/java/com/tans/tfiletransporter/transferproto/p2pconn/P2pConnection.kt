@@ -39,7 +39,7 @@ class P2pConnection(
             requestType = P2pDataType.HandshakeReq.type,
             responseType = P2pDataType.HandshakeResp.type,
             log = log,
-            onRequest = { _, rd, r ->
+            onRequest = { _, _, r ->
                 if (getCurrentState() is P2pConnectionState.Active
                     && r.version == TransferProtoConstant.VERSION) {
                     P2pHandshakeResp(
