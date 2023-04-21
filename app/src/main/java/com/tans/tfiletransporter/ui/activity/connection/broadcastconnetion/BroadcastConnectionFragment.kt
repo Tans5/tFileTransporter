@@ -99,23 +99,19 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             .filter { it.isPresent }
             .map { it.get() }
             .switchMapSingle { localAddress ->
-                requireActivity().showBroadcastSenderDialog(localAddress, true)
-                    .doOnSuccess {
-                        if (it.isPresent) {
-                            startActivity(
-                                FileTransportActivity.getIntent(
-                                    context = requireContext(),
-                                    localAddress = localAddress,
-                                    remoteDevice = it.get(),
-                                    asServer = true
-                                )
-                            )
+                rxSingle {
+                    runCatching {
+                        withContext(Dispatchers.Main) {
+                            requireActivity().showSenderDialog(localAddress)
                         }
+                    }.onSuccess {
+                        // TODO:
+                        println(it)
+                    }.onFailure {
+                        println(it)
                     }
-                    .map { }
-                    .onErrorResumeNext {
-                        Single.just(Unit)
-                    }
+                    Unit
+                }
             }
             .bindLife()
     }

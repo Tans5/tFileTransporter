@@ -22,6 +22,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastData
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileReq
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -206,8 +207,9 @@ class BroadcastReceiver(
         }
     }
     private fun dispatchBroadcast(remoteAddress: InetSocketAddress, broadcastMsg: BroadcastMsg) {
+        val rd = RemoteDevice(remoteAddress, broadcastMsg.deviceName)
         for (o in observers) {
-            o.onNewBroadcast(remoteAddress, broadcastMsg)
+            o.onNewBroadcast(rd)
         }
     }
 

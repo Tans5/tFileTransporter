@@ -24,6 +24,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastData
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileReq
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileResp
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -219,8 +220,12 @@ class BroadcastSender(
     }
 
     private fun dispatchTransferReq(remoteAddress: InetSocketAddress, req: BroadcastTransferFileReq) {
+        val rd = RemoteDevice(
+            remoteAddress = remoteAddress,
+            deviceName = req.deviceName
+        )
         for (o in observers) {
-            o.requestTransferFile(remoteAddress, req)
+            o.requestTransferFile(rd)
         }
     }
 

@@ -1,76 +1,119 @@
 package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
 
 import android.app.Activity
-import android.app.Dialog
-import android.util.Log
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.databinding.BroadcastReceiverDialogLayoutBinding
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
-import com.tans.tfiletransporter.net.connection.RemoteDevice
-import com.tans.tfiletransporter.net.connection.launchUdpBroadcastSender
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.net.LOCAL_DEVICE
+import com.tans.tfiletransporter.resumeExceptionIfActive
+import com.tans.tfiletransporter.resumeIfActive
+import com.tans.tfiletransporter.transferproto.SimpleCallback
+import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSender
+import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderObserver
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
+import com.tans.tfiletransporter.transferproto.broadcastconn.startSenderSuspend
+import com.tans.tfiletransporter.transferproto.broadcastconn.waitClose
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
-import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
-import io.reactivex.Single
+import com.tans.tfiletransporter.utils.showToastShort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
-fun Activity.showBroadcastSenderDialog(localAddress: InetAddress, noneBroadcast: Boolean = false): Single<Optional<RemoteDevice>> {
-    var dialog: Dialog? = null
-    return Single.create<Optional<RemoteDevice>> { emitter ->
-        val dialogInternal = object : BaseCustomDialog<BroadcastSenderDialogLayoutBinding, Unit>(
-            context = this,
-            layoutId = R.layout.broadcast_sender_dialog_layout,
-            defaultState = Unit,
-            outSizeCancelable = false
-        ) {
+class BroadcastSenderDialog(
+    private val activity: Activity,
+    private val localAddress: InetAddress,
+    private val simpleCallback: SimpleCallback<RemoteDevice>
+) : BaseCustomDialog<BroadcastSenderDialogLayoutBinding, Unit>(
+    context = activity,
+    layoutId = R.layout.broadcast_sender_dialog_layout,
+    defaultState = Unit,
+    outSizeCancelable = false
+) {
 
-            override fun bindingStart(binding: BroadcastSenderDialogLayoutBinding) {
-                launch {
-                    val result = runCatching {
-                        launchUdpBroadcastSender(localAddress = localAddress, noneBroadcast = noneBroadcast) { remoteAddress, remoteDevice ->
-                            val result = withContext(Dispatchers.Main) {
-                                showOptionalDialog(
-                                    title = getString(R.string.broadcast_request_connect),
-                                    message = getString(R.string.broadcast_remote_info, remoteDevice, (remoteAddress as InetSocketAddress).address.hostAddress),
-                                    cancelable = false,
-                                    positiveButtonText = getString(R.string.broadcast_request_accept),
-                                    negativeButtonText = getString(R.string.broadcast_request_deny)
-                                ).await()
-                            }
-                            result.orElse(false)
-                        }
-                    }
-                    if (!emitter.isDisposed) {
-                        if (result.isSuccess) {
-                            emitter.onSuccess(Optional.ofNullable(result.getOrNull()))
-                        } else {
-                            Log.e("Broadcast Sender Error", result.exceptionOrNull().toString())
-                            emitter.onSuccess(Optional.empty())
-                        }
-                    }
-                    if (isShowing) {
-                        cancel()
-                    }
+    private val hasInvokeCallback: AtomicBoolean = AtomicBoolean(false)
+
+    private val sender: AtomicReference<BroadcastSender?> = AtomicReference(null)
+    override fun bindingStart(binding: BroadcastSenderDialogLayoutBinding) {
+        launch {
+            val sender = BroadcastSender(
+                deviceName = LOCAL_DEVICE,
+                log = AndroidLog
+            )
+            this@BroadcastSenderDialog.sender.set(sender)
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    sender.startSenderSuspend(localAddress)
                 }
-                binding.cancelButton.clicks()
-                    .doOnNext {
+            }.onSuccess {
+                AndroidLog.d(TAG, "Start sender success.")
+                sender.addObserver(object : BroadcastSenderObserver {
+                    override fun requestTransferFile(remoteDevice: RemoteDevice) {
+                        callbackSuccessSafe(remoteDevice)
                         cancel()
-                        emitter.onSuccess(Optional.empty())
+                    }
+                })
+
+                binding.cancelButton.clicks()
+                    .ignoreSeveralClicks()
+                    .doOnNext {
+                        callbackErrorSafe("User canceled.")
+                        cancel()
                     }
                     .bindLife()
+
+                sender.waitClose()
+                activity.showToastShort("Connection closed")
+                callbackErrorSafe("Connection closed.")
+            }.onFailure {
+                callbackErrorSafe(it.message ?: "")
+                AndroidLog.e(TAG, "Start sender error: ${it.message}")
+                activity.showToastShort(R.string.error_toast)
             }
         }
-        dialogInternal.setCancelable(false)
-        dialogInternal.setOnCancelListener { if (!emitter.isDisposed) emitter.onSuccess(Optional.empty()) }
-        dialogInternal.show()
-        dialog = dialogInternal
-    }.doFinally {
-        val dialogInternal = dialog
-        if (dialogInternal?.isShowing == true) { dialogInternal.cancel() }
     }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        callbackErrorSafe("System close dialog.")
+        sender.get()?.closeConnectionIfActive()
+    }
+
+    private fun callbackSuccessSafe(r: RemoteDevice) {
+        if (hasInvokeCallback.compareAndSet(false, true)) {
+            simpleCallback.onSuccess(r)
+        }
+    }
+
+    private fun callbackErrorSafe(msg: String) {
+        if (hasInvokeCallback.compareAndSet(false, true)) {
+            simpleCallback.onError(msg)
+        }
+    }
+
+    companion object {
+        private const val TAG = "BroadcastSenderDialog"
+    }
+}
+
+suspend fun Activity.showSenderDialog(localAddress: InetAddress): RemoteDevice = suspendCancellableCoroutine { cont ->
+    BroadcastSenderDialog(
+        activity = this,
+        localAddress = localAddress,
+        simpleCallback = object : SimpleCallback<RemoteDevice> {
+            override fun onSuccess(data: RemoteDevice) {
+                cont.resumeIfActive(data)
+            }
+
+            override fun onError(errorMsg: String) {
+                cont.resumeExceptionIfActive(Throwable(errorMsg))
+            }
+        }
+    ).show()
 }

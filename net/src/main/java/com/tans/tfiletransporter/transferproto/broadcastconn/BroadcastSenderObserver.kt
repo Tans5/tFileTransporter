@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.transferproto.broadcastconn
 
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTransferFileReq
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetSocketAddress
 
 interface BroadcastSenderObserver {
@@ -9,7 +10,7 @@ interface BroadcastSenderObserver {
 
     }
 
-    fun requestTransferFile(remoteAddress: InetSocketAddress, req: BroadcastTransferFileReq) {
+    fun requestTransferFile(remoteDevice: RemoteDevice) {
 
     }
 }

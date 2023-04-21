@@ -20,9 +20,10 @@ import com.tans.tfiletransporter.toInt
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiver
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverObserver
-import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.requestFileTransferSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.startReceiverSuspend
+import com.tans.tfiletransporter.transferproto.broadcastconn.waitCloseSuspend
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.showToastShort
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,6 @@ import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -73,7 +73,7 @@ class BroadcastReceiverDialog(
                                 if (data != null) {
                                     launch {
                                         updateState { oldState ->
-                                            val newList = oldState.remoteDevices.filter { it.address != data.address }
+                                            val newList = oldState.remoteDevices.filter { it.remoteAddress != data.remoteAddress }
                                             oldState.copy(remoteDevices = newList)
                                         }.await()
                                     }
@@ -82,26 +82,21 @@ class BroadcastReceiverDialog(
                         }
                     }
                     override fun onNewBroadcast(
-                        remoteAddress: InetSocketAddress,
-                        broadcastMsg: BroadcastMsg
+                        remoteDevice: RemoteDevice
                     ) {
                         launch {
-                            val d = RemoteDevice(
-                                address = remoteAddress.address,
-                                broadcastMsg = broadcastMsg
-                            )
                             updateState { oldState ->
-                                if (oldState.remoteDevices.find { it.address == d.address } == null) {
-                                    oldState.copy(remoteDevices = oldState.remoteDevices + d)
+                                if (oldState.remoteDevices.find { it.remoteAddress == remoteDevice.remoteAddress } == null) {
+                                    oldState.copy(remoteDevices = oldState.remoteDevices + remoteDevice)
                                 } else {
                                     oldState
                                 }
                             }.await()
-                            val id = d.address.address.toInt()
+                            val id = remoteDevice.remoteAddress.address.address.toInt()
                             broadcastTimeoutHandler.removeMessages(id)
                             val msg = broadcastTimeoutHandler.obtainMessage()
                             msg.what = id
-                            msg.obj = d
+                            msg.obj = remoteDevice
                             broadcastTimeoutHandler.sendMessageDelayed(msg, timeout)
                         }
                     }
@@ -115,6 +110,11 @@ class BroadcastReceiverDialog(
                         cancel()
                     }
                     .bindLife()
+                receiver.waitCloseSuspend()
+                if (hasInvokeCallback.compareAndSet(false, true)) {
+                    simpleCallback.onError("Connection closed")
+                }
+                activity.showToastShort("Connection closed")
             }.onFailure {
                 withContext(Dispatchers.Main) {
                     activity.showToastShort(R.string.error_toast)
@@ -128,8 +128,8 @@ class BroadcastReceiverDialog(
             binding.serversRv.adapter = SimpleAdapterSpec<RemoteDevice, RemoteServerItemLayoutBinding>(
                 layoutId = R.layout.remote_server_item_layout,
                 bindData = { _, data, binding ->
-                    binding.ipAddress = data.address.toString().removePrefix("/")
-                    binding.device = data.broadcastMsg.deviceName
+                    binding.ipAddress = data.remoteAddress.address.toString().removePrefix("/")
+                    binding.device = data.deviceName
                 },
                 dataUpdater = bindState().map { it.remoteDevices }.distinctUntilChanged(),
                 differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1 == d2 }),
@@ -144,7 +144,7 @@ class BroadcastReceiverDialog(
                                 cancel()
                             } else {
                                 runCatching {
-                                    receiver.requestFileTransferSuspend(data.address)
+                                    receiver.requestFileTransferSuspend(data.remoteAddress.address)
                                 }.onSuccess {
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
                                         simpleCallback.onSuccess(data)
@@ -179,10 +179,6 @@ class BroadcastReceiverDialog(
     companion object {
 
         private const val TAG = "BroadcastReceiverDialog"
-        data class RemoteDevice(
-            val address: InetAddress,
-            val broadcastMsg: BroadcastMsg
-        )
 
         data class BroadcastReceiverDialogState(
             val receiver: Optional<BroadcastReceiver> = Optional.empty(),
@@ -195,9 +191,9 @@ suspend fun Activity.showReceiverDialog(localAddress: InetAddress) = suspendCanc
     BroadcastReceiverDialog(
         activity = this,
         localAddress = localAddress,
-        simpleCallback = object : SimpleCallback<BroadcastReceiverDialog.Companion.RemoteDevice> {
+        simpleCallback = object : SimpleCallback<RemoteDevice> {
 
-            override fun onSuccess(data: BroadcastReceiverDialog.Companion.RemoteDevice) {
+            override fun onSuccess(data: RemoteDevice) {
                 cont.resumeIfActive(data)
             }
 

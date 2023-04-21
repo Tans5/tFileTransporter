@@ -1,7 +1,6 @@
 package com.tans.tfiletransporter.transferproto.broadcastconn
 
-import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastMsg
-import java.net.InetSocketAddress
+import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 
 interface BroadcastReceiverObserver {
 
@@ -9,7 +8,7 @@ interface BroadcastReceiverObserver {
 
     }
 
-    fun onNewBroadcast(remoteAddress: InetSocketAddress, broadcastMsg: BroadcastMsg) {
+    fun onNewBroadcast(remoteDevice: RemoteDevice) {
 
     }
 }
