@@ -11,6 +11,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
+import com.tans.tfiletransporter.utils.showToastShort
 import com.tans.tfiletransporter.utils.toBytes
 import io.reactivex.Single
 import io.reactivex.rxkotlin.withLatestFrom
@@ -84,10 +85,14 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                             requireActivity().showReceiverDialog(localAddress)
                         }
                     }.onSuccess {
-                        // TODO:
-                        println(it)
+                        withContext(Dispatchers.Main) {
+                            // TODO:
+                            requireActivity().showToastShort(it.toString())
+                        }
                     }.onFailure {
-
+                        withContext(Dispatchers.Main) {
+                            requireActivity().showToastShort(it.message ?: "")
+                        }
                     }
                 }
             }
@@ -105,10 +110,14 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                             requireActivity().showSenderDialog(localAddress)
                         }
                     }.onSuccess {
-                        // TODO:
-                        println(it)
+                        withContext(Dispatchers.Main) {
+                            // TODO:
+                            requireActivity().showToastShort(it.toString())
+                        }
                     }.onFailure {
-                        println(it)
+                        withContext(Dispatchers.Main) {
+                            requireActivity().showToastShort(it.message ?: "")
+                        }
                     }
                     Unit
                 }
