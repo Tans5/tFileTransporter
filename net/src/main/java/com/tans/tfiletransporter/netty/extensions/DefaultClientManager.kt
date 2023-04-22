@@ -111,7 +111,7 @@ class DefaultClientManager(
         } else {
             ioExecutor.execute(task)
         }
-        log.d(TAG, "Current waiting task size: ${waitingRspTasks.size}")
+        // log.d(TAG, "Current waiting task size: ${waitingRspTasks.size}")
     }
 
     private fun <Req, Resp> addWaitingTask(t: Task<Req, Resp>) {
@@ -147,7 +147,7 @@ class DefaultClientManager(
             if (downloadData.messageId == this.messageId) {
                 timeoutTask.get()?.cancel(true)
                 timeoutTask.set(null)
-                log.d(TAG, "Received response: msgId -> ${downloadData.messageId}, type -> $type")
+                // log.d(TAG, "Received response: msgId -> ${downloadData.messageId}, type -> $type")
                 val converter = converterFactory.findBodyConverter(downloadData.type, responseClass)
                 if (converter != null) {
                     val response = converter.convert(
@@ -181,7 +181,7 @@ class DefaultClientManager(
 
         override fun run() {
             addWaitingTask(this)
-            log.d(TAG, "Sending request: msgId -> $messageId, cmdType -> $type")
+            // log.d(TAG, "Sending request: msgId -> $messageId, cmdType -> $type")
             val converter = converterFactory.findPackageDataConverter(
                 type = type,
                 dataClass = requestClass
