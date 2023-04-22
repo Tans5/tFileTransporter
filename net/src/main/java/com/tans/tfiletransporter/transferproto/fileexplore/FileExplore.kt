@@ -37,6 +37,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class FileExplore(
@@ -148,6 +149,108 @@ class FileExplore(
         o.onNewState(state.get())
     }
 
+    fun bind(address: InetAddress, simpleCallback: SimpleCallback<Unit>) {
+        if (getCurrentState() !is FileExploreState.NoConnection) {
+            simpleCallback.onError("Error state: ${getCurrentState()}")
+            return
+        }
+        val hasInvokeCallback = AtomicBoolean(false)
+        heartbeatTaskFuture.get()?.cancel(true)
+        heartbeatTaskFuture.set(null)
+        this.exploreTask.get()?.stopTask()
+        newState(FileExploreState.Requesting)
+        val hasChildConnection = AtomicBoolean(false)
+        val serverTask = NettyTcpServerConnectionTask(
+            bindAddress = address,
+            bindPort = TransferProtoConstant.FILE_EXPLORE_PORT,
+            idleLimitDuration = heartbeatInterval * 3,
+            newClientTaskCallback = { task ->
+                if (hasChildConnection.compareAndSet(false, true)) {
+                    val exploreTask = task.witchClient<ConnectionClientImpl>(log = log).withServer<ConnectionServerClientImpl>(log = log)
+                    this@FileExplore.exploreTask.get()?.stopTask()
+                    this@FileExplore.exploreTask.set(exploreTask)
+                    log.d(TAG,"New connection: $exploreTask")
+                    exploreTask.addObserver(object : NettyConnectionObserver {
+                        override fun onNewState(
+                            nettyState: NettyTaskState,
+                            task: INettyConnectionTask
+                        ) {
+                            if (nettyState is NettyTaskState.Error ||
+                                nettyState is NettyTaskState.ConnectionClosed ||
+                                getCurrentState() !is FileExploreState.Requesting) {
+                                val errorMsg = "Connect error: $nettyState, ${getCurrentState()}"
+                                log.e(TAG, errorMsg)
+                                if (hasInvokeCallback.compareAndSet(false, true)) {
+                                    simpleCallback.onError(errorMsg)
+                                }
+                                exploreTask.stopTask()
+                                exploreTask.removeObserver(this)
+                                serverTask.get()?.stopTask()
+                                serverTask.set(null)
+                                newState(FileExploreState.NoConnection)
+                            } else {
+                                if (nettyState is NettyTaskState.ConnectionActive) {
+                                    log.d(TAG, "Connect success.")
+                                    exploreTask.addObserver(closeObserver)
+                                    exploreTask.registerServer(handshakeServer)
+                                    exploreTask.registerServer(heartbeatServer)
+                                    exploreTask.registerServer(scanDirServer)
+                                    exploreTask.registerServer(sendFilesServer)
+                                    exploreTask.registerServer(downloadFilesServer)
+                                    exploreTask.registerServer(sendMsgServer)
+                                    exploreTask.removeObserver(this)
+                                    if (hasInvokeCallback.compareAndSet(false, true)) {
+                                        simpleCallback.onSuccess(Unit)
+                                    }
+                                    newState(FileExploreState.Connected)
+                                }
+                            }
+                        }
+
+                        override fun onNewMessage(
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            msg: PackageData,
+                            task: INettyConnectionTask
+                        ) {
+                        }
+
+                    })
+                } else {
+                    task.stopTask()
+                }
+            }
+        )
+        serverTask.addObserver(object : NettyConnectionObserver {
+            override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
+                if (nettyState is NettyTaskState.Error ||
+                        nettyState is NettyTaskState.ConnectionClosed ||
+                        getCurrentState() !is FileExploreState.Requesting) {
+                    if (hasInvokeCallback.compareAndSet(false, true)) {
+                        simpleCallback.onError("Server bind error: $nettyState")
+                    }
+                    serverTask.removeObserver(this)
+                    serverTask.stopTask()
+                    log.e(TAG, "Bind server error: $nettyState")
+                } else if (nettyState is NettyTaskState.ConnectionActive) {
+                    serverTask.addObserver(closeObserver)
+                    serverTask.removeObserver(this)
+                    log.d(TAG, "Bind server success.")
+                }
+            }
+
+            override fun onNewMessage(
+                localAddress: InetSocketAddress?,
+                remoteAddress: InetSocketAddress?,
+                msg: PackageData,
+                task: INettyConnectionTask
+            ) {}
+        })
+        serverTask.startTask()
+        this.serverTask.get()?.stopTask()
+        this.serverTask.set(serverTask)
+    }
+
     fun connect(
         serverAddress: InetAddress,
         simpleCallback: SimpleCallback<Unit>
@@ -156,7 +259,7 @@ class FileExplore(
             simpleCallback.onError("Error state: ${getCurrentState()}")
             return
         }
-        val hasInvokeCallback = AtomicReference(true)
+        val hasInvokeCallback = AtomicBoolean(false)
         heartbeatTaskFuture.get()?.cancel(true)
         heartbeatTaskFuture.set(null)
         newState(FileExploreState.Requesting)
@@ -228,7 +331,7 @@ class FileExplore(
         clearObserves()
     }
 
-    fun requestHandshake(simpleCallback: SimpleCallback<Unit>) {
+    fun requestHandshake(simpleCallback: SimpleCallback<Handshake>) {
         assertState(false, simpleCallback) { task, _ ->
             task.requestSimplify<HandshakeReq, HandshakeResp>(
                 type = FileExploreDataType.HandshakeReq.type,
@@ -246,8 +349,9 @@ class FileExplore(
                     ) {
                         val currentState = getCurrentState()
                         if (currentState is FileExploreState.Connected) {
-                            simpleCallback.onSuccess(Unit)
-                            newState(FileExploreState.Active(Handshake(d.fileSeparator)))
+                            val handshake = Handshake(d.fileSeparator)
+                            simpleCallback.onSuccess(handshake)
+                            newState(FileExploreState.Active(handshake))
                         } else {
                             log.e(TAG, "Handshake error: version error $d")
                         }
