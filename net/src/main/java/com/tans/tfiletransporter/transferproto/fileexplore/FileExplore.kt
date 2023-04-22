@@ -470,6 +470,12 @@ class FileExplore(
         }
     }
 
+    override fun onNewState(s: FileExploreState) {
+        for (o in observers) {
+            o.onNewState(s)
+        }
+    }
+
     private fun sendHeartbeat() {
         assertState<Unit>(false, null) { task, _ ->
             task.requestSimplify<Unit, Unit>(

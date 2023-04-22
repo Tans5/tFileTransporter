@@ -2,7 +2,9 @@ package com.tans.tfiletransporter
 
 import com.tans.tfiletransporter.netty.findLocalAddressV4
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreObserver
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreRequestHandler
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreState
 import com.tans.tfiletransporter.transferproto.fileexplore.bindSuspend
 import com.tans.tfiletransporter.transferproto.fileexplore.model.DownloadFilesReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.DownloadFilesResp
@@ -10,6 +12,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirResp
 import com.tans.tfiletransporter.transferproto.fileexplore.model.SendFilesReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.SendFilesResp
+import com.tans.tfiletransporter.transferproto.fileexplore.model.SendMsgReq
 import com.tans.tfiletransporter.transferproto.fileexplore.waitClose
 import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
 import kotlinx.coroutines.runBlocking
