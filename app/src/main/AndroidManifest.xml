@@ -37,7 +37,7 @@
 
         <activity android:name=".ui.activity.connection.ConnectionActivity"
             android:screenOrientation="portrait"
-            android:launchMode="singleTask"
+            android:launchMode="singleInstance"
             android:configChanges="orientation|screenSize"
             android:exported="true">
             <intent-filter>
@@ -49,7 +49,7 @@
         <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize|stateHidden"
-            android:launchMode="singleTop"
+            android:launchMode="singleInstance"
             android:configChanges="orientation|screenSize"/>
 
     </application>

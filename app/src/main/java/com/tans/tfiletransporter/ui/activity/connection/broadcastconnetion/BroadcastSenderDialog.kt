@@ -4,7 +4,6 @@ import android.app.Activity
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
-import com.tans.tfiletransporter.databinding.BroadcastReceiverDialogLayoutBinding
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.net.LOCAL_DEVICE
@@ -20,6 +19,7 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.waitClose
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.showToastShort
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -86,7 +86,10 @@ class BroadcastSenderDialog(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         callbackErrorSafe("System close dialog.")
-        sender.get()?.closeConnectionIfActive()
+        Dispatchers.IO.asExecutor().execute {
+            Thread.sleep(1000)
+            sender.get()?.closeConnectionIfActive()
+        }
     }
 
     private fun callbackSuccessSafe(r: RemoteDevice) {

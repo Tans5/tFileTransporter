@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference
 class BroadcastSender(
     private val deviceName: String,
     private val log: ILog,
-    private val broadcastSendIntervalMillis: Long = 2000
+    private val broadcastSendIntervalMillis: Long = 1000
 ) : SimpleObservable<BroadcastSenderObserver>, SimpleStateable<BroadcastSenderState> {
 
     override val state: AtomicReference<BroadcastSenderState> = AtomicReference(BroadcastSenderState.NoConnection)
