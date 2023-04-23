@@ -55,17 +55,6 @@ import java.io.File
 
 
 
-//sealed class ConnectionStatus {
-//    object Connecting : ConnectionStatus()
-//    object Error : ConnectionStatus()
-//    data class Connected(
-//        val localAddress: InetAddress,
-//        val remoteAddress: InetAddress,
-//        val handshakeModel: FileExploreHandshakeModel,
-//        val fileExploreConnection: FileExploreConnection
-//    ) : ConnectionStatus()
-//}
-
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivity.Companion.FileTransportActivityState>(
     R.layout.file_transport_activity, FileTransportActivityState()) {
 
@@ -219,158 +208,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 }
             }
         }
-
-//        launch(Dispatchers.IO) {
-//
-//            val fileConnection = if (isServer) {
-//                startFileExploreServer(localAddress)
-//            } else {
-//                connectToFileExploreServer(remoteAddress)
-//            }
-//            val handshakeModel = try {
-//                fileConnection.observeConnected().timeout(12 * 1000, TimeUnit.MILLISECONDS).await()
-//            } catch (t: Throwable) {
-//                t.printStackTrace()
-//                null
-//            }
-//
-//            updateState { oldState ->
-//                if (handshakeModel != null) {
-//                    oldState.copy(
-//                        connectionStatus = ConnectionStatus.Connected(
-//                            localAddress = localAddress,
-//                            remoteAddress = remoteAddress,
-//                            handshakeModel = handshakeModel,
-//                            fileExploreConnection = fileConnection
-//                        )
-//                    )
-//                } else {
-//                    oldState.copy(connectionStatus = ConnectionStatus.Error)
-//                }
-//            }.await()
-//
-//            if (handshakeModel != null) {
-//                fileConnection.observeRemoteFileExploreContent()
-//                    .doOnNext {
-//                        when (it) {
-//                            is MessageModel -> {
-//                                val lastMessages = fileTransportScopeData.messagesEvent.firstOrError().blockingGet()
-//                                val message = FileTransportScopeData.Companion.Message(
-//                                    isRemote = true,
-//                                    timeMilli = SystemClock.uptimeMillis(),
-//                                    message = it.message
-//                                )
-//                                fileTransportScopeData.messagesEvent.onNext(lastMessages + message)
-//                            }
-//                            is RequestFilesModel -> {
-//                                runBlocking(context = this.coroutineContext) {
-//                                    val dialog = withContext(Dispatchers.Main) {
-//                                        showLoadingDialog()
-//                                    }
-//                                    fileConnection.sendFileExploreContentToRemote(
-//                                        fileExploreContent = ShareFilesModel(shareFiles = it.requestFiles),
-//                                        waitReplay = true
-//                                    )
-//                                    withContext(Dispatchers.Main) {
-//                                        dialog.cancel()
-//                                        val result = kotlin.runCatching {
-//                                            startSendingFiles(
-//                                                files = it.requestFiles,
-//                                                localAddress = localAddress,
-//                                                pathConverter = defaultPathConverter
-//                                            ).await()
-//                                        }
-//                                        if (result.isFailure) {
-//                                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-//                                        }
-//                                    }
-//                                }
-//
-//                            }
-//                            is RequestFolderModel -> {
-//                                val shareFolder = bindState().firstOrError().blockingGet().shareMyDir
-//                                val parentPath = it.requestPath
-//                                val path = Paths.get(FileConstants.homePathString + parentPath)
-//                                val children = if (shareFolder && Files.isReadable(path)) {
-//                                    Files.list(path)
-//                                        .filter { Files.isReadable(it) }
-//                                        .map { p ->
-//                                            val name = p.fileName.toString()
-//                                            val lastModify = OffsetDateTime.ofInstant(
-//                                                Instant.ofEpochMilli(
-//                                                    Files.getLastModifiedTime(p).toMillis()
-//                                                ), ZoneId.systemDefault()
-//                                            )
-//                                            val pathString =
-//                                                if (parentPath.endsWith(FileConstants.FILE_SEPARATOR)) parentPath + name else parentPath + FileConstants.FILE_SEPARATOR + name
-//                                            if (Files.isDirectory(p)) {
-//                                                Folder(
-//                                                    name = name,
-//                                                    path = pathString,
-//                                                    childCount = p.let {
-//                                                        val s = Files.list(it)
-//                                                        val size = s.count()
-//                                                        s.close()
-//                                                        size
-//                                                    },
-//                                                    lastModify = lastModify
-//                                                )
-//                                            } else {
-//                                                File(
-//                                                    name = name,
-//                                                    path = pathString,
-//                                                    size = Files.size(p),
-//                                                    lastModify = lastModify
-//                                                )
-//                                            }
-//                                        }.toList()
-//
-//                                } else {
-//                                    emptyList()
-//                                }
-//                                fileConnection.sendFileExploreContentToRemote(
-//                                    fileExploreContent = ShareFolderModel(
-//                                        path = parentPath,
-//                                        childrenFolders = children.filterIsInstance<Folder>(),
-//                                        childrenFiles = children.filterIsInstance<File>()
-//                                    )
-//                                )
-//                            }
-//                            is ShareFilesModel -> {
-//                                val result = runCatching {
-//                                    val unit = startDownloadingFiles(it.shareFiles, remoteAddress).blockingGet()
-//                                }
-//                                if (result.isFailure) {
-//                                    Log.e(
-//                                        "Download Files Fail",
-//                                        "Download Files Fail",
-//                                        result.exceptionOrNull()
-//                                    )
-//                                }
-//                            }
-//                            is ShareFolderModel -> {
-//                                fileTransportScopeData.remoteFolderModelEvent.onNext(ResponseFolderModel(
-//                                    path = it.path,
-//                                    childrenFolders = it.childrenFolders,
-//                                    childrenFiles = it.childrenFiles
-//                                ))
-//                            }
-//                            else -> {}
-//                        }
-//                    }
-//                    .ignoreElements()
-//                    .await()
-//            }
-//
-//            withContext(Dispatchers.Main) {
-//                showNoOptionalDialog(
-//                        title = getString(R.string.connection_error_title),
-//                        message = getString(R.string.connection_error_message),
-//                        cancelable = true
-//                ).await()
-//                finish()
-//            }
-//        }
     }
 
     override fun initViews(binding: FileTransportActivityBinding) {
@@ -465,38 +302,9 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
     }
 
-//    override fun onBackPressed() {
-//        launch {
-//            val tabType = withContext(Dispatchers.IO) { bindState().firstOrError().map { it.selectedTabType }.await() }
-//            if (fragments[tabType]?.onBackPressed() != true) {
-//                ioExecutor.execute {
-//                    val status = bindState().firstOrError().map { it.connectionStatus }.blockingGet()
-//                    if (status is ConnectionStatus.Connected) {
-//                        fileTransportScopeData.fileExploreConnection.let {
-//                            if (it.isConnectionActive()) {
-//                                it.close(true)
-//                            }
-//                        }
-//                    }
-//                }
-//                finish()
-//            }
-//        }
-//    }
-
     override fun onDestroy() {
         super.onDestroy()
         fileExplore.closeConnectionIfActive()
-//        ioExecutor.execute {
-//            val status = bindState().firstOrError().map { it.connectionStatus }.blockingGet()
-//            if (status is ConnectionStatus.Connected) {
-//                fileTransportScopeData.fileExploreConnection.let {
-//                    if (it.isConnectionActive()) {
-//                        it.close(false)
-//                    }
-//                }
-//            }
-//        }
     }
 
     fun observeFloatBtnClick(): Observable<Unit> = floatActionBtnClickEvent
