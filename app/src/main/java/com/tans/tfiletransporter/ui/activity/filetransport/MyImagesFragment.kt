@@ -18,7 +18,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
-import com.tans.tfiletransporter.utils.toFileExploreFile
+import com.tans.tfiletransporter.file.toFileExploreFile
 import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel

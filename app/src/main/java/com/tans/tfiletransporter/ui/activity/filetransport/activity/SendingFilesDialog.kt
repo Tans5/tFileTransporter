@@ -10,7 +10,7 @@ import com.tans.tfiletransporter.net.netty.filetransfer.PathConverter
 import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
 import com.tans.tfiletransporter.net.netty.filetransfer.sendFileObservable
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
-import com.tans.tfiletransporter.utils.getSizeString
+import com.tans.tfiletransporter.file.getSizeString
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers

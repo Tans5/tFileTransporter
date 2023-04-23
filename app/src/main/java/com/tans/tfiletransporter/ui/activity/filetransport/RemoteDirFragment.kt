@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.util.Log
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.appcompat.itemClicks
@@ -16,15 +15,11 @@ import com.tans.tfiletransporter.databinding.FileItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
 import com.tans.tfiletransporter.file.*
-import com.tans.tfiletransporter.net.model.FileMd5
-import com.tans.tfiletransporter.net.model.RequestFilesModel
-import com.tans.tfiletransporter.net.model.RequestFolderModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
-import com.tans.tfiletransporter.utils.getFilePathMd5
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
@@ -34,9 +29,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
-import org.kodein.di.instance
-import java.io.File
-import java.nio.file.Paths
 import java.util.*
 
 data class RemoteDirState(

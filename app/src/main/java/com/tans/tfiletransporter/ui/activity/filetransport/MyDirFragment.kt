@@ -1,7 +1,5 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.os.Bundle
-import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.appcompat.widget.PopupMenu
@@ -20,69 +18,33 @@ import com.tans.tfiletransporter.databinding.FileItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
-import com.tans.tfiletransporter.file.FileConstants.homePath
-import com.tans.tfiletransporter.file.FileConstants.homePathString
-import com.tans.tfiletransporter.net.model.FileMd5
-import com.tans.tfiletransporter.net.model.ShareFilesModel
-import com.tans.tfiletransporter.net.netty.filetransfer.defaultPathConverter
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
-import com.tans.tfiletransporter.utils.getFilePathMd5
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
-import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.*
-import kotlin.streams.toList
 import androidx.activity.addCallback
+import com.tans.tfiletransporter.ui.DataBindingAdapter
+import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.launch
+import java.io.File
 
-object FileSelectChange
+class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion.MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
-enum class FileSortType {
-    SortByDate,
-    SortByName
-}
-
-data class MyDirFragmentState(
-    val fileTree: FileTree = newRootFileTree(),
-    val selectedFiles: Set<CommonFileLeaf> = emptySet(),
-    val sortType: FileSortType = FileSortType.SortByName
-)
-
-fun List<CommonFileLeaf>.sortFile(sortType: FileSortType): List<CommonFileLeaf> = when (sortType) {
-    FileSortType.SortByDate -> {
-        sortedByDescending { it.lastModified }
+    private val rootDir: File by lazy {
+        (requireActivity() as FileTransportActivity).rootDirFile
     }
-    FileSortType.SortByName -> {
-        sortedBy { it.name }
-    }
-}
-
-fun List<DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<DirectoryFileLeaf> = when (sortType) {
-    FileSortType.SortByDate -> {
-        sortedByDescending { it.lastModified }
-    }
-    FileSortType.SortByName -> {
-        sortedBy { it.name }
-    }
-}
-
-class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
-
-    // private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
+
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
     private val onBackPressedDispatcher: OnBackPressedDispatcher by instance()
@@ -101,7 +63,14 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
         }
     }
 
+    @Suppress("NAME_SHADOWING")
     override fun initViews(binding: MyDirFragmentBinding) {
+        launch(Dispatchers.IO) {
+            updateState {
+                it.copy(fileTree = createLocalRootTree(rootDir))
+            }.await()
+        }
+
         bindState()
             .map { it.fileTree }
             .distinctUntilChanged()
@@ -110,103 +79,68 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             }
             .bindLife()
 
-        bindState()
-            .map { it.fileTree }
-            .distinctUntilChanged()
-            .observeOn(AndroidSchedulers.mainThread())
-            .flatMapSingle { oldTree ->
-                if (!oldTree.notNeedRefresh) {
-                    updateState { oldState ->
-                        val path = if (oldTree.isRootFileTree()) homePath else Paths.get(homePathString + oldTree.path)
-                        val children = if (Files.isReadable(path)) {
-                            Files.list(path).filter { Files.isReadable(it) }.map { p ->
-                                if (Files.isDirectory(p)) {
-                                    DirectoryYoungLeaf(
-                                            name = p.fileName.toString(),
-                                            childrenCount = Files.list(p).let { s ->
-                                                val size = s.count()
-                                                s.close()
-                                                size
-                                            },
-                                            lastModified = Files.getLastModifiedTime(p).toMillis()
-                                    )
-                                } else {
-                                    FileYoungLeaf(
-                                            name = p.fileName.toString(),
-                                            size = Files.size(p),
-                                            lastModified = Files.getLastModifiedTime(p).toMillis()
-                                    )
-                                }
-                            }.toList()
-                        } else {
-                            emptyList()
-                        }
-                        oldState.copy(
-                            fileTree = children.refreshFileTree(oldTree),
-                            selectedFiles = emptySet()
-                        )
-                    }
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread()).let {
-
-                            if (binding.refreshLayout.isRefreshing) {
-                                it.doFinally {
-                                    binding.refreshLayout.isRefreshing = false
-                                }
-                            } else {
-                                it.loadingDialog(requireActivity())
-                            }
-                        }
-                        .map { }
-                        .onErrorResumeNext {
-                            Log.e(this::class.qualifiedName, it.toString())
-                            Single.just(Unit)
-                        }
-                } else {
-                    Single.just(Unit)
-                }
-            }
-            .bindLife()
-
         render({ it.fileTree }) {
             binding.pathTv.text = it.path
         }.bindLife()
 
-        binding.fileFolderRv.adapter = (SimpleAdapterSpec<DirectoryFileLeaf, FolderItemLayoutBinding>(
+        binding.fileFolderRv.adapter =
+            (SimpleAdapterSpec<FileLeaf.DirectoryFileLeaf, FolderItemLayoutBinding>(
                 layoutId = R.layout.folder_item_layout,
-                bindData = { _, data, binding -> binding.data = data },
+                bindData = { _, data, binding ->
+                    binding.titleTv.text = data.name
+                    DataBindingAdapter.dateText(binding.modifiedDateTv, data.lastModified)
+                    binding.filesCountTv.text = getString(R.string.file_count, data.childrenCount)
+                },
                 dataUpdater = bindState().map { it.fileTree.dirLeafs.sortDir(it.sortType) },
                 differHandler = DifferHandler(
-                        itemsTheSame = { a, b -> a.path == b.path },
-                        contentTheSame = { a, b -> a == b }
+                    itemsTheSame = { a, b -> a.path == b.path },
+                    contentTheSame = { a, b -> a == b }
                 ),
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
-                        updateState { oldState ->
-                            val i = this@MyDirFragment.binding.fileFolderRv.firstVisibleItemPosition()
+                        rxSingle(Dispatchers.IO) {
+                            val i = withContext(Dispatchers.Main) {
+                                this@MyDirFragment.binding.fileFolderRv.firstVisibleItemPosition()
+                            }
                             folderPositionDeque.push(i)
-                            oldState.copy(fileTree = data.newSubTree(oldState.fileTree), selectedFiles = emptySet())
-                        }.map { }
+                            updateState { oldState ->
+                                oldState.copy(
+                                    fileTree = oldState.fileTree.newLocalSubTree(data, rootDir),
+                                    selectedFiles = emptySet()
+                                )
+                            }
+                            Unit
+                        }
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .loadingDialog(requireActivity())
                     }
                 }
-        ) + SimpleAdapterSpec<Pair<CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
+            ) + SimpleAdapterSpec<Pair<FileLeaf.CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
                 layoutId = R.layout.file_item_layout,
-                bindData = { _, data, binding -> binding.data = data.first; binding.isSelect = data.second },
-                dataUpdater = bindState().map { state -> state.fileTree.fileLeafs.sortFile(state.sortType).map { it to state.selectedFiles.contains(it) } },
+                bindData = { _, data, binding ->
+                    binding.titleTv.text = data.first.name
+                    DataBindingAdapter.dateText(binding.modifiedDateTv, data.first.lastModified)
+                    DataBindingAdapter.fileSizeText(binding.filesSizeTv, data.first.size)
+                    binding.fileCb.isChecked = data.second
+                },
+                dataUpdater = bindState().map { state ->
+                    state.fileTree.fileLeafs.sortFile(state.sortType)
+                        .map { it to state.selectedFiles.contains(it) }
+                },
                 differHandler = DifferHandler(
-                        itemsTheSame = { a, b -> a.first.path == b.first.path },
-                        contentTheSame = { a, b -> a == b },
-                        changePayLoad = { d1, d2 ->
-                            if (d1.first == d2.first && d1.second != d2.second) {
-                                FileSelectChange
-                            } else {
-                                null
-                            }
+                    itemsTheSame = { a, b -> a.first.path == b.first.path },
+                    contentTheSame = { a, b -> a == b },
+                    changePayLoad = { d1, d2 ->
+                        if (d1.first == d2.first && d1.second != d2.second) {
+                            FileSelectChange
+                        } else {
+                            null
                         }
+                    }
                 ),
                 bindDataPayload = { _, data, binding, payloads ->
                     if (payloads.contains(FileSelectChange)) {
-                        binding.isSelect = data.second
+                        binding.fileCb.isChecked = data.second
                         true
                     } else {
                         false
@@ -217,15 +151,18 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                         updateState { oldState ->
                             val selectedFiles = oldState.selectedFiles
                             oldState.copy(selectedFiles = if (isSelect) selectedFiles - file else selectedFiles + file)
-                        }.map {  }
+                        }.map { }
                     }
                 }
-        )).toAdapter { list ->
-            val position = recyclerViewScrollChannel.tryReceive().getOrNull()
-            if (position != null && position < list.size) {
-                (binding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
+            )).toAdapter { list ->
+                val position = recyclerViewScrollChannel.tryReceive().getOrNull()
+                if (position != null && position < list.size) {
+                    (binding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
+                        position,
+                        0
+                    )
+                }
             }
-        }
 
         binding.fileFolderRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
                 .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
@@ -270,13 +207,33 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             .bindLife()
 
         binding.refreshLayout.refreshes()
-                .flatMapSingle {
-                    updateState { oldState ->
-                        val newTree = oldState.fileTree.copy(notNeedRefresh = false)
-                        oldState.copy(fileTree = newTree, selectedFiles = emptySet())
+            .observeOn(Schedulers.io())
+            .flatMapSingle {
+                updateState { oldState ->
+                    val oldTree = oldState.fileTree
+                    if (oldTree.isRootFileTree()) {
+                        oldState.copy(
+                            fileTree = createLocalRootTree(rootDir),
+                            selectedFiles = emptySet()
+                        )
+                    } else {
+                        val parentTree = oldTree.parentTree
+                        val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
+                        if (parentTree != null && dirLeaf != null) {
+                            oldState.copy(
+                                fileTree = parentTree.newLocalSubTree(dirLeaf, rootDir),
+                                selectedFiles = emptySet()
+                            )
+                        } else {
+                            oldState.copy(selectedFiles = emptySet())
+                        }
                     }
-                }
-                .bindLife()
+                }.observeOn(AndroidSchedulers.mainThread())
+                    .doFinally {
+                        binding.refreshLayout.isRefreshing = false
+                    }
+            }
+            .bindLife()
 
         val popupMenu = PopupMenu(requireContext(), binding.folderMenuLayout)
         popupMenu.inflate(R.menu.folder_menu)
@@ -285,7 +242,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             .withLatestFrom(bindState())
             .flatMapSingle { (menuItem, state) ->
                 rxSingle {
-                    val newState = withContext(Dispatchers.IO) {
+                    withContext(Dispatchers.IO) {
                         updateState { oldState ->
                             val tree = oldState.fileTree
                             when (menuItem.itemId) {
@@ -335,24 +292,43 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
             .bindLife()
     }
 
-
-    fun onBackPressed(): Boolean {
-        return if (bindState().firstOrError().blockingGet().fileTree.isRootFileTree()) {
-            false
-        } else {
-            updateState { state ->
-                val i = folderPositionDeque.poll()
-                if (i != null) {
-                    recyclerViewScrollChannel.trySend(i).isSuccess
-                }
-                if (state.fileTree.parentTree == null) state else MyDirFragmentState(state.fileTree.parentTree, emptySet())
-            }.bindLife()
-            true
-        }
-    }
-
     companion object {
-        const val FRAGMENT_TAG = "my_dir_fragment_tag"
+
+        object FileSelectChange
+
+        enum class FileSortType {
+            SortByDate,
+            SortByName
+        }
+
+        data class MyDirFragmentState(
+            val fileTree: FileTree = FileTree(
+                dirLeafs = emptyList(),
+                fileLeafs = emptyList(),
+                path = File.separator,
+                parentTree = null
+            ),
+            val selectedFiles: Set<FileLeaf.CommonFileLeaf> = emptySet(),
+            val sortType: FileSortType = FileSortType.SortByName
+        )
+
+        fun List<FileLeaf.CommonFileLeaf>.sortFile(sortType: FileSortType): List<FileLeaf.CommonFileLeaf> = when (sortType) {
+            FileSortType.SortByDate -> {
+                sortedByDescending { it.lastModified }
+            }
+            FileSortType.SortByName -> {
+                sortedBy { it.name }
+            }
+        }
+
+        fun List<FileLeaf.DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<FileLeaf.DirectoryFileLeaf> = when (sortType) {
+            FileSortType.SortByDate -> {
+                sortedByDescending { it.lastModified }
+            }
+            FileSortType.SortByName -> {
+                sortedBy { it.name }
+            }
+        }
     }
 }
 

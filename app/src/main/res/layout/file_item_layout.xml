@@ -4,17 +4,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <data>
-        <variable
-            name="data"
-            type="com.tans.tfiletransporter.file.CommonFileLeaf" />
-
-        <variable
-            name="isSelect"
-            type="Boolean" />
-
-    </data>
-
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -45,7 +34,6 @@
                 android:singleLine="true"
                 android:textColor="@color/black_1"
                 android:textSize="17sp"
-                android:text="@{data.name}"
                 app:layout_constraintBottom_toTopOf="@id/modified_date_tv"
                 app:layout_constraintEnd_toStartOf="@id/file_cb"
                 app:layout_constraintStart_toEndOf="@id/file_iv"
@@ -61,7 +49,6 @@
                 android:layout_marginTop="5dp"
                 android:textColor="@color/gray_1"
                 android:textSize="14sp"
-                app:dateText="@{data.lastModified}"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/files_size_tv"
                 app:layout_constraintStart_toEndOf="@id/file_iv"
@@ -74,7 +61,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginEnd="10dp"
-                app:fileSizeText="@{data.size}"
                 app:layout_constraintBottom_toBottomOf="@id/modified_date_tv"
                 app:layout_constraintEnd_toStartOf="@id/file_cb"
                 app:layout_constraintStart_toEndOf="@id/modified_date_tv"
@@ -87,7 +73,6 @@
                 android:layout_height="35dp"
                 android:layout_marginEnd="10dp"
                 android:clickable="false"
-                android:checked="@{isSelect}"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />

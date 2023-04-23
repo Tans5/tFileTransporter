@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.utils
+package com.tans.tfiletransporter.file
 
 import android.content.Context
 import com.tans.tfiletransporter.R
@@ -17,7 +17,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import kotlin.io.path.name
 
 fun Path.newChildFile(name: String): Path {
     val childPath = Paths.get(toAbsolutePath().toString(), name)

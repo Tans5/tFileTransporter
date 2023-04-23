@@ -35,7 +35,7 @@ import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
-import com.tans.tfiletransporter.utils.scanChildren
+import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -73,12 +73,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         PublishSubject.create<Unit?>().toSerialized()
     }
 
-    private val rootDirFile: File by lazy {
+    val rootDirFile: File by lazy {
         Environment.getExternalStorageDirectory()
-    }
-
-    private val rootDirFileString: String by lazy {
-        rootDirFile.canonicalPath
     }
 
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
