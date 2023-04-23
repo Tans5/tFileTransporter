@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -7,12 +8,13 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
 import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
+import com.tans.tfiletransporter.transferproto.fileexplore.requestMsgSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent
@@ -20,55 +22,65 @@ import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventList
 import org.kodein.di.instance
 
 
-class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportScopeData.Companion.Message>>(
+class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
     R.layout.message_fragment,
-    emptyList()
+    Unit
 ) {
-
-    // private val fileTransportScopeData: FileTransportScopeData by instance()
 
     private val inputMethodManager: InputMethodManager by instance()
 
+    private val fileExplore: FileExplore by instance()
+
+    init {
+
+    }
+
     override fun initViews(binding: MessageFragmentBinding) {
 
-        binding.messageRv.adapter = SimpleAdapterSpec<FileTransportScopeData.Companion.Message, MessageItemLayoutBinding>(
+        binding.messageRv.adapter = SimpleAdapterSpec<FileTransportActivity.Companion.Message, MessageItemLayoutBinding>(
             layoutId = R.layout.message_item_layout,
-            bindData = { _, data, lBinding -> lBinding.message = data },
-            dataUpdater = bindState()
-        ).toAdapter { if (it.isNotEmpty()) { binding.messageRv.scrollToPosition(it.size - 1) } }
-
-//        fileTransportScopeData.messagesEvent
-//            .flatMapSingle { messages ->
-//                updateState {
-//                    messages
-//                }
-//            }
-//            .bindLife()
+            bindData = { _, data, lBinding ->
+                val isRemote = data.fromRemote
+                if (isRemote) {
+                    lBinding.remoteMessageTv.visibility = View.VISIBLE
+                    lBinding.myMessageTv.visibility = View.GONE
+                    lBinding.remoteMessageTv.text = data.msg
+                } else {
+                    lBinding.remoteMessageTv.visibility = View.GONE
+                    lBinding.myMessageTv.visibility = View.VISIBLE
+                    lBinding.myMessageTv.text = data.msg
+                }
+            },
+            dataUpdater = (requireActivity() as FileTransportActivity).observeMessages()
+        ).toAdapter {
+            if (it.isNotEmpty()) {
+                binding.messageRv.scrollToPosition(it.size - 1)
+            }
+        }
 
         binding.sendLayout.clicks()
             .map { binding.editText.text.toString()}
             .filter { it.isNotEmpty() }
             .switchMapSingle { sendingMessage ->
-                rxSingle {
-//                    // val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
-//                    withContext(Dispatchers.IO) {
-//                        fileTransportScopeData.fileExploreConnection.sendFileExploreContentToRemote(
-//                            MessageModel(message = sendingMessage)
-//                        )
-//                    }
-//
-//                    val messages = fileTransportScopeData.messagesEvent.firstOrError().await()
-//                    val newMessage = FileTransportScopeData.Companion.Message(
-//                        isRemote = false,
-//                        timeMilli = System.currentTimeMillis(),
-//                        message = sendingMessage
-//                    )
-//                    fileTransportScopeData.messagesEvent.onNext(messages + newMessage)
-//                    withContext(Dispatchers.Main) {
-//                        binding.editText.text?.clear()
-//                        // dialog.cancel()
-//                        Unit
-//                    }
+                rxSingle(Dispatchers.IO) {
+                    runCatching {
+                        fileExplore.requestMsgSuspend(sendingMessage)
+                    }.onSuccess {
+                        (requireActivity() as FileTransportActivity).updateNewMessage(
+                            FileTransportActivity.Companion.Message(
+                                time = System.currentTimeMillis(),
+                                msg = sendingMessage,
+                                fromRemote = false
+                            )
+                        )
+                        AndroidLog.d(TAG, "Send msg success.")
+                        withContext(Dispatchers.Main) {
+                            binding.editText.text?.clear()
+                            Unit
+                        }
+                    }.onFailure {
+                        AndroidLog.e(TAG, "Send msg fail: $it", it)
+                    }
                 }
             }
             .bindLife()
@@ -84,7 +96,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportS
         KeyboardVisibilityEvent.registerEventListener(requireActivity(), object : KeyboardVisibilityEventListener {
             override fun onVisibilityChanged(isOpen: Boolean) {
                 if (isOpen) {
-                    bindState().firstOrError()
+                    (activity as FileTransportActivity).observeMessages().firstOrError()
                         .doOnSuccess {
                             if (it.isNotEmpty()) {
                                 binding.messageRv.scrollToPosition(it.size - 1)
@@ -97,7 +109,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportS
     }
 
     companion object {
-        const val FRAGMENT_TAG = "message_tag"
+        private const val TAG = "MessageFragment"
     }
 
 }

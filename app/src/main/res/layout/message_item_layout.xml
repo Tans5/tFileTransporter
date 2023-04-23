@@ -4,13 +4,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <data>
-        <import type="android.view.View" />
-        <variable
-            name="message"
-            type="com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData.Companion.Message" />
-    </data>
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -26,14 +19,12 @@
             android:layout_marginBottom="10dp"
             android:textColor="@color/white"
             android:textSize="14sp"
-            android:text="@{message.message}"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:visibility="@{message.isRemote ? View.VISIBLE : View.GONE}"
             android:textIsSelectable="true"
             tools:visibility="gone"
             tools:text="3123123213131313131231231231321313123123123123123123131321312312"/>
@@ -49,8 +40,6 @@
             android:layout_marginBottom="10dp"
             android:textColor="@color/black_1"
             android:textSize="14sp"
-            android:text="@{message.message}"
-            android:visibility="@{message.isRemote ? View.GONE : View.VISIBLE}"
             android:textIsSelectable="true"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="1"

@@ -14,7 +14,9 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreObserver
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreRequestHandler
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreState
 import com.tans.tfiletransporter.transferproto.fileexplore.Handshake
 import com.tans.tfiletransporter.transferproto.fileexplore.bindSuspend
 import com.tans.tfiletransporter.transferproto.fileexplore.connectSuspend
@@ -25,6 +27,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirResp
 import com.tans.tfiletransporter.transferproto.fileexplore.model.SendFilesReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.SendFilesResp
+import com.tans.tfiletransporter.transferproto.fileexplore.model.SendMsgReq
 import com.tans.tfiletransporter.transferproto.fileexplore.waitClose
 import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
 import com.tans.tfiletransporter.ui.activity.BaseActivity
@@ -175,6 +178,20 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     withContext(Dispatchers.Main) { loadingDialog.dismiss() }
                     AndroidLog.d(TAG, "Handshake success!!")
                     updateState { it.copy(handshake = Optional.ofNullable(handshakeResult.getOrNull())) }.await()
+                    fileExplore.addObserver(object : FileExploreObserver {
+                        override fun onNewState(state: FileExploreState) {}
+                        override fun onNewMsg(msg: SendMsgReq) {
+                            launch {
+                                updateNewMessage(
+                                    Message(
+                                        time = msg.sendTime,
+                                        msg = msg.msg,
+                                        fromRemote = true
+                                    )
+                                )
+                            }
+                        }
+                    })
                     fileExplore.waitClose()
                     withContext(Dispatchers.Main) {
                         showNoOptionalDialog(
@@ -488,6 +505,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     fun observeFloatBtnClick(): Observable<Unit> = floatActionBtnClickEvent
 
+    fun observeMessages(): Observable<List<Message>> = bindState().map { it.messages }.distinctUntilChanged()
+
+    suspend fun updateNewMessage(msg: Message) {
+        updateState { it.copy(messages = it.messages + msg) }.await()
+    }
+
     companion object {
 
         private const val TAG = "FileTransporterActivity"
@@ -505,11 +528,18 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
         private fun Intent.getIsServer(): Boolean = getBooleanExtra(IS_SERVER_EXTRA_KEY, false)
 
+        data class Message(
+            val time: Long,
+            val msg: String,
+            val fromRemote: Boolean
+        )
+
         data class FileTransportActivityState(
             val selectedTabType: DirTabType = DirTabType.MyApps,
             val handshake: Optional<Handshake> = Optional.empty(),
             // val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting,
-            val shareMyDir: Boolean = false
+            val shareMyDir: Boolean = false,
+            val messages: List<Message> = emptyList()
         )
 
         enum class DirTabType {

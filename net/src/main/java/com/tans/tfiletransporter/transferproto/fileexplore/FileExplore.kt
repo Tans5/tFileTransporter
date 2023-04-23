@@ -447,7 +447,7 @@ class FileExplore(
     fun requestMsg(msg: String,  simpleCallback: SimpleCallback<Unit>) {
         assertState(simpleCallback = simpleCallback) { task, _ ->
             task.requestSimplify(
-                type = FileExploreDataType.SendFilesReq.type,
+                type = FileExploreDataType.SendMsgReq.type,
                 request = SendMsgReq(sendTime = System.currentTimeMillis(), msg = msg),
                 callback = object : IClientManager.RequestCallback<Unit> {
 
