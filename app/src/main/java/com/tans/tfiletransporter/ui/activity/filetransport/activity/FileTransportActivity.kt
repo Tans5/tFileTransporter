@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport.activity
 
 import android.content.Context
 import android.content.Intent
+import android.os.Environment
 import android.view.View
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
@@ -12,7 +13,6 @@ import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.net.model.*
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExploreRequestHandler
 import com.tans.tfiletransporter.transferproto.fileexplore.Handshake
@@ -32,6 +32,7 @@ import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.*
+import com.tans.tfiletransporter.utils.scanChildren
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -47,6 +48,7 @@ import org.kodein.di.bind
 import org.kodein.di.singleton
 import java.net.InetAddress
 import java.util.Optional
+import java.io.File
 
 
 
@@ -68,15 +70,18 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         PublishSubject.create<Unit?>().toSerialized()
     }
 
+    private val rootDirFile: File by lazy {
+        Environment.getExternalStorageDirectory()
+    }
+
+    private val rootDirFileString: String by lazy {
+        rootDirFile.canonicalPath
+    }
+
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
-                // TODO: Remote scan dir request.
-                return ScanDirResp(
-                    path = request.requestPath,
-                    childrenDirs = emptyList(),
-                    childrenFiles = emptyList()
-                )
+                return request.scanChildren(rootDirFile)
             }
         }
     }

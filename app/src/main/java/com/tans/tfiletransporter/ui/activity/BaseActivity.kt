@@ -12,6 +12,7 @@ import com.tans.tfiletransporter.core.BindLife
 import com.tans.tfiletransporter.core.Stateable
 import io.reactivex.subjects.Subject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import org.kodein.di.*
@@ -27,7 +28,7 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     class ActivityViewModel<State>(defaultState: State) : ViewModel(),
         BindLife by BindLife(),
-        CoroutineScope by MainScope(),
+        CoroutineScope by CoroutineScope(Dispatchers.Main),
         Stateable<State> by Stateable(defaultState) {
 
         fun clearRxLife() {
