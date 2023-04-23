@@ -353,7 +353,9 @@ class FileExplore(
                             simpleCallback.onSuccess(handshake)
                             newState(FileExploreState.Active(handshake))
                         } else {
-                            log.e(TAG, "Handshake error: version error $d")
+                            val msg = "Handshake error: state error $currentState, $d"
+                            simpleCallback.onError(msg)
+                            log.e(TAG, msg)
                         }
                     }
 
