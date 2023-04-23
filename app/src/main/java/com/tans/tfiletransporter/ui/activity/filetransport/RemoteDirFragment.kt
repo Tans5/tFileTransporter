@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.jakewharton.rxbinding3.view.clicks
+import com.tans.rxutils.switchThread
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -95,7 +96,11 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
     @Suppress("NAME_SHADOWING")
     override fun initViews(binding: RemoteDirFragmentBinding) {
 
-        launch(Dispatchers.IO) { scanRootDir() }
+        rxSingle(Dispatchers.IO) {
+            scanRootDir()
+        }.observeOn(AndroidSchedulers.mainThread())
+            .loadingDialog(requireActivity())
+            .bindLife()
 
         bindState()
             .map { it.fileTree }
