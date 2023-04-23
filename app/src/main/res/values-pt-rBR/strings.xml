@@ -14,8 +14,8 @@
     <string name="file_count">%d arquivo(s)</string>
 
     <string name="connection_error_title">Erro da conexão</string>
-    <string name="connection_connect_error">Create connect fail.</string>
-    <string name="connection_handshake_error">Handshake error.</string>
+    <string name="connection_connect_error">Create connect error: %s</string>
+    <string name="connection_handshake_error">Handshake error: %s</string>
     <string name="connection_error_message">A conexão foi interrompida, por favor reconecte.</string>
 
     <string name="downloading_files_dialog_title">Baixando arquivo(s) (%d/%d)</string>

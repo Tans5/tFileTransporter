@@ -191,7 +191,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         loadingDialog.dismiss()
                         showNoOptionalDialog(
                             title = getString(R.string.connection_error_title),
-                            message = getString(R.string.connection_handshake_error)
+                            message = getString(R.string.connection_handshake_error, handshakeResult.exceptionOrNull()?.message ?: "")
                         ).await()
                         finish()
                     }
@@ -202,7 +202,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     loadingDialog.dismiss()
                     showNoOptionalDialog(
                         title = getString(R.string.connection_error_title),
-                        message = getString(R.string.connection_connect_error)
+                        message = getString(R.string.connection_connect_error, connectResult.exceptionOrNull()?.message ?: "")
                     ).await()
                     finish()
                 }
