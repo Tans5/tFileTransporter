@@ -155,7 +155,14 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
                     DataBindingAdapter.fileSizeText(binding.filesSizeTv, data.first.size)
                     binding.fileCb.isChecked = data.second
                 },
-                dataUpdater = bindState().map { state -> state.fileTree.get().fileLeafs.sortFile(state.sortType).map { it to state.selectedFiles.contains(it) } },
+                dataUpdater = bindState().map { state ->
+                    if (state.fileTree.isPresent) {
+                        state.fileTree.get().fileLeafs.sortFile(state.sortType)
+                            .map { it to state.selectedFiles.contains(it) }
+                    } else {
+                        emptyList()
+                    }
+                },
                 differHandler = DifferHandler(
                         itemsTheSame = { a, b -> a.first.path == b.first.path },
                         contentTheSame = { a, b -> a == b },
