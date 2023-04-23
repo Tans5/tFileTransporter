@@ -29,7 +29,9 @@ fun File.childrenLeafs(rootDirString: String): Pair<List<FileLeaf.DirectoryFileL
         try {
             if (c.canRead()) {
                 if (c.isFile) {
-                    resultFiles.add(c.toFileLeaf(rootDirString))
+                    if (c.length() > 0) {
+                        resultFiles.add(c.toFileLeaf(rootDirString))
+                    }
                 } else {
                     resultDirs.add(c.toDirLeaf(rootDirString))
                 }

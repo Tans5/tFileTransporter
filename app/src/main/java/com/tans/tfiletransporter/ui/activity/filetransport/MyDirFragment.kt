@@ -30,6 +30,9 @@ import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.util.*
 import androidx.activity.addCallback
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
+import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -62,6 +65,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
             }
         }
     }
+
+    private val fileExplore: FileExplore by instance()
 
     @Suppress("NAME_SHADOWING")
     override fun initViews(binding: MyDirFragmentBinding) {
@@ -108,7 +113,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                                     fileTree = oldState.fileTree.newLocalSubTree(data, rootDir),
                                     selectedFiles = emptySet()
                                 )
-                            }
+                            }.await()
                             Unit
                         }
                             .observeOn(AndroidSchedulers.mainThread())
@@ -179,27 +184,15 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
             .withLatestFrom(bindState().map { it.selectedFiles })
             .filter { it.first == FileTransportActivity.Companion.DirTabType.MyDir && it.second.isNotEmpty() }
             .flatMapSingle { (_, selectedFiles) ->
-                rxSingle {
-//                    val fileConnection = scopeData.fileExploreConnection
-//                    val md5Files = selectedFiles.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
-//                        homePathString, it.path).getFilePathMd5(), file = it.toFile()) }
-//                    fileConnection.sendFileExploreContentToRemote(
-//                        fileExploreContent = ShareFilesModel(shareFiles = md5Files),
-//                        waitReplay = true
-//                    )
-//                    withContext(Dispatchers.Main) {
-//                        val result = kotlin.runCatching {
-//                            requireActivity().startSendingFiles(
-//                                files = md5Files,
-//                                localAddress = scopeData.localAddress,
-//                                pathConverter = defaultPathConverter
-//                            ).await()
-//                        }
-//                        if (result.isFailure) {
-//                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-//                        }
-//                    }
-
+                rxSingle(Dispatchers.IO) {
+                    runCatching {
+                        val exploreFiles = selectedFiles.toList().toExploreFiles()
+                        fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles)
+                    }.onSuccess {
+                        AndroidLog.d(TAG, "Request send files success: $it")
+                    }.onFailure {
+                        AndroidLog.e(TAG, "Request send files fail: $it", it)
+                    }
                 }.flatMap {
                     updateState { state -> state.copy(selectedFiles = emptySet()) }
                 }
@@ -293,6 +286,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
     }
 
     companion object {
+
+        private const val TAG = "MyDirFragment"
 
         object FileSelectChange
 

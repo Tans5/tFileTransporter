@@ -114,7 +114,9 @@ fun ScanDirReq.scanChildren(rootDir: File): ScanDirResp {
                     if (c.isDirectory) {
                         childrenDirs.add(c.toFileExploreDir(rootDirString))
                     } else {
-                        childrenFiles.add(c.toFileExploreFile(rootDirString))
+                        if (c.length() > 0) {
+                            childrenFiles.add(c.toFileExploreFile(rootDirString))
+                        }
                     }
                 }
             }
@@ -163,5 +165,16 @@ fun File.toFileExploreFile(rootDirString: String): FileExploreFile {
         )
     } else {
         error("${this.canonicalPath} is not file")
+    }
+}
+
+fun List<FileLeaf.CommonFileLeaf>.toExploreFiles(): List<FileExploreFile> {
+    return this.map {
+        FileExploreFile(
+            name = it.name,
+            path = it.path,
+            size = it.size,
+            lastModify = it.lastModified
+        )
     }
 }
