@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
-import android.util.Log
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
@@ -14,43 +13,33 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
-import com.tans.tfiletransporter.file.FileConstants
-import com.tans.tfiletransporter.net.commonNetBufferPool
-import com.tans.tfiletransporter.net.model.File
-import com.tans.tfiletransporter.net.model.FileMd5
-import com.tans.tfiletransporter.net.model.ShareFilesModel
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
+import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
-import com.tans.tfiletransporter.utils.getFilePathMd5
-import com.tans.tfiletransporter.utils.readFrom
+import com.tans.tfiletransporter.utils.toFileExploreFile
 import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
-import kotlinx.coroutines.withContext
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
+import okio.buffer
+import okio.source
 import org.kodein.di.instance
-import org.threeten.bp.OffsetDateTime
-import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.io.File
 
-data class MyImagesState(
-    val images: List<QueryMediaItem.Image> = emptyList(),
-    val selectedImages: Set<QueryMediaItem.Image> = emptySet()
-)
 
-object ImageSelectChange
-
-const val IMAGE_CACHE_DIR = "image_cache"
-
-class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesState>(
+class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFragment.Companion.MyImagesState>(
     layoutId = R.layout.my_images_fragment_layout,
     default = MyImagesState()
 ) {
 
-    // private val scopeData: FileTransportScopeData by instance()
+    private val fileExplore: FileExplore by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     override fun initViews(binding: MyImagesFragmentLayoutBinding) {
@@ -104,19 +93,6 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                 }
             }
 
-//        val horizontalDivider = MarginDividerItemDecoration.Companion.Builder()
-//            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, size = requireContext().dp2px(6)))
-//            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Horizontal)
-//            .build()
-//
-//        val verticalDivider = MarginDividerItemDecoration.Companion.Builder()
-//            .divider(MarginDividerItemDecoration.Companion.ColorDivider(color = Color.TRANSPARENT, size = requireContext().dp2px(6)))
-//            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Vertical)
-//            .dividerController(IgnoreGridLastRowVerticalDividerController(rowSize = 2))
-//            .build()
-//        binding.myImagesRv.addItemDecoration(horizontalDivider)
-//        binding.myImagesRv.addItemDecoration(verticalDivider)
-
         binding.imagesRefreshLayout.refreshes()
             .switchMapSingle {
                 refreshImages()
@@ -135,36 +111,29 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
                     .firstOrError()
             }
             .filter { it == FileTransportActivity.Companion.DirTabType.MyImages }
-            .observeOn(Schedulers.io())
             .switchMapSingle {
-                rxSingle {
-//                    val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
-//                    if (selectImages.isNotEmpty()) {
-//                        clearImageCaches()
-//
-//                        updateState { it.copy(selectedImages = emptySet()) }.await()
-//                        val fileConnection = scopeData.fileExploreConnection
-//                        val md5Files = selectImages.createCatches().filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
-//                            FileConstants.homePathString, it.path).getFilePathMd5(), file = it) }
-//                        fileConnection.sendFileExploreContentToRemote(
-//                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
-//                            waitReplay = true
-//                        )
-//                        withContext(Dispatchers.Main) {
-//                            val result = kotlin.runCatching {
-//                                requireActivity().startSendingFiles(
-//                                    files = md5Files,
-//                                    localAddress = scopeData.localAddress,
-//                                    pathConverter = { file -> Paths.get(file.path) }
-//                                ).await()
-//                            }
-//                            if (result.isFailure) {
-//                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-//                            }
-//                        }
-//                    }
+                rxSingle(Dispatchers.IO) {
+                    val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
+                    if (selectImages.isEmpty()) return@rxSingle
+                    clearImageCaches()
+                    val files = selectImages.createCatches()
+                    val exploreFiles = files.map { it.toFileExploreFile("") }
+                    if (exploreFiles.isNotEmpty()) {
+                        runCatching {
+                            fileExplore.requestSendFilesSuspend(
+                                sendFiles = exploreFiles
+                            )
+                        }.onSuccess {
+                            AndroidLog.d(TAG, "Request send image success")
+                            // TODO: Send images.
+                        }.onFailure {
+                            AndroidLog.e(TAG, "Request send image fail.")
+                        }
+                    } else {
+                        AndroidLog.e(TAG, "Selected files is empty.")
+                    }
+                    updateState { it.copy(selectedImages = emptySet()) }.await()
                 }.onErrorResumeNext {
-                    Log.e("Send Images", "Send Images Error", it)
                     Single.just(Unit)
                 }
             }
@@ -181,39 +150,31 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
             }
         }
 
-    private suspend fun Set<QueryMediaItem.Image>.createCatches(): List<File> {
-        val catchDirPath = Paths.get(requireActivity().cacheDir.toString(), IMAGE_CACHE_DIR).toAbsolutePath()
-        if (!Files.exists(catchDirPath)) {
-            Files.createDirectory(catchDirPath)
+    private fun Set<QueryMediaItem.Image>.createCatches(): List<File> {
+        val cacheDir = File(requireActivity().cacheDir, IMAGE_CACHE_DIR)
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs()
         }
-        val buffer = commonNetBufferPool.requestBuffer()
-        return try {
-            filter { it.size > 1024 }
-                .map { image ->
-                    val filePath = Paths.get(catchDirPath.toString(), image.displayName)
-                    if (Files.exists(filePath)) {
-                        Files.delete(filePath)
-                    }
-                    Files.createFile(filePath)
-                    val writerChannel = Channels.newChannel(Files.newOutputStream(filePath))
-                    val readerChannel = Channels.newChannel(requireActivity().contentResolver.openInputStream(image.uri))
-                    writerChannel.use {
-                        readerChannel.use {
-                            writerChannel.readFrom(
-                                readable = readerChannel,
-                                limit = image.size,
-                                buffer = buffer
-                            )
+        val result = mutableListOf<File>()
+        for (image in this) {
+            try {
+                val imageFile = File(cacheDir, image.displayName)
+                if (!imageFile.exists()) {
+                    imageFile.createNewFile()
+                }
+                FileSystem.SYSTEM.sink(imageFile.toOkioPath()).buffer().use { sink ->
+                    requireActivity().contentResolver.openInputStream(image.uri)!!.use { inputStream ->
+                        inputStream.source().buffer().use { source ->
+                            sink.writeAll(source)
                         }
                     }
-                    File(name = image.displayName,
-                            path = filePath.toAbsolutePath().toString(),
-                            size = image.size,
-                            lastModify = OffsetDateTime.now())
-                }.toList()
-        } finally {
-            commonNetBufferPool.recycleBuffer(buffer)
+                }
+                result.add(imageFile)
+            } catch (e: Throwable) {
+                AndroidLog.e(TAG, "Create cache image fail: $e", e)
+            }
         }
+        return result
     }
 
     private fun clearImageCaches() {
@@ -227,6 +188,14 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
     }
 
     companion object {
-        const val FRAGMENT_TAG = "my_images_fragment_tag"
+        private const val TAG = "MyImagesFragment"
+        data class MyImagesState(
+            val images: List<QueryMediaItem.Image> = emptyList(),
+            val selectedImages: Set<QueryMediaItem.Image> = emptySet()
+        )
+
+        object ImageSelectChange
+
+        const val IMAGE_CACHE_DIR = "image_cache"
     }
 }
