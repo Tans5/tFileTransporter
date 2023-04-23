@@ -7,7 +7,6 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MessageFragmentBinding
 import com.tans.tfiletransporter.databinding.MessageItemLayoutBinding
-import com.tans.tfiletransporter.net.model.MessageModel
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportScopeData
@@ -26,7 +25,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportS
     emptyList()
 ) {
 
-    private val fileTransportScopeData: FileTransportScopeData by instance()
+    // private val fileTransportScopeData: FileTransportScopeData by instance()
 
     private val inputMethodManager: InputMethodManager by instance()
 
@@ -38,38 +37,38 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, List<FileTransportS
             dataUpdater = bindState()
         ).toAdapter { if (it.isNotEmpty()) { binding.messageRv.scrollToPosition(it.size - 1) } }
 
-        fileTransportScopeData.messagesEvent
-            .flatMapSingle { messages ->
-                updateState {
-                    messages
-                }
-            }
-            .bindLife()
+//        fileTransportScopeData.messagesEvent
+//            .flatMapSingle { messages ->
+//                updateState {
+//                    messages
+//                }
+//            }
+//            .bindLife()
 
         binding.sendLayout.clicks()
             .map { binding.editText.text.toString()}
             .filter { it.isNotEmpty() }
             .switchMapSingle { sendingMessage ->
                 rxSingle {
-                    // val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
-                    withContext(Dispatchers.IO) {
-                        fileTransportScopeData.fileExploreConnection.sendFileExploreContentToRemote(
-                            MessageModel(message = sendingMessage)
-                        )
-                    }
-
-                    val messages = fileTransportScopeData.messagesEvent.firstOrError().await()
-                    val newMessage = FileTransportScopeData.Companion.Message(
-                        isRemote = false,
-                        timeMilli = System.currentTimeMillis(),
-                        message = sendingMessage
-                    )
-                    fileTransportScopeData.messagesEvent.onNext(messages + newMessage)
-                    withContext(Dispatchers.Main) {
-                        binding.editText.text?.clear()
-                        // dialog.cancel()
-                        Unit
-                    }
+//                    // val dialog = withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
+//                    withContext(Dispatchers.IO) {
+//                        fileTransportScopeData.fileExploreConnection.sendFileExploreContentToRemote(
+//                            MessageModel(message = sendingMessage)
+//                        )
+//                    }
+//
+//                    val messages = fileTransportScopeData.messagesEvent.firstOrError().await()
+//                    val newMessage = FileTransportScopeData.Companion.Message(
+//                        isRemote = false,
+//                        timeMilli = System.currentTimeMillis(),
+//                        message = sendingMessage
+//                    )
+//                    fileTransportScopeData.messagesEvent.onNext(messages + newMessage)
+//                    withContext(Dispatchers.Main) {
+//                        binding.editText.text?.clear()
+//                        // dialog.cancel()
+//                        Unit
+//                    }
                 }
             }
             .bindLife()

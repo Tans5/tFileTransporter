@@ -10,11 +10,10 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
+import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.utils.showToastShort
 import com.tans.tfiletransporter.utils.toBytes
-import io.reactivex.Single
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,13 +87,16 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                         }
                     }.onSuccess {
                         withContext(Dispatchers.Main) {
-                            // TODO:
-                            requireActivity().showToastShort(it.toString())
+                            startActivity(FileTransportActivity.getIntent(
+                                context = requireContext(),
+                                localAddress = localAddress,
+                                remoteAddress = it.remoteAddress.address,
+                                remoteDeviceInfo = it.deviceName,
+                                isServer = false
+                            ))
                         }
                     }.onFailure {
-                        withContext(Dispatchers.Main) {
-                            requireActivity().showToastShort(it.message ?: "")
-                        }
+                        AndroidLog.e(TAG, "Search server error: ${it.message}")
                     }
                 }
             }
@@ -114,13 +116,16 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                         }
                     }.onSuccess {
                         withContext(Dispatchers.Main) {
-                            // TODO:
-                            requireActivity().showToastShort(it.toString())
+                            startActivity(FileTransportActivity.getIntent(
+                                context = requireContext(),
+                                localAddress = localAddress,
+                                remoteAddress = it.remoteAddress.address,
+                                remoteDeviceInfo = it.deviceName,
+                                isServer = true
+                            ))
                         }
                     }.onFailure {
-                        withContext(Dispatchers.Main) {
-                            requireActivity().showToastShort(it.message ?: "")
-                        }
+                        AndroidLog.e(TAG, "Wait client error: ${it.message}")
                     }
                     Unit
                 }
@@ -134,6 +139,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
     }
 
     companion object {
+        private const val TAG = "BroadcastConnectionFragment"
         data class BroadcastState(
             val address: Optional<InetAddress> = Optional.empty()
         )

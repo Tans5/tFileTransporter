@@ -35,6 +35,7 @@ import kotlinx.coroutines.rx2.await
 import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
+import java.io.File
 import java.nio.file.Paths
 import java.util.*
 
@@ -46,7 +47,7 @@ data class RemoteDirState(
 
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
 
-    private val scopeData: FileTransportScopeData by instance()
+    // private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
@@ -54,7 +55,8 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
     override fun initViews(binding: RemoteDirFragmentBinding) {
 
         updateState {
-            RemoteDirState(Optional.of(newRootFileTree(path = scopeData.handshakeModel.pathSeparator)), emptySet())
+            // TODO: File Separator
+            RemoteDirState(Optional.of(newRootFileTree(path = "/")), emptySet())
         }.bindLife()
 
         bindState()
@@ -66,48 +68,48 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
             .flatMapSingle { oldTree ->
                 if (!oldTree.notNeedRefresh) {
                     rxSingle {
-                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
-                            RequestFolderModel(
-                                requestPath = oldTree.path
-                            )
-                        )
-                        scopeData.remoteFolderModelEvent
-                            .filter { it.path == oldTree.path }
-                            .firstOrError()
-                            .flatMap { remoteFolder ->
-                                updateState { oldState ->
-                                    val children: List<YoungLeaf> = remoteFolder.childrenFolders
-                                        .map {
-                                            DirectoryYoungLeaf(
-                                                name = it.name,
-                                                childrenCount = it.childCount,
-                                                lastModified = it.lastModify.toInstant()
-                                                    .toEpochMilli()
-                                            )
-                                        } + remoteFolder.childrenFiles
-                                        .map {
-                                            FileYoungLeaf(
-                                                name = it.name,
-                                                size = it.size,
-                                                lastModified = it.lastModify.toInstant()
-                                                    .toEpochMilli()
-                                            )
-                                        }
-                                    oldState.copy(
-                                        fileTree = Optional.of(
-                                            children.refreshFileTree(
-                                                parentTree = oldTree,
-                                                dirSeparator = scopeData.handshakeModel.pathSeparator
-                                            )
-                                        ), selectedFiles = emptySet()
-                                    )
-                                }.map {
-
-                                }.onErrorResumeNext {
-                                    Log.e(this::class.qualifiedName, it.toString())
-                                    Single.just(Unit)
-                                }
-                            }.await()
+//                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
+//                            RequestFolderModel(
+//                                requestPath = oldTree.path
+//                            )
+//                        )
+//                        scopeData.remoteFolderModelEvent
+//                            .filter { it.path == oldTree.path }
+//                            .firstOrError()
+//                            .flatMap { remoteFolder ->
+//                                updateState { oldState ->
+//                                    val children: List<YoungLeaf> = remoteFolder.childrenFolders
+//                                        .map {
+//                                            DirectoryYoungLeaf(
+//                                                name = it.name,
+//                                                childrenCount = it.childCount,
+//                                                lastModified = it.lastModify.toInstant()
+//                                                    .toEpochMilli()
+//                                            )
+//                                        } + remoteFolder.childrenFiles
+//                                        .map {
+//                                            FileYoungLeaf(
+//                                                name = it.name,
+//                                                size = it.size,
+//                                                lastModified = it.lastModify.toInstant()
+//                                                    .toEpochMilli()
+//                                            )
+//                                        }
+//                                    oldState.copy(
+//                                        fileTree = Optional.of(
+//                                            children.refreshFileTree(
+//                                                parentTree = oldTree,
+//                                                dirSeparator = scopeData.handshakeModel.pathSeparator
+//                                            )
+//                                        ), selectedFiles = emptySet()
+//                                    )
+//                                }.map {
+//
+//                                }.onErrorResumeNext {
+//                                    Log.e(this::class.qualifiedName, it.toString())
+//                                    Single.just(Unit)
+//                                }
+//                            }.await()
                     }
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
@@ -191,33 +193,33 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
                 .build()
         )
 
-        scopeData.floatBtnEvent
+        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
             }
             .withLatestFrom(bindState().map { it.selectedFiles })
-            .filter { it.first == DirTabType.RemoteDir && it.second.isNotEmpty() }
+            .filter { it.first == FileTransportActivity.Companion.DirTabType.RemoteDir && it.second.isNotEmpty() }
             .map { it.second }
             .observeOn(AndroidSchedulers.mainThread())
             .flatMapSingle {
                 rxSingle {
                     val dialog =
                         withContext(Dispatchers.Main) { requireActivity().showLoadingDialog() }
-                    withContext(Dispatchers.IO) {
-                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
-                            fileExploreContent = RequestFilesModel(
-                                requestFiles = it.map {
-                                    FileMd5(
-                                        md5 = Paths.get(
-                                            FileConstants.homePathString, it.path
-                                        ).getFilePathMd5(), file = it.toFile()
-                                    )
-                                }
-                            ),
-                            waitReplay = true
-                        )
-                    }
+//                    withContext(Dispatchers.IO) {
+//                        scopeData.fileExploreConnection.sendFileExploreContentToRemote(
+//                            fileExploreContent = RequestFilesModel(
+//                                requestFiles = it.map {
+//                                    FileMd5(
+//                                        md5 = Paths.get(
+//                                            FileConstants.homePathString, it.path
+//                                        ).getFilePathMd5(), file = it.toFile()
+//                                    )
+//                                }
+//                            ),
+//                            waitReplay = true
+//                        )
+//                    }
                     updateState {
                         it.copy(selectedFiles = emptySet())
                     }.await()

@@ -54,15 +54,9 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
         default = MyAppsState()
 ) {
 
-    private val scopeData: FileTransportScopeData by instance()
-
     override fun initViews(binding: MyAppsFragmentLayoutBinding) {
 
-        refreshApps()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .loadingDialog(requireActivity())
-                .bindLife()
+        refreshApps().subscribeOn(Schedulers.io()).bindLife()
 
         binding.appsRefreshLayout.refreshes()
                 .switchMapSingle {
@@ -117,47 +111,47 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsState>(
                 .build()
         )
 
-        scopeData.floatBtnEvent
+        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
             }
-            .filter { it == DirTabType.MyApps }
+            .filter { it == FileTransportActivity.Companion.DirTabType.MyApps }
             .observeOn(Schedulers.io())
             .switchMapSingle {
                 rxSingle {
-                    val selectedApps = bindState().firstOrError().map { it.selected }.await()
-                    val files =
-                        selectedApps.filter { Files.isReadable(Paths.get(it.sourceDir)) }.map {
-                            File(
-                                name = "${it.name}_${it.packageName}.apk",
-                                path = it.sourceDir,
-                                size = it.appSize,
-                                lastModify = OffsetDateTime.now()
-                            )
-                        }
-                    if (files.isNotEmpty()) {
-                        val fileConnection = scopeData.fileExploreConnection
-                        val md5Files = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
-                            FileConstants.homePathString, it.path).getFilePathMd5(), it) }
-                        fileConnection.sendFileExploreContentToRemote(
-                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
-                            waitReplay = true
-                        )
-                        withContext(Dispatchers.Main) {
-                            val result = kotlin.runCatching {
-                                requireActivity().startSendingFiles(
-                                    files = md5Files,
-                                    localAddress = scopeData.localAddress,
-                                    pathConverter = { file -> Paths.get(file.path) }
-                                ).await()
-                            }
-                            if (result.isFailure) {
-                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-                            }
-                        }
-                        updateState { it.copy(selected = emptySet()) }.await()
-                    }
+//                    val selectedApps = bindState().firstOrError().map { it.selected }.await()
+//                    val files =
+//                        selectedApps.filter { Files.isReadable(Paths.get(it.sourceDir)) }.map {
+//                            File(
+//                                name = "${it.name}_${it.packageName}.apk",
+//                                path = it.sourceDir,
+//                                size = it.appSize,
+//                                lastModify = OffsetDateTime.now()
+//                            )
+//                        }
+//                    if (files.isNotEmpty()) {
+//                        val fileConnection = scopeData.fileExploreConnection
+//                        val md5Files = files.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+//                            FileConstants.homePathString, it.path).getFilePathMd5(), it) }
+//                        fileConnection.sendFileExploreContentToRemote(
+//                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+//                            waitReplay = true
+//                        )
+//                        withContext(Dispatchers.Main) {
+//                            val result = kotlin.runCatching {
+//                                requireActivity().startSendingFiles(
+//                                    files = md5Files,
+//                                    localAddress = scopeData.localAddress,
+//                                    pathConverter = { file -> Paths.get(file.path) }
+//                                ).await()
+//                            }
+//                            if (result.isFailure) {
+//                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+//                            }
+//                        }
+//                        updateState { it.copy(selected = emptySet()) }.await()
+//                    }
                 }.onErrorResumeNext {
                     Single.just(Unit)
                 }

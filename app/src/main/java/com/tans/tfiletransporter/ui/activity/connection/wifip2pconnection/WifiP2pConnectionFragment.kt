@@ -8,7 +8,6 @@ import android.net.wifi.p2p.*
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -28,6 +27,7 @@ import com.tans.tfiletransporter.transferproto.p2pconn.transferFileSuspend
 import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.activity.BaseFragment
+import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -318,8 +318,13 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                             isReceiver: Boolean
                                         ) {
                                             activity?.runOnUiThread {
-                                                // TODO: Transfer file
-                                                Toast.makeText(context, "TransferFile: $isReceiver", Toast.LENGTH_SHORT).show()
+                                                startActivity(FileTransportActivity.getIntent(
+                                                    context = requireContext(),
+                                                    localAddress = handshake.localAddress.address,
+                                                    remoteAddress = handshake.remoteAddress.address,
+                                                    remoteDeviceInfo = handshake.remoteDeviceName,
+                                                    isServer = isReceiver
+                                                ))
                                             }
                                         }
                                     })

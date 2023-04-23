@@ -75,7 +75,7 @@ fun List<DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<DirectoryFileL
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
-    private val scopeData: FileTransportScopeData by instance()
+    // private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
@@ -205,34 +205,34 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
                 .build()
         )
 
-        scopeData.floatBtnEvent
+        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
             }
             .withLatestFrom(bindState().map { it.selectedFiles })
-            .filter { it.first == DirTabType.MyDir && it.second.isNotEmpty() }
+            .filter { it.first == FileTransportActivity.Companion.DirTabType.MyDir && it.second.isNotEmpty() }
             .flatMapSingle { (_, selectedFiles) ->
                 rxSingle {
-                    val fileConnection = scopeData.fileExploreConnection
-                    val md5Files = selectedFiles.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
-                        homePathString, it.path).getFilePathMd5(), file = it.toFile()) }
-                    fileConnection.sendFileExploreContentToRemote(
-                        fileExploreContent = ShareFilesModel(shareFiles = md5Files),
-                        waitReplay = true
-                    )
-                    withContext(Dispatchers.Main) {
-                        val result = kotlin.runCatching {
-                            requireActivity().startSendingFiles(
-                                files = md5Files,
-                                localAddress = scopeData.localAddress,
-                                pathConverter = defaultPathConverter
-                            ).await()
-                        }
-                        if (result.isFailure) {
-                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-                        }
-                    }
+//                    val fileConnection = scopeData.fileExploreConnection
+//                    val md5Files = selectedFiles.filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+//                        homePathString, it.path).getFilePathMd5(), file = it.toFile()) }
+//                    fileConnection.sendFileExploreContentToRemote(
+//                        fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+//                        waitReplay = true
+//                    )
+//                    withContext(Dispatchers.Main) {
+//                        val result = kotlin.runCatching {
+//                            requireActivity().startSendingFiles(
+//                                files = md5Files,
+//                                localAddress = scopeData.localAddress,
+//                                pathConverter = defaultPathConverter
+//                            ).await()
+//                        }
+//                        if (result.isFailure) {
+//                            Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+//                        }
+//                    }
 
                 }.flatMap {
                     updateState { state -> state.copy(selectedFiles = emptySet()) }

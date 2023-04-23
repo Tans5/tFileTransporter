@@ -50,7 +50,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
     default = MyImagesState()
 ) {
 
-    private val scopeData: FileTransportScopeData by instance()
+    // private val scopeData: FileTransportScopeData by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
     override fun initViews(binding: MyImagesFragmentLayoutBinding) {
@@ -129,40 +129,40 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesSta
             }
             .bindLife()
 
-        scopeData.floatBtnEvent
+        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
             }
-            .filter { it == DirTabType.MyImages }
+            .filter { it == FileTransportActivity.Companion.DirTabType.MyImages }
             .observeOn(Schedulers.io())
             .switchMapSingle {
                 rxSingle {
-                    val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
-                    if (selectImages.isNotEmpty()) {
-                        clearImageCaches()
-
-                        updateState { it.copy(selectedImages = emptySet()) }.await()
-                        val fileConnection = scopeData.fileExploreConnection
-                        val md5Files = selectImages.createCatches().filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
-                            FileConstants.homePathString, it.path).getFilePathMd5(), file = it) }
-                        fileConnection.sendFileExploreContentToRemote(
-                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
-                            waitReplay = true
-                        )
-                        withContext(Dispatchers.Main) {
-                            val result = kotlin.runCatching {
-                                requireActivity().startSendingFiles(
-                                    files = md5Files,
-                                    localAddress = scopeData.localAddress,
-                                    pathConverter = { file -> Paths.get(file.path) }
-                                ).await()
-                            }
-                            if (result.isFailure) {
-                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
-                            }
-                        }
-                    }
+//                    val selectImages = bindState().firstOrError().map { it.selectedImages }.await()
+//                    if (selectImages.isNotEmpty()) {
+//                        clearImageCaches()
+//
+//                        updateState { it.copy(selectedImages = emptySet()) }.await()
+//                        val fileConnection = scopeData.fileExploreConnection
+//                        val md5Files = selectImages.createCatches().filter { it.size > 0 }.map { FileMd5(md5 = Paths.get(
+//                            FileConstants.homePathString, it.path).getFilePathMd5(), file = it) }
+//                        fileConnection.sendFileExploreContentToRemote(
+//                            fileExploreContent = ShareFilesModel(shareFiles = md5Files),
+//                            waitReplay = true
+//                        )
+//                        withContext(Dispatchers.Main) {
+//                            val result = kotlin.runCatching {
+//                                requireActivity().startSendingFiles(
+//                                    files = md5Files,
+//                                    localAddress = scopeData.localAddress,
+//                                    pathConverter = { file -> Paths.get(file.path) }
+//                                ).await()
+//                            }
+//                            if (result.isFailure) {
+//                                Log.e("SendingFileError", "SendingFileError", result.exceptionOrNull())
+//                            }
+//                        }
+//                    }
                 }.onErrorResumeNext {
                     Log.e("Send Images", "Send Images Error", it)
                     Single.just(Unit)
