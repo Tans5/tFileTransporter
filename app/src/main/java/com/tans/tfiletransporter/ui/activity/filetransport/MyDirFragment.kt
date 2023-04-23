@@ -1,6 +1,9 @@
 package com.tans.tfiletransporter.ui.activity.filetransport
 
+import android.os.Bundle
 import android.util.Log
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -41,6 +44,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 import kotlin.streams.toList
+import androidx.activity.addCallback
+import kotlinx.coroutines.launch
 
 object FileSelectChange
 
@@ -80,7 +85,31 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
     private val recyclerViewScrollChannel = Channel<Int>(1)
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
 
+    private val onBackPressedDispatcher: OnBackPressedDispatcher by instance()
+
+    private val onBackPressedCallback: OnBackPressedCallback by lazy {
+        onBackPressedDispatcher.addCallback(this) {
+            launch {
+                updateState { state ->
+                    val i = folderPositionDeque.poll()
+                    if (i != null) {
+                        recyclerViewScrollChannel.trySend(i).isSuccess
+                    }
+                    if (state.fileTree.parentTree == null) state else MyDirFragmentState(state.fileTree.parentTree, emptySet())
+                }.await()
+            }
+        }
+    }
+
     override fun initViews(binding: MyDirFragmentBinding) {
+        bindState()
+            .map { it.fileTree }
+            .distinctUntilChanged()
+            .doOnNext {
+                onBackPressedCallback.isEnabled = !it.isRootFileTree()
+            }
+            .bindLife()
+
         bindState()
             .map { it.fileTree }
             .distinctUntilChanged()
@@ -307,7 +336,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragmentState>(R.l
     }
 
 
-    override fun onBackPressed(): Boolean {
+    fun onBackPressed(): Boolean {
         return if (bindState().firstOrError().blockingGet().fileTree.isRootFileTree()) {
             false
         } else {

@@ -63,8 +63,6 @@ abstract class BaseFragment<Binding: ViewDataBinding, State>(
 
     }
 
-    open fun onBackPressed(): Boolean = false
-
     override fun onDestroy() {
         super.onDestroy()
         cancel()

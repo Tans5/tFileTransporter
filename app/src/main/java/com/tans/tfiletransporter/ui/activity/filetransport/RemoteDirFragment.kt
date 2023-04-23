@@ -306,7 +306,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirState>
             .bindLife()
     }
 
-    override fun onBackPressed(): Boolean {
+    fun onBackPressed(): Boolean {
         return if (bindState().firstOrError().blockingGet().fileTree.get().isRootFileTree()) {
             false
         } else {

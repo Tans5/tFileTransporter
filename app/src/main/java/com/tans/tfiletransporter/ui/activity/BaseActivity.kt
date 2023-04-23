@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity
 
 import android.os.Bundle
+import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.addCallback
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
@@ -56,7 +57,10 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     protected val binding: Binding by lazy { DataBindingUtil.setContentView(this, layoutId) }
 
-    override val di: DI by retainedSubDI(di()) { addDIInstance() }
+    override val di: DI by retainedSubDI(di()) {
+        bind<OnBackPressedDispatcher>() with singleton { onBackPressedDispatcher }
+        addDIInstance()
+    }
 
     open fun DI.MainBuilder.addDIInstance() {}
 
@@ -67,13 +71,8 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
             firstLaunchInitData()
         }
         initViews(binding)
-        onBackPressedDispatcher.addCallback {
-            for (f in supportFragmentManager.fragments) {
-                if (!f.isHidden && f is BaseFragment<*, *> && f.onBackPressed()) {
-                    return@addCallback
-                }
-            }
-            finish()
+        onBackPressedDispatcher.addCallback(owner = this) {
+            onActivityBackPressed()
         }
     }
 
@@ -83,6 +82,10 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
 
     open fun initViews(binding: Binding) {
 
+    }
+
+    open fun onActivityBackPressed() {
+        finish()
     }
 
     override fun onDestroy() {
