@@ -51,7 +51,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
                     lBinding.myMessageTv.text = data.msg
                 }
             },
-            dataUpdater = (requireActivity() as FileTransportActivity).observeMessages()
+            dataUpdater = (requireActivity() as FileTransportActivity).observeMessages().map { it.asReversed() }.distinctUntilChanged()
         ).toAdapter {
             if (it.isNotEmpty()) {
                 binding.messageRv.scrollToPosition(it.size - 1)
