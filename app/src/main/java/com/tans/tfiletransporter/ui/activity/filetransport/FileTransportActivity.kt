@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.filetransport.activity
+package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.content.Context
 import android.content.Intent
@@ -34,7 +34,6 @@ import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.*
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
@@ -56,7 +55,8 @@ import java.io.File
 
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivity.Companion.FileTransportActivityState>(
-    R.layout.file_transport_activity, FileTransportActivityState()) {
+    R.layout.file_transport_activity, FileTransportActivityState()
+) {
 
     private val floatActionBtnClickEvent: Subject<Unit> by lazy {
         PublishSubject.create<Unit?>().toSerialized()
@@ -324,9 +324,13 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         private const val REMOTE_INFO_EXTRA_KEY = "remote_info_extra_key"
         private const val IS_SERVER_EXTRA_KEY = "is_server_extra_key"
 
-        private fun Intent.getLocalAddress(): InetAddress = getSerializableExtra(LOCAL_ADDRESS_EXTRA_KEY) as? InetAddress ?: error("FileTransportActivity get local address fail.")
+        private fun Intent.getLocalAddress(): InetAddress = getSerializableExtra(
+            LOCAL_ADDRESS_EXTRA_KEY
+        ) as? InetAddress ?: error("FileTransportActivity get local address fail.")
 
-        private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(REMOTE_ADDRESS_EXTRA_KEY) as? InetAddress ?: error("FileTransportActivity get remote address fail.")
+        private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(
+            REMOTE_ADDRESS_EXTRA_KEY
+        ) as? InetAddress ?: error("FileTransportActivity get remote address fail.")
 
         private fun Intent.getRemoteInfo(): String = getStringExtra(REMOTE_INFO_EXTRA_KEY) ?: ""
 

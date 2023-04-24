@@ -11,9 +11,9 @@ import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
 import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
-import com.tans.tfiletransporter.utils.toBytes
+import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -87,7 +87,8 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                         }
                     }.onSuccess {
                         withContext(Dispatchers.Main) {
-                            startActivity(FileTransportActivity.getIntent(
+                            startActivity(
+                                FileTransportActivity.getIntent(
                                 context = requireContext(),
                                 localAddress = localAddress,
                                 remoteAddress = it.remoteAddress.address,
@@ -116,7 +117,8 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                         }
                     }.onSuccess {
                         withContext(Dispatchers.Main) {
-                            startActivity(FileTransportActivity.getIntent(
+                            startActivity(
+                                FileTransportActivity.getIntent(
                                 context = requireContext(),
                                 localAddress = localAddress,
                                 remoteAddress = it.remoteAddress.address,

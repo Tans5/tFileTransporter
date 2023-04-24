@@ -15,8 +15,8 @@ import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
+import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnection
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionObserver
 import com.tans.tfiletransporter.transferproto.p2pconn.P2pConnectionState
@@ -27,7 +27,7 @@ import com.tans.tfiletransporter.transferproto.p2pconn.transferFileSuspend
 import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
+import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -318,7 +318,8 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                             isReceiver: Boolean
                                         ) {
                                             activity?.runOnUiThread {
-                                                startActivity(FileTransportActivity.getIntent(
+                                                startActivity(
+                                                    FileTransportActivity.getIntent(
                                                     context = requireContext(),
                                                     localAddress = handshake.localAddress.address,
                                                     remoteAddress = handshake.remoteAddress.address,

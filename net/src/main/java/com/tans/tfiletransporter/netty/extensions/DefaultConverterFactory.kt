@@ -190,26 +190,8 @@ open class DefaultConverterFactory : IConverterFactory {
 
         }
 
-        class OffsetDataTimeJsonAdapter : JsonAdapter<OffsetDateTime>() {
-
-            override fun fromJson(reader: JsonReader): OffsetDateTime? {
-                val dateString = reader.nextString()
-                return if (dateString != null) {
-                    OffsetDateTime.parse(dateString, DateTimeFormatter.ISO_DATE_TIME)
-                } else {
-                    null
-                }
-            }
-
-            override fun toJson(writer: JsonWriter, value: OffsetDateTime?) {
-                writer.value(if (value != null) DateTimeFormatter.ISO_DATE_TIME.format(value) else null)
-            }
-
-        }
-
-        val defaultMoshi: Moshi by lazy {
+        private val defaultMoshi: Moshi by lazy {
             Moshi.Builder()
-                .add(OffsetDateTime::class.java, OffsetDataTimeJsonAdapter())
                 .build()
         }
     }

@@ -1,10 +1,6 @@
 package com.tans.tfiletransporter.file
 
 import androidx.annotation.Keep
-import com.tans.tfiletransporter.net.model.File
-import org.threeten.bp.Instant
-import org.threeten.bp.OffsetDateTime
-import org.threeten.bp.ZoneId
 
 @Keep
 sealed class FileLeaf(

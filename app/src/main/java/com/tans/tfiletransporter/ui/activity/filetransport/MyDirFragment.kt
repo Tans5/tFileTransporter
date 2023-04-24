@@ -19,7 +19,6 @@ import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +34,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
+import com.tans.tfiletransporter.utils.firstVisibleItemPosition
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.launch
@@ -325,12 +325,4 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
             }
         }
     }
-}
-
-fun RecyclerView.lastVisibleItemPosition(): Int {
-    return (layoutManager as? LinearLayoutManager)?.findLastCompletelyVisibleItemPosition() ?: 0
-}
-
-fun RecyclerView.firstVisibleItemPosition(): Int {
-    return (layoutManager as? LinearLayoutManager)?.findFirstCompletelyVisibleItemPosition() ?: 0
 }

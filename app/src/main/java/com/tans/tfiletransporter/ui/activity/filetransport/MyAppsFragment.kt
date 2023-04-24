@@ -17,7 +17,6 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers

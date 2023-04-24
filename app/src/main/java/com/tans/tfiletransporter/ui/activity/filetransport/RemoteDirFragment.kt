@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding3.appcompat.itemClicks
 import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import com.jakewharton.rxbinding3.view.clicks
-import com.tans.rxutils.switchThread
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -26,7 +25,6 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestScanDirSuspend
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.*
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.withLatestFrom
@@ -39,6 +37,7 @@ import java.util.*
 import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment.Companion.FileSortType
 import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment.Companion.sortDir
 import com.tans.tfiletransporter.ui.activity.filetransport.MyDirFragment.Companion.sortFile
+import com.tans.tfiletransporter.utils.firstVisibleItemPosition
 import kotlinx.coroutines.launch
 import org.kodein.di.instance
 import kotlin.jvm.optionals.getOrNull

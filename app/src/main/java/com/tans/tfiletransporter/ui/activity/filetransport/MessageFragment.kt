@@ -12,7 +12,6 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestMsgSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import com.tans.tfiletransporter.ui.activity.filetransport.activity.FileTransportActivity
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.rx2.rxSingle
@@ -30,10 +29,6 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
     private val inputMethodManager: InputMethodManager by instance()
 
     private val fileExplore: FileExplore by instance()
-
-    init {
-
-    }
 
     override fun initViews(binding: MessageFragmentBinding) {
 
@@ -54,7 +49,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
             dataUpdater = (requireActivity() as FileTransportActivity).observeMessages().map { it.asReversed() }.distinctUntilChanged()
         ).toAdapter {
             if (it.isNotEmpty()) {
-                binding.messageRv.scrollToPosition(it.size - 1)
+                binding.messageRv.scrollToPosition(0)
             }
         }
 
@@ -99,7 +94,7 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
                     (activity as FileTransportActivity).observeMessages().firstOrError()
                         .doOnSuccess {
                             if (it.isNotEmpty()) {
-                                binding.messageRv.scrollToPosition(it.size - 1)
+                                binding.messageRv.scrollToPosition(0)
                             }
                         }
                         .bindLife()

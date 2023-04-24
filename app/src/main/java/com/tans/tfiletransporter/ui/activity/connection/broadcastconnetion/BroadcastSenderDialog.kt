@@ -5,8 +5,8 @@ import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
+import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleCallback

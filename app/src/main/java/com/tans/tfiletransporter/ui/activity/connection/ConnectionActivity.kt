@@ -3,22 +3,15 @@ package com.tans.tfiletransporter.ui.activity.connection
 import android.Manifest
 import android.content.Intent
 import android.net.*
-import android.net.wifi.WifiManager
 import android.os.Build
-import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
-import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.ui.activity.BaseActivity
-import com.tans.tfiletransporter.utils.toBytes
 import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
-import org.kodein.di.instance
-import java.net.InetAddress
-import java.util.*
 
 class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     layoutId = R.layout.connection_activity,

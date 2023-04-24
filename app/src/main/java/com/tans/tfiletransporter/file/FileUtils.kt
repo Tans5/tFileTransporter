@@ -1,10 +1,8 @@
 package com.tans.tfiletransporter.file
 
 import android.content.Context
+import android.os.Build
 import com.tans.tfiletransporter.R
-import com.tans.tfiletransporter.file.FileConstants.GB
-import com.tans.tfiletransporter.file.FileConstants.KB
-import com.tans.tfiletransporter.file.FileConstants.MB
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreDir
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirReq
@@ -18,6 +16,11 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 
+const val KB = 1024
+const val MB = 1024 * 1024
+const val GB = 1024 * 1024 * 1024
+
+val LOCAL_DEVICE = "${Build.BRAND} ${Build.DEVICE}"
 fun Path.newChildFile(name: String): Path {
     val childPath = Paths.get(toAbsolutePath().toString(), name)
     return if (Files.exists(childPath)) {

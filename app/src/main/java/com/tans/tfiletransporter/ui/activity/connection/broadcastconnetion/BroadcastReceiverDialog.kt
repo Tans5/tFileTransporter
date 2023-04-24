@@ -1,8 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
 
 import android.app.Activity
-import android.os.Handler
-import android.os.Message
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -12,11 +10,10 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastReceiverDialogLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
+import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.net.LOCAL_DEVICE
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
-import com.tans.tfiletransporter.toInt
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiver
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastReceiverObserver
