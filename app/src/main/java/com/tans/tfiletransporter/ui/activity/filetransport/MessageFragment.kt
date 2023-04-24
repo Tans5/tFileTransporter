@@ -79,14 +79,15 @@ class MessageFragment : BaseFragment<MessageFragmentBinding, Unit>(
                 }
             }
             .bindLife()
-
         (requireActivity() as? FileTransportActivity)?.bindState()
-                ?.distinctUntilChanged()
-                ?.observeOn(AndroidSchedulers.mainThread())
-                ?.doOnNext {
-                    inputMethodManager.hideSoftInputFromWindow(binding.editText.windowToken, 0)
-                }
-                ?.bindLife()
+            ?.map { it.selectedTabType }
+            ?.distinctUntilChanged()
+            ?.observeOn(AndroidSchedulers.mainThread())
+            ?.doOnNext {
+                inputMethodManager.hideSoftInputFromWindow(binding.editText.windowToken, 0)
+            }
+            ?.bindLife()
+
 
         KeyboardVisibilityEvent.registerEventListener(requireActivity(), object : KeyboardVisibilityEventListener {
             override fun onVisibilityChanged(isOpen: Boolean) {
