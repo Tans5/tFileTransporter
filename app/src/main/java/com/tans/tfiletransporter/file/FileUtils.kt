@@ -20,7 +20,7 @@ const val KB = 1024
 const val MB = 1024 * 1024
 const val GB = 1024 * 1024 * 1024
 
-val LOCAL_DEVICE = "${Build.BRAND} ${Build.DEVICE}"
+val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
 fun Path.newChildFile(name: String): Path {
     val childPath = Paths.get(toAbsolutePath().toString(), name)
     return if (Files.exists(childPath)) {
