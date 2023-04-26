@@ -10,9 +10,14 @@ import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import okio.FileHandle
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class FileSender(
@@ -101,11 +106,22 @@ class FileSender(
             assertActive {
                 newState(FileTransferState.Canceled)
             }
-            workingSender.get()?.onCanceled()
-            workingSender.set(null)
-            waitingSenders.clear()
+            closeNoneFinishedSenders("User canceled", true)
             closeConnectionIfActive()
         }
+    }
+
+    private fun dispatchProgressUpdate(hasSentSize: Long, file: SenderFile) {
+        assertActive {
+            for (o in observers) {
+                o.onProgressUpdate(file.exploreFile, hasSentSize)
+            }
+        }
+    }
+    private fun closeNoneFinishedSenders(reason: String, reportRemote: Boolean) {
+        workingSender.get()?.onCanceled(reason, reportRemote)
+        workingSender.set(null)
+        waitingSenders.clear()
     }
 
     private fun doNextSender(finishedSender: SingleFileSender?) {
@@ -123,6 +139,9 @@ class FileSender(
                 for (o in observers) {
                     o.onStartFile(targetSender.file.exploreFile)
                 }
+            } else {
+                newState(FileTransferState.Finished)
+                closeConnectionIfActive()
             }
         }
     }
@@ -131,6 +150,15 @@ class FileSender(
         assertActive {
             newState(FileTransferState.Error(errorMsg))
         }
+        closeNoneFinishedSenders(errorMsg, true)
+        closeConnectionIfActive()
+    }
+
+    private fun remoteErrorStateIfActive(errorMsg: String) {
+        assertActive {
+            newState(FileTransferState.RemoteError(errorMsg))
+        }
+        closeNoneFinishedSenders(errorMsg, false)
         closeConnectionIfActive()
     }
 
@@ -156,16 +184,74 @@ class FileSender(
 
     private inner class SingleFileSender(val file: SenderFile) {
 
+        private val fileHandle: AtomicReference<FileHandle?> by lazy { AtomicReference(null) }
+
+        private val isSingleFileSenderExecuted: AtomicBoolean by lazy {
+            AtomicBoolean(false)
+        }
+
+        private val isSingleFileSenderCanceled: AtomicBoolean by lazy {
+            AtomicBoolean(false)
+        }
+
+        private val isSingleFileSenderFinished: AtomicBoolean by lazy {
+            AtomicBoolean(false)
+        }
+
+        private val singleFileHasSentSize: AtomicLong by lazy {
+            AtomicLong(0L)
+        }
+
         fun onActive() {
-            // TODO:
+            if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
+                try {
+                    fileHandle.set(FileSystem.SYSTEM.openReadOnly(file.realFile.toOkioPath()))
+                } catch (e: Throwable) {
+                    val msg = "Read file: $file error: ${e.message}"
+                    log.d(TAG, msg)
+                    errorStateIfActive(msg)
+                }
+            }
         }
 
         fun newChildTask(task: NettyTcpServerConnectionTask.ChildConnectionTask) {
-            // TODO:
+            assertSingleFileSenderActive(notActive = {
+                task.stopTask()
+                errorStateIfActive("Single task is not active, can't deal child task")
+            }
+            ) {
+                // TODO:
+            }
         }
 
-        fun onCanceled() {
+        fun onCanceled(reason: String, reportRemote: Boolean) {
+            if (isSingleFileSenderExecuted.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderCanceled.compareAndSet(false, true)) {
+                // TODO:
+            }
+        }
 
+        private fun updateProgress(sentSize: Long) {
+            val hasSentSize = singleFileHasSentSize.addAndGet(sentSize)
+            dispatchProgressUpdate(hasSentSize, file)
+            if (hasSentSize >= file.exploreFile.size) {
+                onFinished()
+            }
+        }
+
+        private fun onFinished() {
+            assertSingleFileSenderActive {
+                if (isSingleFileSenderFinished.compareAndSet(false, true)) {
+                    doNextSender(this)
+                }
+            }
+        }
+
+        private fun assertSingleFileSenderActive(notActive: (() -> Unit)? = null, active: () -> Unit) {
+            if (!isSingleFileSenderFinished.get() && !isSingleFileSenderCanceled.get() && isSingleFileSenderExecuted.get()) {
+                active()
+            } else {
+                notActive?.invoke()
+            }
         }
 
     }
