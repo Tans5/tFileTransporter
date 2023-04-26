@@ -12,7 +12,7 @@ import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
-import com.tans.tfiletransporter.netty.extensions.witchClient
+import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
@@ -166,7 +166,7 @@ class FileExplore(
             idleLimitDuration = heartbeatInterval * 3,
             newClientTaskCallback = { task ->
                 if (hasChildConnection.compareAndSet(false, true)) {
-                    val exploreTask = task.witchClient<ConnectionClientImpl>(log = log).withServer<ConnectionServerClientImpl>(log = log)
+                    val exploreTask = task.withClient<ConnectionClientImpl>(log = log).withServer<ConnectionServerClientImpl>(log = log)
                     this@FileExplore.exploreTask.get()?.stopTask()
                     this@FileExplore.exploreTask.set(exploreTask)
                     log.d(TAG,"New connection: $exploreTask")
@@ -267,7 +267,7 @@ class FileExplore(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.FILE_EXPLORE_PORT,
             idleLimitDuration = heartbeatInterval * 3
-        ).witchClient<ConnectionClientImpl>(log = log)
+        ).withClient<ConnectionClientImpl>(log = log)
             .withServer<ConnectionServerClientImpl>(log = log)
         exploreTask.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {

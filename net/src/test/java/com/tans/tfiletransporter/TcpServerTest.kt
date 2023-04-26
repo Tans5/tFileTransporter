@@ -9,9 +9,7 @@ import com.tans.tfiletransporter.netty.findLocalAddressV4
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.NetworkInterface
 
 object TcpServerTest {
 
@@ -25,7 +23,7 @@ object TcpServerTest {
                 println("NewClientTask: $newClientTask")
                 val serverConnection = newClientTask
                     .withServer<ConnectionServerImpl>(log = TestLog)
-                    .witchClient<ConnectionServerClientImpl>(log = TestLog)
+                    .withClient<ConnectionServerClientImpl>(log = TestLog)
                 serverConnection
                     .registerServer(object : IServer<String, String> {
                         override val requestClass: Class<String> = String::class.java

@@ -3,7 +3,7 @@ package com.tans.tfiletransporter
 import com.tans.tfiletransporter.netty.*
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.IClientManager
-import com.tans.tfiletransporter.netty.extensions.witchClient
+import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -21,7 +21,7 @@ object UdpClientTest {
         val task = NettyUdpConnectionTask(
             connectionType = ConnectionType.Bind(localAddress, 9998),
             enableBroadcast = true
-        ).witchClient<ConnectionClientImpl>(log = TestLog)
+        ).withClient<ConnectionClientImpl>(log = TestLog)
 
         task.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, taskLocal: INettyConnectionTask) {

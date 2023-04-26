@@ -189,7 +189,7 @@ class P2pConnection(
             newClientTaskCallback = { client ->
                 if (hasClientConnection.compareAndSet(false, true)) {
                     val fixedClientConnection = client.withServer<ConnectionServerImpl>(log = log)
-                        .witchClient<ConnectionServerClientImpl>(log = log)
+                        .withClient<ConnectionServerClientImpl>(log = log)
                     fixedClientConnection.registerServer(handShakeServer)
                     fixedClientConnection.registerServer(transferFileServer)
                     fixedClientConnection.registerServer(closeServer)
@@ -214,7 +214,7 @@ class P2pConnection(
         val clientTask = NettyTcpClientConnectionTask(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT
-        ).withServer<ConnectionServerImpl>(log = log).witchClient<ConnectionServerClientImpl>(log = log)
+        ).withServer<ConnectionServerImpl>(log = log).withClient<ConnectionServerClientImpl>(log = log)
         clientTask.registerServer(transferFileServer)
         clientTask.registerServer(closeServer)
         val hasInvokeCallback = AtomicBoolean(false)

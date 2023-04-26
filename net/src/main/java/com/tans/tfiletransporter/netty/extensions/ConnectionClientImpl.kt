@@ -10,7 +10,7 @@ class ConnectionClientImpl(
 
 
 @Suppress("UNCHECKED_CAST")
-fun <T> INettyConnectionTask.witchClient(
+fun <T> INettyConnectionTask.withClient(
     converterFactory: IConverterFactory = DefaultConverterFactory(),
     log: ILog
 ): T {

@@ -5,14 +5,35 @@ import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
+import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
+import com.tans.tfiletransporter.netty.extensions.ConnectionServerClientImpl
+import com.tans.tfiletransporter.netty.extensions.IClientManager
+import com.tans.tfiletransporter.netty.extensions.IServer
+import com.tans.tfiletransporter.netty.extensions.requestSimplify
+import com.tans.tfiletransporter.netty.extensions.simplifyServer
+import com.tans.tfiletransporter.netty.extensions.withClient
+import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
+import com.tans.tfiletransporter.resumeExceptionIfActive
+import com.tans.tfiletransporter.resumeIfActive
+import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
+import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
+import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
+import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import okio.FileHandle
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
+import okio.buffer
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -21,7 +42,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class FileSender(
-    private val bufferSize: Int,
+    private val bufferSize: Long,
     private val files: List<SenderFile>,
     private val bindAddress: InetAddress,
     private val log: ILog
@@ -66,7 +87,9 @@ class FileSender(
                             workingSender.newChildTask(clientTask)
                         } else {
                             clientTask.stopTask()
-                            errorStateIfActive("No working sender to handle clientTask.")
+                            val msg = "No working sender to handle clientTask."
+                            log.e(TAG, msg)
+                            errorStateIfActive(msg)
                         }
                     }
                 }
@@ -202,6 +225,10 @@ class FileSender(
             AtomicLong(0L)
         }
 
+        private val fragmentSenders: LinkedBlockingDeque<SingleFileFragmentSender> by lazy {
+            LinkedBlockingDeque()
+        }
+
         fun onActive() {
             if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
                 try {
@@ -217,16 +244,32 @@ class FileSender(
         fun newChildTask(task: NettyTcpServerConnectionTask.ChildConnectionTask) {
             assertSingleFileSenderActive(notActive = {
                 task.stopTask()
-                errorStateIfActive("Single task is not active, can't deal child task")
+                val msg = "Single task is not active, can't deal child task"
+                log.e(TAG, msg)
+                errorStateIfActive(msg)
             }
             ) {
-                // TODO:
+                val fileHandle = fileHandle.get()
+                if (fileHandle != null) {
+                    fragmentSenders.add(SingleFileFragmentSender(fileHandle = fileHandle, task = task))
+                } else {
+                    task.stopTask()
+                    val msg = "File handle is null"
+                    log.e(TAG, msg)
+                    errorStateIfActive(msg)
+                }
             }
         }
 
         fun onCanceled(reason: String, reportRemote: Boolean) {
             if (isSingleFileSenderExecuted.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderCanceled.compareAndSet(false, true)) {
-                // TODO:
+                for (fs in fragmentSenders) {
+                    if (reportRemote) {
+                        fs.sendRemoteError(reason)
+                    }
+                    fs.closeConnectionIfActive()
+                }
+                fragmentSenders.clear()
             }
         }
 
@@ -251,6 +294,193 @@ class FileSender(
                 active()
             } else {
                 notActive?.invoke()
+            }
+        }
+
+        inner class SingleFileFragmentSender(
+            private val fileHandle: FileHandle,
+            task: NettyTcpServerConnectionTask.ChildConnectionTask): CoroutineScope by CoroutineScope(Dispatchers.IO) {
+
+            private val serverClientTask: ConnectionServerClientImpl = task.withClient<ConnectionClientImpl>(log = log).withServer(log = log)
+
+            private val isFragmentFinished: AtomicBoolean by lazy {
+                AtomicBoolean(false)
+            }
+
+            private val downloadReq: AtomicReference<DownloadReq?> by lazy {
+                AtomicReference(null)
+            }
+
+            private val downloadReqServer: IServer<DownloadReq, Unit> by lazy {
+                simplifyServer(
+                    requestType = FileTransferDataType.DownloadReq.type,
+                    responseType = FileTransferDataType.DownloadResp.type,
+                    log = log,
+                    onRequest = { _, _, r, isNew ->
+                        if (isNew) {
+                            if (downloadReq.get() == null) {
+                                if (r.file != file.exploreFile) {
+                                    val msg = "Wrong file, require $file, receive ${r.file}"
+                                    log.e(TAG, msg)
+                                    errorStateIfActive(msg)
+                                    return@simplifyServer
+                                }
+                                val startIndex = r.start
+                                val endIndex = r.end
+                                if (startIndex < 0 || endIndex < 0 || startIndex > endIndex || endIndex > r.file.size) {
+                                    val msg = "Wrong file info: $r"
+                                    log.e(TAG, msg)
+                                    errorStateIfActive(msg)
+                                    return@simplifyServer
+                                }
+                                downloadReq.set(r)
+                                startSendData(r)
+                            } else {
+                                serverClientTask.stopTask()
+                                val msg = "Receive multi times download request: $r"
+                                log.e(TAG, msg)
+                                errorStateIfActive(msg)
+                            }
+                        }
+                        Unit
+                    }
+                )
+            }
+
+            private val errorReqServer: IServer<ErrorReq, Unit> by lazy {
+                simplifyServer(
+                    requestType = FileTransferDataType.ErrorReq.type,
+                    responseType = FileTransferDataType.ErrorResp.type,
+                    log = log,
+                    onRequest = { _, _, r, isNew ->
+                        log.e(TAG, "Receive remote error request: $r")
+                        if (isNew) {
+                            remoteErrorStateIfActive(r.errorMsg)
+                        }
+                    }
+                )
+            }
+
+            private val finishReqServer: IServer<Unit, Unit> by lazy {
+                simplifyServer(
+                    requestType = FileTransferDataType.FinishedReq.type,
+                    responseType = FileTransferDataType.FinishedResp.type,
+                    log = log,
+                    onRequest = { _, _, _, isNew ->
+                        if (isNew) {
+                            log.d(TAG, "Receive download finish request.")
+                        }
+                    }
+                )
+            }
+
+            init {
+                serverClientTask.addObserver(object : NettyConnectionObserver {
+                    override fun onNewState(
+                        nettyState: NettyTaskState,
+                        task: INettyConnectionTask
+                    ) {
+                        if ((nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) && !isFragmentFinished.get()) {
+                            val msg = "Connection closed: $nettyState"
+                            log.e(TAG, msg)
+                            errorStateIfActive(msg)
+                        }
+                    }
+
+                    override fun onNewMessage(
+                        localAddress: InetSocketAddress?,
+                        remoteAddress: InetSocketAddress?,
+                        msg: PackageData,
+                        task: INettyConnectionTask
+                    ) {}
+                })
+                serverClientTask.registerServer(downloadReqServer)
+                serverClientTask.registerServer(errorReqServer)
+                serverClientTask.registerServer(finishReqServer)
+            }
+
+            fun isActive(): Boolean = serverClientTask.getCurrentState() is NettyTaskState.ConnectionActive
+
+            fun sendRemoteError(errorMsg: String) {
+                if (isActive()) {
+                    serverClientTask.requestSimplify<ErrorReq, Unit>(
+                        type = FileTransferDataType.ErrorReq.type,
+                        request = ErrorReq(errorMsg),
+                        retryTimes = 0,
+                        object : IClientManager.RequestCallback<Unit> {
+                            override fun onSuccess(
+                                type: Int,
+                                messageId: Long,
+                                localAddress: InetSocketAddress?,
+                                remoteAddress: InetSocketAddress?,
+                                d: Unit
+                            ) {
+                                log.d(TAG, "Send error msg success.")
+                            }
+
+                            override fun onFail(errorMsg: String) {
+                                log.e(TAG, "Send error msg error: $errorMsg")
+                            }
+                        }
+                    )
+                }
+            }
+
+            fun closeConnectionIfActive() {
+                Dispatchers.IO.asExecutor().execute {
+                    Thread.sleep(100)
+                    serverClientTask.stopTask()
+                }
+                this@SingleFileFragmentSender.cancel()
+            }
+
+            private suspend fun sendDataSuspend(bytes: ByteArray) = suspendCancellableCoroutine { cont ->
+                serverClientTask.requestSimplify(
+                    type = FileTransferDataType.SendReq.type,
+                    request = bytes,
+                    callback = object : IClientManager.RequestCallback<Unit> {
+                        override fun onSuccess(
+                            type: Int,
+                            messageId: Long,
+                            localAddress: InetSocketAddress?,
+                            remoteAddress: InetSocketAddress?,
+                            d: Unit
+                        ) {
+                            cont.resumeIfActive(d)
+                        }
+
+                        override fun onFail(errorMsg: String) {
+                            cont.resumeExceptionIfActive(Throwable(errorMsg))
+                        }
+                    }
+                )
+            }
+
+            private fun startSendData(downloadReq: DownloadReq) {
+                launch {
+                    val frameSize = downloadReq.end - downloadReq.start
+                    var hasRead = 0L
+                    try {
+                        fileHandle.source(downloadReq.start).buffer().use { source ->
+                            while (hasRead < frameSize) {
+                                val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
+                                    frameSize - hasRead
+                                } else {
+                                    bufferSize
+                                }
+                                val bytes = source.readByteArray(thisTimeRead)
+                                sendDataSuspend(bytes)
+                                updateProgress(thisTimeRead)
+                                hasRead += thisTimeRead
+                            }
+                        }
+                        isFragmentFinished.set(true)
+                        log.d(TAG, "Frame: ${downloadReq.start} finished($frameSize bytes)")
+                    } catch (e: Throwable) {
+                        log.e(TAG, "Send file error: ${e.message}", e)
+                        errorStateIfActive("Send file error: ${e.message}")
+                    }
+                }
             }
         }
 

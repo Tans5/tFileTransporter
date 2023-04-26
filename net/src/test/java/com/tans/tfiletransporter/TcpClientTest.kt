@@ -19,7 +19,7 @@ object TcpClientTest {
             serverAddress = localAddress,
             serverPort = 1996
         )
-            .witchClient<ConnectionClientImpl>(log = TestLog)
+            .withClient<ConnectionClientImpl>(log = TestLog)
             .withServer<ConnectionServerClientImpl>(log = TestLog)
         t.addObserver(object : NettyConnectionObserver {
             override fun onNewState(

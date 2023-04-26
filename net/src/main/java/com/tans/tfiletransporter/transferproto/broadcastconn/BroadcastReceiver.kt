@@ -12,7 +12,7 @@ import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
-import com.tans.tfiletransporter.netty.extensions.witchClient
+import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
@@ -27,7 +27,6 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTran
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -118,7 +117,7 @@ class BroadcastReceiver(
                 address = localAddress,
                 port = TransferProtoConstant.BROADCAST_TRANSFER_CLIENT_PORT
             )
-        ).witchClient<ConnectionClientImpl>(log = log)
+        ).withClient<ConnectionClientImpl>(log = log)
         this.transferRequestTask.get()?.stopTask()
         this.transferRequestTask.set(transferRequestTask)
 

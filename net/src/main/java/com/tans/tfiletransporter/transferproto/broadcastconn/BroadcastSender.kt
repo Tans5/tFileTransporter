@@ -12,7 +12,7 @@ import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
-import com.tans.tfiletransporter.netty.extensions.witchClient
+import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
@@ -142,7 +142,7 @@ class BroadcastSender(
                 port = TransferProtoConstant.BROADCAST_SCANNER_PORT
             ),
             enableBroadcast = true
-        ).witchClient<ConnectionClientImpl>(log = log)
+        ).withClient<ConnectionClientImpl>(log = log)
         this.broadcastSenderTask.get()?.stopTask()
         this.broadcastSenderTask.set(senderTask)
 
