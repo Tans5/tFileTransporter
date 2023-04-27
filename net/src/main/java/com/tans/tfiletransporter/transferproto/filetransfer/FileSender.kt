@@ -16,7 +16,6 @@ import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
-import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
