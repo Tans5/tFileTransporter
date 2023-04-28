@@ -7,6 +7,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.netty.getAndroidBroadcastAddress
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleCallback
@@ -50,7 +51,7 @@ class BroadcastSenderDialog(
             this@BroadcastSenderDialog.sender.set(sender)
             runCatching {
                 withContext(Dispatchers.IO) {
-                    sender.startSenderSuspend(localAddress)
+                    sender.startSenderSuspend(localAddress, getAndroidBroadcastAddress())
                 }
             }.onSuccess {
                 AndroidLog.d(TAG, "Start sender success.")

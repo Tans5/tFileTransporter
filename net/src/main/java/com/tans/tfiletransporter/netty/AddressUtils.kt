@@ -12,7 +12,13 @@ fun InetAddress.getBroadcastAddress()
     .filter {
         val broadcast = it.broadcast
         broadcast != null && broadcast.address?.size == 4
-    }.firstNotNullOfOrNull { it.broadcast to it.networkPrefixLength } ?: (InetAddress.getByAddress((-1).toBytes()) to 24.toShort())
+    }.firstNotNullOfOrNull {
+        val broadcast = it.broadcast
+        val maskLen = it.networkPrefixLength
+        broadcast to maskLen
+    } ?: (InetAddress.getByAddress((-1).toBytes()) to 24.toShort())
+
+fun getAndroidBroadcastAddress(): InetAddress = InetAddress.getByAddress((-1).toBytes())
 
 
 fun findLocalAddressV4(): List<InetAddress> {

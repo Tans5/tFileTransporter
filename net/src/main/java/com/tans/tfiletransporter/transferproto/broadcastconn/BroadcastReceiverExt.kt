@@ -8,9 +8,10 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.InetAddress
 
-suspend fun BroadcastReceiver.startReceiverSuspend(localAddress: InetAddress) = suspendCancellableCoroutine<Unit> { cont ->
+suspend fun BroadcastReceiver.startReceiverSuspend(localAddress: InetAddress, broadcastAddress: InetAddress,) = suspendCancellableCoroutine<Unit> { cont ->
     startBroadcastReceiver(
         localAddress,
+        broadcastAddress,
         object : SimpleCallback<Unit> {
             override fun onError(errorMsg: String) {
                 cont.resumeExceptionIfActive(Throwable(errorMsg))

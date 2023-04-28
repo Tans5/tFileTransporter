@@ -128,14 +128,16 @@ class BroadcastSender(
     }
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-    fun startBroadcastSender(localAddress: InetAddress, simpleCallback: SimpleCallback<Unit>) {
+    fun startBroadcastSender(
+        localAddress: InetAddress,
+        broadcastAddress: InetAddress,
+        simpleCallback: SimpleCallback<Unit>) {
         val currentState = getCurrentState()
         if (currentState != BroadcastSenderState.NoConnection) {
             simpleCallback.onError("Wrong state: $currentState")
         }
         newState(BroadcastSenderState.Requesting)
         val hasInvokeCallback = AtomicBoolean(false)
-        val (broadcastAddress, _) = localAddress.getBroadcastAddress()
         val senderTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Connect(
                 address = broadcastAddress,

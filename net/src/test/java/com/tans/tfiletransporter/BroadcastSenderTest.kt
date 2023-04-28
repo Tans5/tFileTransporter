@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter
 
 import com.tans.tfiletransporter.netty.findLocalAddressV4
+import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSender
 import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderObserver
@@ -34,6 +35,7 @@ object BroadcastSenderTest {
         })
         sender.startBroadcastSender(
             localAddress = localAddress,
+            broadcastAddress = localAddress.getBroadcastAddress().first,
             simpleCallback = object : SimpleCallback<Unit> {
                 override fun onSuccess(data: Unit) {
                     super.onSuccess(data)

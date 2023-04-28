@@ -95,13 +95,13 @@ class BroadcastReceiver(
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     fun startBroadcastReceiver(
         localAddress: InetAddress,
+        broadcastAddress: InetAddress,
         simpleCallback: SimpleCallback<Unit>
     ) {
         val currentState = getCurrentState()
         if (currentState != BroadcastReceiverState.NoConnection) {
             simpleCallback.onError("Wrong state: $currentState")
         }
-        val (broadcastAddress, _) = localAddress.getBroadcastAddress()
         newState(BroadcastReceiverState.Requesting)
         val receiverTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
