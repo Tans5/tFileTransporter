@@ -284,6 +284,10 @@ class FileSender(
             assertSingleFileSenderActive {
                 if (isSingleFileSenderFinished.compareAndSet(false, true)) {
                     log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
+                    for (fs in fragmentSenders){
+                        fs.closeConnectionIfActive()
+                    }
+                    fragmentSenders.clear()
                     doNextSender(this)
                 }
             }
