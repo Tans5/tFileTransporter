@@ -1,6 +1,11 @@
 package com.tans.tfiletransporter.transferproto.filetransfer
 
 import com.tans.tfiletransporter.ILog
+import com.tans.tfiletransporter.netty.NettyTaskState
+import com.tans.tfiletransporter.netty.extensions.ConnectionServerClientImpl
+import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
+import com.tans.tfiletransporter.netty.extensions.withClient
+import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
@@ -304,13 +309,19 @@ class FileDownloader(
             private val end: Long
         ) {
 
+            private val task: AtomicReference<ConnectionServerClientImpl?> by lazy {
+                AtomicReference(null)
+            }
+
             fun connectToServer(simpleCallback: SimpleCallback<Unit>) {
                 val task = NettyTcpClientConnectionTask(
                     serverAddress = connectAddress,
                     serverPort = TransferProtoConstant.FILE_TRANSFER_PORT
-                )
-
+                ).withServer<ConnectionServerImpl>(log = log)
+                    .withClient<ConnectionServerClientImpl>(log = log)
             }
+
+            fun isActive(): Boolean = task.get()?.getCurrentState() is NettyTaskState.ConnectionActive
 
             fun sendRemoteError(errorMsg: String) {
 

@@ -14,7 +14,6 @@ import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
-import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable

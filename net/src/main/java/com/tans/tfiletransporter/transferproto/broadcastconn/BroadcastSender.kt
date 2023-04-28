@@ -14,7 +14,6 @@ import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
-import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask.Companion.ConnectionType
 import com.tans.tfiletransporter.transferproto.SimpleCallback
@@ -38,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference
 class BroadcastSender(
     private val deviceName: String,
     private val log: ILog,
-    private val broadcastSendIntervalMillis: Long = 1000
+    private val broadcastSendIntervalMillis: Long = 600
 ) : SimpleObservable<BroadcastSenderObserver>, SimpleStateable<BroadcastSenderState> {
 
     override val state: AtomicReference<BroadcastSenderState> = AtomicReference(BroadcastSenderState.NoConnection)

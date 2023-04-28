@@ -19,29 +19,29 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
 ) {
     override fun firstLaunchInitData() {
         launch {
-            val grantStorage = RxPermissions(this@ConnectionActivity).let {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        it.request(Manifest.permission.READ_MEDIA_IMAGES,
-                            Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO)
-                    } else {
-                        it.request(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    }
+            val permissionNeed = mutableListOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissionNeed.add(Manifest.permission.READ_MEDIA_IMAGES)
+                    permissionNeed.add(Manifest.permission.READ_MEDIA_AUDIO)
+                    permissionNeed.add(Manifest.permission.READ_MEDIA_VIDEO)
                 } else {
-                    it.request(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    permissionNeed.add(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
-            }.firstOrError().await()
-            if (!grantStorage) {
-                finish()
+            } else {
+                permissionNeed.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                permissionNeed.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissionNeed.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            } else {
+                permissionNeed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+                permissionNeed.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+
             RxPermissions(this@ConnectionActivity)
-                .let {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        it.request(Manifest.permission.NEARBY_WIFI_DEVICES)
-                    } else {
-                        it.request(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                    }
-                }
+                .request(*permissionNeed.toTypedArray())
                 .firstOrError()
                 .await()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
