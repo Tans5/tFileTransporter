@@ -32,6 +32,7 @@ object UdpBroadcastClientTest {
                         repeat(1000) {
                             Thread.sleep(2000)
                             if (task.getCurrentState() !is NettyTaskState.ConnectionActive) return@execute
+                            println("Send broadcast.")
                             task.sendData(
                                 data = PackageDataWithAddress(
                                     receiverAddress = InetSocketAddress(broadcastAddress, 9997),

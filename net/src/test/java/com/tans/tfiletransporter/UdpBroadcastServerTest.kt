@@ -43,7 +43,12 @@ object UdpBroadcastServerTest {
                 remoteAddress: InetSocketAddress?,
                 r: String,
                 isNewRequest: Boolean
-            ): Unit? = null
+            ): Unit? {
+                if (isNewRequest) {
+                    println("UpdBroadcastServer receive broadcast: $r")
+                }
+                return null
+            }
 
         })
 
