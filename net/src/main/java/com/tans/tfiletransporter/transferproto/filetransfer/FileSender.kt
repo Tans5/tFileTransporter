@@ -41,9 +41,9 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class FileSender(
-    private val bufferSize: Long,
     private val files: List<SenderFile>,
     private val bindAddress: InetAddress,
+    private val bufferSize: Long,
     private val log: ILog
 ) : SimpleObservable<FileTransferObserver>, SimpleStateable<FileTransferState> {
 
@@ -283,6 +283,7 @@ class FileSender(
         private fun onFinished() {
             assertSingleFileSenderActive {
                 if (isSingleFileSenderFinished.compareAndSet(false, true)) {
+                    log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
                     doNextSender(this)
                 }
             }
@@ -296,7 +297,7 @@ class FileSender(
             }
         }
 
-        inner class SingleFileFragmentSender(
+        private inner class SingleFileFragmentSender(
             private val fileHandle: FileHandle,
             task: NettyTcpServerConnectionTask.ChildConnectionTask): CoroutineScope by CoroutineScope(Dispatchers.IO) {
 

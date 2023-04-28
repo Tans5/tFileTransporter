@@ -1,9 +1,15 @@
 package com.tans.tfiletransporter.transferproto.filetransfer
 
 import com.tans.tfiletransporter.ILog
+import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
+import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
+import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
+import okio.FileHandle
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
 import java.io.File
 import java.net.InetAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -12,10 +18,11 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class FileDownloader(
-    val maxConnectionSize: Long,
     val downloadDir: File,
     val files: List<FileExploreFile>,
     val connectAddress: InetAddress,
+    val maxConnectionSize: Long,
+    val minFrameSize: Long = 1024 * 1024 * 10, // 10MB
     val log: ILog
 ) : SimpleObservable<FileTransferObserver>, SimpleStateable<FileTransferState> {
 
@@ -144,15 +151,36 @@ class FileDownloader(
             AtomicBoolean(false)
         }
 
+        private val downloadingFile: AtomicReference<File?> by lazy {
+            AtomicReference(null)
+        }
+
         fun onActive() {
             if (!isSingleFileDownloaderCanceled.get() && !isSingleFileFinished.get() && isSingleFileDownloaderExecuted.compareAndSet(false, true)) {
-                // TODO: start
+                try {
+                    val downloadingFile = createDownloadingFile()
+                    this.downloadingFile.set(downloadingFile)
+                    val downloadingFileHandle = FileSystem.SYSTEM.openReadWrite(downloadingFile.toOkioPath())
+                    downloadingFileHandle.resize(file.size)
+                    val fragmentsRange = createFragmentsRange()
+                    log.d(TAG, "Real download fragment size: ${fragmentsRange.size}")
+
+                } catch (e: Throwable) {
+                    val msg = "Create download task fail: ${e.message}"
+                    log.e(TAG, msg, e)
+                    errorStateIfActive(msg)
+                }
             }
         }
 
         fun onCanceled(reason: String, reportRemote: Boolean) {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileFinished.get() && isSingleFileDownloaderCanceled.compareAndSet(false, true)) {
                 // TODO: cancel.
+
+                downloadingFile.get()?.let {
+                    it.delete()
+                    downloadingFile.set(null)
+                }
             }
         }
 
@@ -166,6 +194,11 @@ class FileDownloader(
 
         private fun onFinished() {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileFinished.compareAndSet(false, true)) {
+                downloadingFile.get()?.let {
+                    it.renameTo(getDownloadedFile(file.name))
+                    downloadingFile.set(null)
+                    log.d(TAG, "File: ${file.name} download success!!!")
+                }
                 doNextDownloader(this)
             }
         }
@@ -178,11 +211,13 @@ class FileDownloader(
             }
         }
 
-        private fun createFrameRange(
-            fileSize: Long,
-            frameCount: Int,
-            minFrameSize: Long): List<Pair<Long, Long>> {
-            if (fileSize <= 0) error("Wrong file size")
+        private fun createFragmentsRange(): List<Pair<Long, Long>> {
+            val fileSize = file.size
+            val frameCount = maxConnectionSize
+            val minFrameSize = minFrameSize
+            if (fileSize < 0) error("Wrong file size: $fileSize")
+            if (minFrameSize <= 0) error("Wrong min frame size: $minFrameSize")
+            if (frameCount <= 0) error("Wrong min frame count: $frameCount")
             return if (frameCount * minFrameSize > fileSize) {
                 val lastFrameSize = fileSize % minFrameSize
                 val realFrameCount = fileSize / minFrameSize + if (lastFrameSize > 0L) 1 else 0
@@ -209,6 +244,83 @@ class FileDownloader(
                 result
             }
         }
+
+        private fun createDownloadingFile(): File {
+            if (!downloadDir.isDirectory) {
+                downloadDir.mkdirs()
+            }
+            val downloadingFileName = "${file.name}.downloading"
+            val downloadingFile = File(downloadDir, downloadingFileName)
+            if (downloadingFile.isFile) {
+                downloadingFile.delete()
+            }
+            downloadingFile.createNewFile()
+            return downloadingFile
+        }
+
+        /**
+         * return file is not exists
+         */
+        private fun getDownloadedFile(fileName: String): File {
+            if (!downloadDir.isDirectory) {
+                downloadDir.mkdirs()
+            }
+            val targetFile = File(downloadDir, fileName)
+            if (!targetFile.exists()) {
+                return targetFile
+            }
+            val nameIndexSuffixRegex = "((.|\\s)+)-(\\d+)(\\.(.|\\s)+)$".toRegex()
+            val nameSuffix = "((.|\\s)+)(\\.(.|\\s)+)\$".toRegex()
+            val nameIndex = "((.|\\s)+)-(\\d+)$".toRegex()
+            return when {
+                nameIndexSuffixRegex.matches(fileName) -> {
+                    val values = nameIndexSuffixRegex.find(fileName)?.groupValues ?: emptyList()
+                    val name = values.getOrNull(1) ?: ""
+                    val index = values.getOrNull(3) ?: "0"
+                    val suffix = values.getOrNull(4) ?: ""
+                    getDownloadedFile("$name-${index.toLong() + 1}$suffix")
+                }
+                nameSuffix.matches(fileName) -> {
+                    val values = nameSuffix.find(fileName)?.groupValues ?: emptyList()
+                    val name = values.getOrNull(1) ?: ""
+                    val suffix = values.getOrNull(3) ?: ""
+                    getDownloadedFile("$name-1$suffix")
+                }
+                nameIndex.matches(fileName) -> {
+                    val values = nameIndexSuffixRegex.find(fileName)?.groupValues ?: emptyList()
+                    val name = values.getOrNull(1) ?: ""
+                    val index = values.getOrNull(2) ?: "0"
+                    getDownloadedFile("$name-${index.toLong() + 1}")
+                }
+                else -> {
+                    getDownloadedFile("$fileName-1")
+                }
+            }
+        }
+
+        private inner class SingleFileFragmentDownloader(
+            private val fileHandle: FileHandle,
+            private val start: Long,
+            private val end: Long
+        ) {
+
+            fun connectToServer(simpleCallback: SimpleCallback<Unit>) {
+                val task = NettyTcpClientConnectionTask(
+                    serverAddress = connectAddress,
+                    serverPort = TransferProtoConstant.FILE_TRANSFER_PORT
+                )
+
+            }
+
+            fun sendRemoteError(errorMsg: String) {
+
+            }
+
+            fun closeConnectionIfActive() {
+
+            }
+        }
+
     }
 
     companion object {
