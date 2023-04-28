@@ -12,7 +12,7 @@ import com.tans.tfiletransporter.databinding.RemoteServerEmptyItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.netty.getAndroidBroadcastAddress
+import com.tans.tfiletransporter.netty.getBroadcastAddress
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleCallback
@@ -59,7 +59,7 @@ class BroadcastReceiverDialog(
             updateState { state -> state.copy(receiver = Optional.of(receiver)) }.await()
             runCatching {
                 withContext(Dispatchers.IO) {
-                    receiver.startReceiverSuspend(localAddress, getAndroidBroadcastAddress())
+                    receiver.startReceiverSuspend(localAddress, localAddress.getBroadcastAddress().first)
                 }
             }.onSuccess {
                 receiver.addObserver(object : BroadcastReceiverObserver {
