@@ -407,7 +407,7 @@ class FileSender(
 
             fun sendRemoteError(errorMsg: String) {
                 if (isActive()) {
-                    serverClientTask.requestSimplify<ErrorReq, Unit>(
+                    serverClientTask.requestSimplify(
                         type = FileTransferDataType.ErrorReq.type,
                         request = ErrorReq(errorMsg),
                         retryTimes = 0,

@@ -42,7 +42,6 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.sin
 
 class FileDownloader(
     val downloadDir: File,
@@ -268,14 +267,6 @@ class FileDownloader(
                 doNextDownloader(this)
             }
             this.cancel()
-        }
-
-        private fun assertSingleFileDownloaderActive(notActive: (() -> Unit)? = null, active: () -> Unit) {
-            if (!isSingleFileFinished.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileDownloaderExecuted.get()) {
-                active()
-            } else {
-                notActive?.invoke()
-            }
         }
 
         private fun createFragmentsRange(): List<Pair<Long, Long>> {
