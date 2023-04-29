@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.netty.handlers
 
-import com.tans.tfiletransporter.enGzip
 import com.tans.tfiletransporter.netty.PackageDataWithAddress
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelOutboundHandlerAdapter
@@ -14,7 +13,7 @@ class PckAddrDataToDatagramDataEncoder :  ChannelOutboundHandlerAdapter() {
             val buffer = ctx.alloc().buffer()
             buffer.writeInt(msg.data.type)
             buffer.writeLong(msg.data.messageId)
-            buffer.writeBytes(msg.data.body.enGzip())
+            buffer.writeBytes(msg.data.body)
             super.write(ctx, DatagramPacket(buffer, msg.receiverAddress, msg.senderAddress), promise)
         }
     }

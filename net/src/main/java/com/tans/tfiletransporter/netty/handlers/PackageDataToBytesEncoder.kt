@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.netty.handlers
 
-import com.tans.tfiletransporter.enGzip
 import com.tans.tfiletransporter.netty.PackageData
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -11,6 +10,6 @@ class PackageDataToBytesEncoder : MessageToByteEncoder<PackageData>() {
     override fun encode(ctx: ChannelHandlerContext, msg: PackageData, out: ByteBuf) {
         out.writeInt(msg.type)
         out.writeLong(msg.messageId)
-        out.writeBytes(msg.body.enGzip())
+        out.writeBytes(msg.body)
     }
 }

@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.netty.handlers
 
-import com.tans.tfiletransporter.deGzip
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.PackageDataWithAddress
 import com.tans.tfiletransporter.netty.readBytes
@@ -16,7 +15,7 @@ class DatagramDataToPckAddrDataDecoder : ChannelInboundHandlerAdapter() {
             try {
                 val type = buffer.readInt()
                 val messageId = buffer.readLong()
-                val body = buffer.readBytes().deGzip()
+                val body = buffer.readBytes()
                 super.channelRead(
                     ctx, PackageDataWithAddress(
                         receiverAddress = msg.sender(),
