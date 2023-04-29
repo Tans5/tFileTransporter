@@ -11,16 +11,16 @@ import java.io.File
 object RandomFileReadWriteTest {
     @JvmStatic
     fun main(args: Array<String>) {
-        val rootDir = File("./app/testdir")
+        val rootDir = File("./net/testdir")
         if (!rootDir.isDirectory) {
             rootDir.mkdirs()
         }
-        val originFile = File(rootDir, "origin_file")
+        val originFile = File(rootDir, "test.mp4")
         if (!originFile.isFile) {
-            println("OriginFile is not exit")
+            println("TestFile is not exit")
             return
         }
-        val outputFile = File(rootDir, "copy_file")
+        val outputFile = File(rootDir, "copy_test.mp4")
         if (!outputFile.isFile) {
             outputFile.createNewFile()
         }

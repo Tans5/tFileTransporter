@@ -216,6 +216,7 @@ class FileDownloader(
                             val fd = result.getOrNull()
                             if (fd != null) {
                                 fragmentDownloader.add(fd)
+                                delay(200)
                             } else {
                                 val msg = "Connect error: ${result.exceptionOrNull()?.message}"
                                 log.e(TAG, msg, result.exceptionOrNull())
@@ -424,31 +425,34 @@ class FileDownloader(
                                         if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
                                             sink.flush()
                                             isFragmentDownloaderFinished.set(true)
-                                            val t = task.get()
-                                            if (t != null) {
-                                                t.requestSimplify(
-                                                    type = FileTransferDataType.FinishedReq.type,
-                                                    request = Unit,
-                                                    callback = object : IClientManager.RequestCallback<Unit> {
-                                                        override fun onSuccess(
-                                                            type: Int,
-                                                            messageId: Long,
-                                                            localAddress: InetSocketAddress?,
-                                                            remoteAddress: InetSocketAddress?,
-                                                            d: Unit
-                                                        ) {
-                                                            closeConnectionIfActive()
-                                                        }
-
-                                                        override fun onFail(errorMsg: String) {
-                                                            closeConnectionIfActive()
-                                                        }
-
-                                                    }
-                                                )
-                                            } else {
-                                                errorStateIfActive("Task is null")
-                                            }
+//                                            val t = task.get()
+//                                            if (t != null) {
+//                                                t.requestSimplify(
+//                                                    type = FileTransferDataType.FinishedReq.type,
+//                                                    request = Unit,
+//                                                    callback = object : IClientManager.RequestCallback<Unit> {
+//                                                        override fun onSuccess(
+//                                                            type: Int,
+//                                                            messageId: Long,
+//                                                            localAddress: InetSocketAddress?,
+//                                                            remoteAddress: InetSocketAddress?,
+//                                                            d: Unit
+//                                                        ) {
+//                                                            updateProgress(data.size.toLong())
+//                                                            closeConnectionIfActive()
+//                                                        }
+//
+//                                                        override fun onFail(errorMsg: String) {
+//                                                            updateProgress(data.size.toLong())
+//                                                            closeConnectionIfActive()
+//                                                        }
+//
+//                                                    }
+//                                                )
+//                                            } else {
+//                                                updateProgress(data.size.toLong())
+//                                                errorStateIfActive("Task is null")
+//                                            }
                                         }
                                     } catch (e: Throwable) {
                                         val msg = "Write data error: ${e.message}"

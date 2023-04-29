@@ -49,7 +49,7 @@ class FileSender(
 
     override val observers: LinkedBlockingDeque<FileTransferObserver> = LinkedBlockingDeque()
 
-    override val state: AtomicReference<FileTransferState> = AtomicReference()
+    override val state: AtomicReference<FileTransferState> = AtomicReference(FileTransferState.NotExecute)
 
     private val serverTask: AtomicReference<NettyTcpServerConnectionTask?> by lazy {
         AtomicReference(null)
@@ -98,11 +98,12 @@ class FileSender(
                 override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
 
                     if (nettyState is NettyTaskState.Error
-                        || nettyState is NettyTaskState.ConnectionClosed
-                        || getCurrentState() !is FileTransferState.Started) {
-                        val errorMsg = "Bind address fail: $nettyState, ${getCurrentState()}"
-                        log.e(TAG, errorMsg)
-                        errorStateIfActive(errorMsg)
+                        || nettyState is NettyTaskState.ConnectionClosed) {
+                        if (getCurrentState() is FileTransferState.Started) {
+                            val errorMsg = "Bind address fail: $nettyState, ${getCurrentState()}"
+                            log.e(TAG, errorMsg)
+                            errorStateIfActive(errorMsg)
+                        }
                     } else {
                         if (nettyState is NettyTaskState.ConnectionActive) {
                             log.d(TAG, "Bind address success: $nettyState")
