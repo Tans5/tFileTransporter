@@ -185,12 +185,18 @@ class FileDownloader(
             LinkedBlockingDeque()
         }
 
+        private val fileHandle: AtomicReference<FileHandle?> by lazy {
+            AtomicReference(null)
+        }
+
         fun onActive() {
             if (!isSingleFileDownloaderCanceled.get() && !isSingleFileFinished.get() && isSingleFileDownloaderExecuted.compareAndSet(false, true)) {
                 try {
                     val downloadingFile = createDownloadingFile()
                     this.downloadingFile.set(downloadingFile)
                     val downloadingFileHandle = FileSystem.SYSTEM.openReadWrite(downloadingFile.toOkioPath())
+                    this.fileHandle.get()?.close()
+                    this.fileHandle.set(downloadingFileHandle)
                     downloadingFileHandle.resize(file.size)
                     val fragmentsRange = createFragmentsRange()
                     log.d(TAG, "Real download fragment size: ${fragmentsRange.size}")
@@ -242,9 +248,17 @@ class FileDownloader(
                     f.closeConnectionIfActive()
                 }
                 fragmentDownloader.clear()
-                downloadingFile.get()?.let {
-                    it.delete()
-                    downloadingFile.set(null)
+                try {
+                    downloadingFile.get()?.let {
+                        it.delete()
+                        downloadingFile.set(null)
+                    }
+                    fileHandle.get()?.let {
+                        it.close()
+                        fileHandle.set(null)
+                    }
+                } catch (e: Throwable) {
+                    e.printStackTrace()
                 }
             }
             this.cancel()
@@ -260,10 +274,18 @@ class FileDownloader(
 
         private fun onFinished() {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileFinished.compareAndSet(false, true)) {
-                downloadingFile.get()?.let {
-                    it.renameTo(getDownloadedFile(file.name))
-                    downloadingFile.set(null)
-                    log.d(TAG, "File: ${file.name} download success!!!")
+                try {
+                    downloadingFile.get()?.let {
+                        it.renameTo(getDownloadedFile(file.name))
+                        downloadingFile.set(null)
+                        log.d(TAG, "File: ${file.name} download success!!!")
+                    }
+                    fileHandle.get()?.let {
+                        it.close()
+                        fileHandle.set(null)
+                    }
+                } catch (e: Throwable) {
+                    e.printStackTrace()
                 }
                 doNextDownloader(this)
             }

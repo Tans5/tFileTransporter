@@ -232,6 +232,7 @@ class FileSender(
         fun onActive() {
             if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
                 try {
+                    fileHandle.get()?.close()
                     fileHandle.set(FileSystem.SYSTEM.openReadOnly(file.realFile.toOkioPath()))
                 } catch (e: Throwable) {
                     val msg = "Read file: $file error: ${e.message}"
@@ -270,6 +271,14 @@ class FileSender(
                     fs.closeConnectionIfActive()
                 }
                 fragmentSenders.clear()
+                try {
+                    fileHandle.get()?.let {
+                        it.close()
+                        fileHandle.set(null)
+                    }
+                } catch (e: Throwable) {
+                    e.printStackTrace()
+                }
             }
         }
 
@@ -289,6 +298,14 @@ class FileSender(
                         fs.closeConnectionIfActive()
                     }
                     fragmentSenders.clear()
+                    try {
+                        fileHandle.get()?.let {
+                            it.close()
+                            fileHandle.set(null)
+                        }
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
+                    }
                     doNextSender(this)
                 }
             }
