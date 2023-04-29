@@ -53,14 +53,8 @@ object RandomFileReadWriteJavaTest {
                     } else {
                         bufferSize
                     }
-                    synchronized(inputRandomAccessFile) {
-                        synchronized(outputRandomFile) {
-                            inputRandomAccessFile.seek(start + hasRead)
-                            inputRandomAccessFile.read(byteArray, 0, thisTimeRead.toInt())
-                            outputRandomFile.seek(start + hasRead)
-                            outputRandomFile.write(byteArray, 0, thisTimeRead.toInt())
-                        }
-                    }
+                    inputRandomAccessFile.readContent(start+ hasRead, byteArray, thisTimeRead.toInt())
+                    outputRandomFile.writeContent(start + hasRead, byteArray, thisTimeRead.toInt())
                     hasRead += thisTimeRead
                 }
                 println("$frame, finished")

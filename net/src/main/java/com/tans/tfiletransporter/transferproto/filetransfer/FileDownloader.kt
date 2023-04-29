@@ -24,6 +24,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
+import com.tans.tfiletransporter.writeContent
 import kotlinx.coroutines.*
 import okio.BufferedSink
 import okio.FileHandle
@@ -31,6 +32,7 @@ import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 import okio.buffer
 import java.io.File
+import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -180,7 +182,8 @@ class FileDownloader(
             LinkedBlockingDeque()
         }
 
-        private val fileHandle: AtomicReference<FileHandle?> by lazy {
+
+        private val randomAccessFile: AtomicReference<RandomAccessFile?> by lazy {
             AtomicReference(null)
         }
 
@@ -189,10 +192,10 @@ class FileDownloader(
                 try {
                     val downloadingFile = createDownloadingFile()
                     this.downloadingFile.set(downloadingFile)
-                    val downloadingFileHandle = FileSystem.SYSTEM.openReadWrite(downloadingFile.toOkioPath())
-                    this.fileHandle.get()?.close()
-                    this.fileHandle.set(downloadingFileHandle)
-                    downloadingFileHandle.resize(file.size)
+                    val randomAccessFile = RandomAccessFile(downloadingFile, "rw")
+                    this.randomAccessFile.get()?.close()
+                    this.randomAccessFile.set(randomAccessFile)
+                    randomAccessFile.setLength(file.size)
                     val fragmentsRange = createFragmentsRange()
                     log.d(TAG, "Real download fragment size: ${fragmentsRange.size}")
                     launch {
@@ -201,7 +204,7 @@ class FileDownloader(
                             var result: Result<SingleFileFragmentDownloader>
                             do {
                                 val fd = SingleFileFragmentDownloader(
-                                    fileHandle = downloadingFileHandle,
+                                    randomAccessFile = randomAccessFile,
                                     start = start,
                                     end = end
                                 )
@@ -281,9 +284,9 @@ class FileDownloader(
 
         private fun recycleResource() {
             try {
-                fileHandle.get()?.let {
+                randomAccessFile.get()?.let {
                     it.close()
-                    fileHandle.set(null)
+                    randomAccessFile.set(null)
                 }
                 this.cancel()
             } catch (e: Throwable) {
@@ -391,7 +394,7 @@ class FileDownloader(
         }
 
         private inner class SingleFileFragmentDownloader(
-            private val fileHandle: FileHandle,
+            private val randomAccessFile: RandomAccessFile,
             private val start: Long,
             private val end: Long
         ) {
@@ -408,10 +411,6 @@ class FileDownloader(
 
             private val isFragmentDownloaderClosed: AtomicBoolean by lazy {
                 AtomicBoolean(false)
-            }
-
-            private val sink: AtomicReference<BufferedSink?> by lazy {
-                AtomicReference(null)
             }
 
             private val errorReqServer: IServer<ErrorReq, Unit> by lazy {
@@ -438,52 +437,47 @@ class FileDownloader(
                     onRequest = { _, _, data, isNew ->
                         if (isNew) {
                             if (!isFragmentDownloaderClosed.get() && !isFragmentDownloaderFinished.get()) {
-                                val sink = sink.get()
-                                if (sink != null) {
-                                    try {
-                                        sink.write(data)
-                                        if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
-                                            sink.flush()
-                                            isFragmentDownloaderFinished.set(true)
-                                            val t = task.get()
-                                            if (t != null) {
-                                                t.requestSimplify(
-                                                    type = FileTransferDataType.FinishedReq.type,
-                                                    request = Unit,
-                                                    callback = object : IClientManager.RequestCallback<Unit> {
-                                                        override fun onSuccess(
-                                                            type: Int,
-                                                            messageId: Long,
-                                                            localAddress: InetSocketAddress?,
-                                                            remoteAddress: InetSocketAddress?,
-                                                            d: Unit
-                                                        ) {
-                                                            updateProgress(data.size.toLong())
-                                                            closeConnectionIfActive()
-                                                        }
-
-                                                        override fun onFail(errorMsg: String) {
-                                                            updateProgress(data.size.toLong())
-                                                            closeConnectionIfActive()
-                                                        }
-
+                                try {
+                                    randomAccessFile.writeContent(
+                                        fileOffset = downloadedSize.get() + start,
+                                        byteArray = data,
+                                        contentLen = data.size
+                                    )
+                                    if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
+                                        isFragmentDownloaderFinished.set(true)
+                                        val t = task.get()
+                                        if (t != null) {
+                                            t.requestSimplify(
+                                                type = FileTransferDataType.FinishedReq.type,
+                                                request = Unit,
+                                                callback = object : IClientManager.RequestCallback<Unit> {
+                                                    override fun onSuccess(
+                                                        type: Int,
+                                                        messageId: Long,
+                                                        localAddress: InetSocketAddress?,
+                                                        remoteAddress: InetSocketAddress?,
+                                                        d: Unit
+                                                    ) {
+                                                        updateProgress(data.size.toLong())
+                                                        closeConnectionIfActive()
                                                     }
-                                                )
-                                            } else {
-                                                updateProgress(data.size.toLong())
-                                                errorStateIfActive("Task is null")
-                                            }
+
+                                                    override fun onFail(errorMsg: String) {
+                                                        updateProgress(data.size.toLong())
+                                                        closeConnectionIfActive()
+                                                    }
+
+                                                }
+                                            )
                                         } else {
                                             updateProgress(data.size.toLong())
+                                            errorStateIfActive("Task is null")
                                         }
-                                    } catch (e: Throwable) {
-                                        val msg = "Write data error: ${e.message}"
-                                        log.e(TAG, msg)
-                                        errorStateIfActive(msg)
+                                    } else {
+                                        updateProgress(data.size.toLong())
                                     }
-
-                                } else {
-                                    val msg = "Sink is null"
+                                } catch (e: Throwable) {
+                                    val msg = "Write data error: ${e.message}"
                                     log.e(TAG, msg)
                                     errorStateIfActive(msg)
                                 }
@@ -592,17 +586,6 @@ class FileDownloader(
                         task.set(null)
                     }
                 }
-                try {
-                    sink.get()?.let {
-                        if (it.isOpen) {
-                            it.flush()
-                            it.close()
-                        }
-                        sink.set(null)
-                    }
-                } catch (e: Throwable) {
-                    log.e(TAG, "Close sink error: ${e.message}", e)
-                }
                 isFragmentDownloaderClosed.set(true)
             }
 
@@ -621,15 +604,7 @@ class FileDownloader(
                             localAddress: InetSocketAddress?,
                             remoteAddress: InetSocketAddress?,
                             d: Unit
-                        ) {
-                            try {
-                                this@SingleFileFragmentDownloader.sink.set(fileHandle.sink(fileOffset = start).buffer())
-                            } catch (e: Throwable) {
-                                val msg = "Create sink fail: ${e.message}"
-                                log.e(TAG, msg)
-                                errorStateIfActive(msg)
-                            }
-                        }
+                        ) {}
 
                         override fun onFail(errorMsg: String) {
                             val msg = "Download req fail: $errorMsg"

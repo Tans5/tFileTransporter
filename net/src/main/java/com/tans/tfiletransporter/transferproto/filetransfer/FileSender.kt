@@ -14,6 +14,7 @@ import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
+import com.tans.tfiletransporter.readContent
 import com.tans.tfiletransporter.resumeExceptionIfActive
 import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleObservable
@@ -29,10 +30,7 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import okio.FileHandle
-import okio.FileSystem
-import okio.Path.Companion.toOkioPath
-import okio.buffer
+import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.LinkedBlockingDeque
@@ -207,7 +205,7 @@ class FileSender(
 
     private inner class SingleFileSender(val file: SenderFile) {
 
-        private val fileHandle: AtomicReference<FileHandle?> by lazy { AtomicReference(null) }
+        private val randomAccessFile: AtomicReference<RandomAccessFile?> by lazy { AtomicReference(null) }
 
         private val isSingleFileSenderExecuted: AtomicBoolean by lazy {
             AtomicBoolean(false)
@@ -232,8 +230,8 @@ class FileSender(
         fun onActive() {
             if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
                 try {
-                    fileHandle.get()?.close()
-                    fileHandle.set(FileSystem.SYSTEM.openReadOnly(file.realFile.toOkioPath()))
+                    randomAccessFile.get()?.close()
+                    randomAccessFile.set(RandomAccessFile(file.realFile, "r"))
                 } catch (e: Throwable) {
                     val msg = "Read file: $file error: ${e.message}"
                     log.d(TAG, msg)
@@ -250,9 +248,9 @@ class FileSender(
                 errorStateIfActive(msg)
             }
             ) {
-                val fileHandle = fileHandle.get()
-                if (fileHandle != null) {
-                    fragmentSenders.add(SingleFileFragmentSender(fileHandle = fileHandle, task = task))
+                val randomAccessFile = this.randomAccessFile.get()
+                if (randomAccessFile != null) {
+                    fragmentSenders.add(SingleFileFragmentSender(randomAccessFile = randomAccessFile, task = task))
                 } else {
                     task.stopTask()
                     val msg = "File handle is null"
@@ -297,9 +295,9 @@ class FileSender(
             }
             fragmentSenders.clear()
             try {
-                fileHandle.get()?.let {
+                randomAccessFile.get()?.let {
                     it.close()
-                    fileHandle.set(null)
+                    randomAccessFile.set(null)
                 }
             } catch (e: Throwable) {
                 e.printStackTrace()
@@ -315,7 +313,7 @@ class FileSender(
         }
 
         private inner class SingleFileFragmentSender(
-            private val fileHandle: FileHandle,
+            private val randomAccessFile: RandomAccessFile,
             task: NettyTcpServerConnectionTask.ChildConnectionTask): CoroutineScope by CoroutineScope(Dispatchers.IO) {
 
             private val serverClientTask: ConnectionServerClientImpl = task.withClient<ConnectionClientImpl>(log = log).withServer(log = log)
@@ -478,18 +476,27 @@ class FileSender(
                     val frameSize = downloadReq.end - downloadReq.start
                     var hasRead = 0L
                     try {
-                        fileHandle.source(downloadReq.start).buffer().use { source ->
-                            while (hasRead < frameSize) {
-                                val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
-                                    frameSize - hasRead
-                                } else {
-                                    bufferSize
-                                }
-                                val bytes = source.readByteArray(thisTimeRead)
-                                sendDataSuspend(bytes)
-                                updateProgress(thisTimeRead)
-                                hasRead += thisTimeRead
+                        val byteArray = ByteArray(bufferSize.toInt())
+                        while (hasRead < frameSize) {
+                            val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
+                                frameSize - hasRead
+                            } else {
+                                bufferSize
                             }
+                            randomAccessFile.readContent(
+                                fileOffset = downloadReq.start + hasRead,
+                                byteArray = byteArray,
+                                contentLen = thisTimeRead.toInt()
+                            )
+                            if (thisTimeRead == bufferSize) {
+                                sendDataSuspend(byteArray)
+                            } else {
+                                val newByteArray = ByteArray(thisTimeRead.toInt())
+                                System.arraycopy(byteArray, 0, newByteArray, 0, thisTimeRead.toInt())
+                                sendDataSuspend(newByteArray)
+                            }
+                            updateProgress(thisTimeRead)
+                            hasRead += thisTimeRead
                         }
                         isFragmentFinished.set(true)
                         log.d(TAG, "Frame: ${downloadReq.start} finished($frameSize bytes)")
