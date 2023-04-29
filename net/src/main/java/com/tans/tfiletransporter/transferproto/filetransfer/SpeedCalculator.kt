@@ -7,6 +7,7 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
@@ -27,37 +28,55 @@ class SpeedCalculator : SimpleObservable<SpeedCalculator.Companion.SpeedObserver
     private val taskFuture: AtomicReference<ScheduledFuture<*>> by lazy {
         AtomicReference()
     }
+    private val isUpdating: AtomicBoolean by lazy {
+        AtomicBoolean(false)
+    }
 
     fun start() {
-        reset()
-        taskFuture.get()?.cancel(true)
-        val future = taskScheduleExecutor.scheduleAtFixedRate({
-            val lastCycleSize = lastCycleSize.get()
-            val currentSize = currentSize.get()
-            this.lastCycleSize.set(currentSize)
-            val speed = (currentSize - lastCycleSize).coerceAtLeast(0L)
-            val speedString = "${speed.toSizeString()}/s"
-            for (o in observers) {
-                o.onSpeedUpdated(speed, speedString)
-            }
-        }, 1000L, 1000L, TimeUnit.MILLISECONDS)
-        taskFuture.set(future)
+        taskScheduleExecutor.execute {
+            taskFuture.get()?.cancel(true)
+            lastCycleSize.set(0L)
+            currentSize.set(0L)
+            isUpdating.set(false)
+            val future = taskScheduleExecutor.scheduleAtFixedRate({
+                val lastCycleSize = lastCycleSize.get()
+                val currentSize = currentSize.get()
+                this.lastCycleSize.set(currentSize)
+                val speed = (currentSize - lastCycleSize).coerceAtLeast(0L)
+                val speedString = "${speed.toSizeString()}/s"
+                for (o in observers) {
+                    o.onSpeedUpdated(speed, speedString)
+                }
+            }, 1000L, 1000L, TimeUnit.MILLISECONDS)
+            taskFuture.set(future)
+        }
     }
 
     fun updateCurrentSize(size: Long) {
-        taskScheduleExecutor.execute {
-            currentSize.set(size)
+        if (isUpdating.compareAndSet(false, true)) {
+            taskScheduleExecutor.execute {
+                currentSize.set(size)
+                isUpdating.set(false)
+            }
         }
     }
 
     fun reset() {
-        lastCycleSize.set(0L)
-        currentSize.set(0L)
+        taskScheduleExecutor.execute {
+            lastCycleSize.set(0L)
+            currentSize.set(0L)
+            isUpdating.set(false)
+        }
     }
 
     fun stop() {
-        taskFuture.get()?.cancel(true)
-        taskFuture.set(null)
+        taskScheduleExecutor.execute{
+            lastCycleSize.set(0L)
+            currentSize.set(0L)
+            isUpdating.set(false)
+            taskFuture.get()?.cancel(true)
+            taskFuture.set(null)
+        }
     }
 
 

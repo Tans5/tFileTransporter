@@ -55,15 +55,18 @@ object FileDownloaderTest {
                 println("Downloader speed: $speedInString")
             }
         })
-        speedCalculator.start()
 
         downloader.addObserver(object : FileTransferObserver {
             override fun onNewState(s: FileTransferState) {
+                if (s is FileTransferState.Started) {
+                    speedCalculator.start()
+                } else if (s !is FileTransferState.NotExecute) {
+                    speedCalculator.stop()
+                }
                 println("Downloader state: $s")
             }
 
             override fun onStartFile(file: FileExploreFile) {
-                speedCalculator.reset()
                 println("Downloader start ${file.name}")
             }
 
@@ -73,6 +76,7 @@ object FileDownloaderTest {
             }
 
             override fun onEndFile(file: FileExploreFile) {
+                speedCalculator.reset()
                 println("Downloader end: ${file.name}")
             }
 
