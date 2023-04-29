@@ -264,21 +264,12 @@ class FileSender(
 
         fun onCanceled(reason: String, reportRemote: Boolean) {
             if (isSingleFileSenderExecuted.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderCanceled.compareAndSet(false, true)) {
-                for (fs in fragmentSenders) {
-                    if (reportRemote) {
+                if (reportRemote) {
+                    for (fs in fragmentSenders) {
                         fs.sendRemoteError(reason)
                     }
-                    fs.closeConnectionIfActive()
                 }
-                fragmentSenders.clear()
-                try {
-                    fileHandle.get()?.let {
-                        it.close()
-                        fileHandle.set(null)
-                    }
-                } catch (e: Throwable) {
-                    e.printStackTrace()
-                }
+                recycleResource()
             }
         }
 
@@ -294,20 +285,24 @@ class FileSender(
             assertSingleFileSenderActive {
                 if (isSingleFileSenderFinished.compareAndSet(false, true)) {
                     log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
-                    for (fs in fragmentSenders){
-                        fs.closeConnectionIfActive()
-                    }
-                    fragmentSenders.clear()
-                    try {
-                        fileHandle.get()?.let {
-                            it.close()
-                            fileHandle.set(null)
-                        }
-                    } catch (e: Throwable) {
-                        e.printStackTrace()
-                    }
+                    recycleResource()
                     doNextSender(this)
                 }
+            }
+        }
+
+        private fun recycleResource() {
+            for (fs in fragmentSenders){
+                fs.closeConnectionIfActive()
+            }
+            fragmentSenders.clear()
+            try {
+                fileHandle.get()?.let {
+                    it.close()
+                    fileHandle.set(null)
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
             }
         }
 

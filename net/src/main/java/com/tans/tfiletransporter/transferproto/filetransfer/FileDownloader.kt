@@ -24,12 +24,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.*
 import okio.BufferedSink
 import okio.FileHandle
 import okio.FileSystem
@@ -253,15 +248,11 @@ class FileDownloader(
                         it.delete()
                         downloadingFile.set(null)
                     }
-                    fileHandle.get()?.let {
-                        it.close()
-                        fileHandle.set(null)
-                    }
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
+                recycleResource()
             }
-            this.cancel()
         }
 
         private fun updateProgress(downloadedSize: Long) {
@@ -280,16 +271,24 @@ class FileDownloader(
                         downloadingFile.set(null)
                         log.d(TAG, "File: ${file.name} download success!!!")
                     }
-                    fileHandle.get()?.let {
-                        it.close()
-                        fileHandle.set(null)
-                    }
+                    recycleResource()
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
                 doNextDownloader(this)
             }
-            this.cancel()
+        }
+
+        private fun recycleResource() {
+            try {
+                fileHandle.get()?.let {
+                    it.close()
+                    fileHandle.set(null)
+                }
+                this.cancel()
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
         }
 
         private fun createFragmentsRange(): List<Pair<Long, Long>> {
@@ -586,9 +585,12 @@ class FileDownloader(
             }
 
             fun closeConnectionIfActive() {
-                task.get()?.let {
-                    it.stopTask()
-                    task.set(null)
+                Dispatchers.IO.asExecutor().execute {
+                    Thread.sleep(100)
+                    task.get()?.let {
+                        it.stopTask()
+                        task.set(null)
+                    }
                 }
                 try {
                     sink.get()?.let {

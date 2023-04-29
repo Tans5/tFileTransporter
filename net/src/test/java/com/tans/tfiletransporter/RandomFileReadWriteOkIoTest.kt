@@ -7,8 +7,9 @@ import kotlinx.coroutines.runBlocking
 import okio.*
 import okio.Path.Companion.toOkioPath
 import java.io.File
+import kotlin.math.sin
 
-object RandomFileReadWriteTest {
+object RandomFileReadWriteOkIoTest {
     @JvmStatic
     fun main(args: Array<String>) {
         val rootDir = File("./net/testdir")

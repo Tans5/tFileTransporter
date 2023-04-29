@@ -41,3 +41,5 @@
 -keep class lzma.** {*;}
 -keep class net.jpountz.** {*;}
 -keep class sun.security.** {*;}
+
+-dontwarn org.codehaus.mojo.animal_sniffer.*
