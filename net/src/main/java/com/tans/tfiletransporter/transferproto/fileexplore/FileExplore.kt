@@ -7,7 +7,6 @@ import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerClientImpl
-import com.tans.tfiletransporter.netty.extensions.DefaultClientManager
 import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
@@ -34,7 +33,9 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.SendMsgReq
 import java.io.File
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -297,7 +298,7 @@ class FileExplore(
                             simpleCallback.onSuccess(Unit)
                         }
                         newState(FileExploreState.Connected)
-                        val future = DefaultClientManager.taskScheduleExecutor.scheduleAtFixedRate(
+                        val future = taskScheduleExecutor.scheduleAtFixedRate(
                             {
                                 sendHeartbeat()
                             },
@@ -537,5 +538,10 @@ class FileExplore(
 
     companion object {
         private const val TAG = "FileExplore"
+        private val taskScheduleExecutor: ScheduledExecutorService by lazy {
+            Executors.newScheduledThreadPool(1) {
+                Thread(it, "FileExploreTaskThread")
+            }
+        }
     }
 }

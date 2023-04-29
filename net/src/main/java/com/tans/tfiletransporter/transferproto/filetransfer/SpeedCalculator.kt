@@ -1,0 +1,77 @@
+package com.tans.tfiletransporter.transferproto.filetransfer
+
+import com.tans.tfiletransporter.toSizeString
+import com.tans.tfiletransporter.transferproto.SimpleObservable
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+
+class SpeedCalculator : SimpleObservable<SpeedCalculator.Companion.SpeedObserver> {
+
+    private val lastCycleSize: AtomicLong by lazy {
+        AtomicLong(0L)
+    }
+
+    private val currentSize: AtomicLong by lazy {
+        AtomicLong(0L)
+    }
+
+    override val observers: LinkedBlockingDeque<SpeedObserver> by lazy {
+        LinkedBlockingDeque()
+    }
+
+    private val taskFuture: AtomicReference<ScheduledFuture<*>> by lazy {
+        AtomicReference()
+    }
+
+    fun start() {
+        reset()
+        taskFuture.get()?.cancel(true)
+        val future = taskScheduleExecutor.scheduleAtFixedRate({
+            val lastCycleSize = lastCycleSize.get()
+            val currentSize = currentSize.get()
+            this.lastCycleSize.set(currentSize)
+            val speed = (currentSize - lastCycleSize).coerceAtLeast(0L)
+            val speedString = "${speed.toSizeString()}/s"
+            for (o in observers) {
+                o.onSpeedUpdated(speed, speedString)
+            }
+        }, 1000L, 1000L, TimeUnit.MILLISECONDS)
+        taskFuture.set(future)
+    }
+
+    fun updateCurrentSize(size: Long) {
+        taskScheduleExecutor.execute {
+            currentSize.set(size)
+        }
+    }
+
+    fun reset() {
+        lastCycleSize.set(0L)
+        currentSize.set(0L)
+    }
+
+    fun stop() {
+        taskFuture.get()?.cancel(true)
+        taskFuture.set(null)
+    }
+
+
+    companion object {
+
+        interface SpeedObserver {
+            fun onSpeedUpdated(speedInBytes: Long, speedInString: String)
+        }
+
+        private val taskScheduleExecutor: ScheduledExecutorService by lazy {
+            Executors.newScheduledThreadPool(1) {
+                Thread(it, "SpeedCalculatorThread")
+            }
+        }
+    }
+
+}

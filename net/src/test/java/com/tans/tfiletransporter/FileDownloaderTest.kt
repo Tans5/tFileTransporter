@@ -5,6 +5,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.FileDownloader
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
+import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -47,16 +48,27 @@ object FileDownloaderTest {
             maxConnectionSize = 8,
             log = TestLog
         )
+        val speedCalculator = SpeedCalculator()
+
+        speedCalculator.addObserver(object : SpeedCalculator.Companion.SpeedObserver {
+            override fun onSpeedUpdated(speedInBytes: Long, speedInString: String) {
+                println("Downloader speed: $speedInString")
+            }
+        })
+        speedCalculator.start()
+
         downloader.addObserver(object : FileTransferObserver {
             override fun onNewState(s: FileTransferState) {
                 println("Downloader state: $s")
             }
 
             override fun onStartFile(file: FileExploreFile) {
+                speedCalculator.reset()
                 println("Downloader start ${file.name}")
             }
 
             override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
+                speedCalculator.updateCurrentSize(progress)
                 println("Downloader process ${progress.toDouble() / file.size.toDouble()}")
             }
 

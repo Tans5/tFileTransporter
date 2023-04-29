@@ -7,7 +7,6 @@ import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
 import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
-import com.tans.tfiletransporter.netty.extensions.DefaultClientManager
 import com.tans.tfiletransporter.netty.extensions.IClientManager
 import com.tans.tfiletransporter.netty.extensions.IServer
 import com.tans.tfiletransporter.netty.extensions.requestSimplify
@@ -26,7 +25,9 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.BroadcastTran
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -258,7 +259,7 @@ class BroadcastReceiver(
         for (o in observers) {
             o.onNewBroadcast(rd)
         }
-        val future = DefaultClientManager.taskScheduleExecutor.schedule({
+        val future = taskScheduleExecutor.schedule({
             activeDevices.removeIf { it.remoteDevice == rd }
             val newDevices = activeDevices.sortedBy { it.firstVisibleTime }.map { it.remoteDevice }
             for (o in observers) {
@@ -288,5 +289,10 @@ class BroadcastReceiver(
 
     companion object {
         private const val TAG = "BroadcastReceiver"
+        private val taskScheduleExecutor: ScheduledExecutorService by lazy {
+            Executors.newScheduledThreadPool(1) {
+                Thread(it, "BroadcastReceiverTaskThread")
+            }
+        }
     }
 }

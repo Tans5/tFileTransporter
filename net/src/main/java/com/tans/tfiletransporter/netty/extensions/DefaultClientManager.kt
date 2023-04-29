@@ -273,7 +273,7 @@ class DefaultClientManager(
 
     companion object {
 
-        val taskScheduleExecutor: ScheduledExecutorService by lazy {
+        private val taskScheduleExecutor: ScheduledExecutorService by lazy {
             Executors.newScheduledThreadPool(2) {
                 Thread(it, "ClientTaskThread")
             }

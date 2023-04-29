@@ -6,10 +6,10 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import com.bumptech.glide.Glide
+import com.tans.tfiletransporter.GB
+import com.tans.tfiletransporter.KB
+import com.tans.tfiletransporter.MB
 import com.tans.tfiletransporter.R
-import com.tans.tfiletransporter.file.GB
-import com.tans.tfiletransporter.file.KB
-import com.tans.tfiletransporter.file.MB
 import org.threeten.bp.*
 import org.threeten.bp.format.DateTimeFormatter
 
