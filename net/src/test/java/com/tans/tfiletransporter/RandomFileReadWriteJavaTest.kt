@@ -36,6 +36,7 @@ object RandomFileReadWriteJavaTest {
             minFrameSize = minFrameSize
         )
 
+        val inputRandomAccessFile = RandomAccessFile(originFile, "r")
         val outputRandomFile = RandomAccessFile(outputFile, "rw")
         outputRandomFile.setLength(originFileSize)
         for (frame in frames) {
@@ -45,21 +46,22 @@ object RandomFileReadWriteJavaTest {
                 val frameSize = end - start
                 val bufferSize = 1024 * 256L // 256kb
                 var hasRead = 0L
-                RandomAccessFile(originFile, "r").channel.position(start).use { inputChannel ->
-                    RandomAccessFile(outputFile, "rw").channel.position(start).use { outputChannel ->
-                        while (hasRead < frameSize) {
-                            val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
-                                frameSize - hasRead
-                            } else {
-                                bufferSize
-                            }
-                            val buffer = ByteBuffer.allocate(thisTimeRead.toInt())
-                            inputChannel.read(buffer, thisTimeRead)
-                            outputChannel.write(buffer, thisTimeRead)
-                            buffer.duplicate()
-                            hasRead += thisTimeRead
+                val byteArray = ByteArray(bufferSize.toInt())
+                while (hasRead < frameSize) {
+                    val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
+                        frameSize - hasRead
+                    } else {
+                        bufferSize
+                    }
+                    synchronized(inputRandomAccessFile) {
+                        synchronized(outputRandomFile) {
+                            inputRandomAccessFile.seek(start + hasRead)
+                            inputRandomAccessFile.read(byteArray, 0, thisTimeRead.toInt())
+                            outputRandomFile.seek(start + hasRead)
+                            outputRandomFile.write(byteArray, 0, thisTimeRead.toInt())
                         }
                     }
+                    hasRead += thisTimeRead
                 }
                 println("$frame, finished")
             }
