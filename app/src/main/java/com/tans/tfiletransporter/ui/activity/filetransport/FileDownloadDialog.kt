@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.media.MediaScannerConnection
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
@@ -15,6 +16,7 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
@@ -140,7 +142,19 @@ class FileDownloaderDialog(
                     }.bindLife()
                 }
 
-                override fun onEndFile(file: FileExploreFile) {}
+                override fun onEndFile(file: FileExploreFile) {
+                    val mimeAndMediaType = getMediaMimeTypeWithFileName(file.name)
+                    if (mimeAndMediaType != null) {
+                        rxSingle {
+                            MediaScannerConnection.scanFile(
+                                context,
+                                arrayOf(File(downloadDir, file.name).canonicalPath),
+                                arrayOf(mimeAndMediaType.first),
+                                null
+                            )
+                        }.bindLife()
+                    }
+                }
 
             })
             downloader.start()
