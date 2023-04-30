@@ -43,3 +43,11 @@
 -keep class sun.security.** {*;}
 
 -dontwarn org.codehaus.mojo.animal_sniffer.*
+
+#Netty
+-keepattributes Signature,InnerClasses
+-keepclasseswithmembers class io.netty.** {*;}
+-keepnames class io.netty.** {*;}
+-keepclassmembernames class io.netty.buffer.AbstractByteBufAllocator {*;}
+-keepclassmembernames class io.netty.buffer.AdvancedLeakAwareByteBuf {*;}
+-keep public class io.netty.util.ReferenceCountUtil {*;}
