@@ -463,10 +463,12 @@ class FileDownloader(
                                                         d: Unit
                                                     ) {
                                                         updateProgress(data.size.toLong())
+                                                        closeConnectionIfActive()
                                                     }
 
                                                     override fun onFail(errorMsg: String) {
                                                         updateProgress(data.size.toLong())
+                                                        closeConnectionIfActive()
                                                     }
 
                                                 }
@@ -582,7 +584,7 @@ class FileDownloader(
 
             fun closeConnectionIfActive() {
                 Dispatchers.IO.asExecutor().execute {
-                    Thread.sleep(100)
+                    Thread.sleep(500)
                     task.get()?.let {
                         it.stopTask()
                         task.set(null)

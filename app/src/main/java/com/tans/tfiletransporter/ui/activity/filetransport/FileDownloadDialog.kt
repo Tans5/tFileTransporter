@@ -13,6 +13,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.FileDownloader
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
+import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
@@ -45,6 +46,10 @@ class FileDownloaderDialog(
         AtomicReference(null)
     }
 
+    private val speedCalculator: AtomicReference<SpeedCalculator?> by lazy {
+        AtomicReference(null)
+    }
+
     private val hasInvokeCallback: AtomicBoolean by lazy {
         AtomicBoolean(false)
     }
@@ -62,17 +67,30 @@ class FileDownloaderDialog(
             )
             this@FileDownloaderDialog.downloader.get()?.cancel()
             this@FileDownloaderDialog.downloader.set(downloader)
+            val speedCalculator = SpeedCalculator()
+            speedCalculator.addObserver(object : SpeedCalculator.Companion.SpeedObserver {
+                override fun onSpeedUpdated(speedInBytes: Long, speedInString: String) {
+                    updateState {
+                        it.copy(speedString = speedInString)
+                    }.bindLife()
+                }
+            })
+            this@FileDownloaderDialog.speedCalculator.set(speedCalculator)
             downloader.addObserver(object : FileTransferObserver {
                 override fun onNewState(s: FileTransferState) {
                     when (s) {
                         FileTransferState.NotExecute -> {}
-                        FileTransferState.Started -> {}
+                        FileTransferState.Started -> {
+                            speedCalculator.start()
+                        }
                         FileTransferState.Canceled -> {
+                            speedCalculator.stop()
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Cancel)
                             }
                         }
                         FileTransferState.Finished -> {
+                            speedCalculator.stop()
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Finished)
                             }
@@ -81,6 +99,7 @@ class FileDownloaderDialog(
                             }.bindLife()
                         }
                         is FileTransferState.Error -> {
+                            speedCalculator.stop()
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
                             }
@@ -89,8 +108,9 @@ class FileDownloaderDialog(
                             }.bindLife()
                         }
                         is FileTransferState.RemoteError -> {
+                            speedCalculator.stop()
                             if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Error(s.msg))
+                                callback(FileTransferResult.Error("Remote error: ${s.msg}"))
                             }
                             rxSingle(Dispatchers.Main) {
                                 cancel()
@@ -100,6 +120,7 @@ class FileDownloaderDialog(
                 }
 
                 override fun onStartFile(file: FileExploreFile) {
+                    speedCalculator.reset()
                     rxSingle {
                         updateState {
                             FileTransferDialogState(
@@ -111,6 +132,7 @@ class FileDownloaderDialog(
                 }
 
                 override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
+                    speedCalculator.updateCurrentSize(progress)
                     rxSingle {
                         updateState { oldState ->
                             oldState.copy(process = progress)
@@ -151,6 +173,10 @@ class FileDownloaderDialog(
             }
         }.bindLife()
 
+        render({ it.speedString }) {
+            binding.speedTv.text = it
+        }.bindLife()
+
         binding.cancelButton.clicks()
             .ignoreSeveralClicks(1000L)
             .observeOn(Schedulers.io())
@@ -165,6 +191,7 @@ class FileDownloaderDialog(
     override fun onStop() {
         super.onStop()
         downloader.get()?.cancel()
+        speedCalculator.get()?.stop()
     }
 }
 
