@@ -16,6 +16,7 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,6 +52,7 @@ class FileDownloaderDialog(
 
     @SuppressLint("SetTextI18n")
     override fun bindingStart(binding: ReadingWritingFilesDialogLayoutBinding) {
+        setCancelable(false)
         launch(Dispatchers.IO) {
             val downloader = FileDownloader(
                 files = files,
@@ -69,24 +71,30 @@ class FileDownloaderDialog(
                         FileTransferState.Canceled -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Cancel)
-                                launch(Dispatchers.Main) {
-                                    cancel()
-                                }
                             }
                         }
                         FileTransferState.Finished -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Finished)
                             }
+                            launch(Dispatchers.Main) {
+                                cancel()
+                            }
                         }
                         is FileTransferState.Error -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
                             }
+                            launch(Dispatchers.Main) {
+                                cancel()
+                            }
                         }
                         is FileTransferState.RemoteError -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
+                            }
+                            launch(Dispatchers.Main) {
+                                cancel()
                             }
                         }
                     }
@@ -148,6 +156,10 @@ class FileDownloaderDialog(
             .ignoreSeveralClicks(1000L)
             .observeOn(Schedulers.io())
             .doOnNext { downloader.get()?.cancel() }
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnNext {
+                cancel()
+            }
             .bindLife()
     }
 

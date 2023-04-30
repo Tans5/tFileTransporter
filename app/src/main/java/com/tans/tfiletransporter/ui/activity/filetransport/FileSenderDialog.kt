@@ -15,6 +15,7 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,6 +49,7 @@ class FileSenderDialog(
 
     @SuppressLint("SetTextI18n")
     override fun bindingStart(binding: ReadingWritingFilesDialogLayoutBinding) {
+        setCancelable(false)
         launch(Dispatchers.IO) {
             val sender = FileSender(
                 files = files,
@@ -65,24 +67,30 @@ class FileSenderDialog(
                         FileTransferState.Canceled -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Cancel)
-                                launch(Dispatchers.Main) {
-                                    cancel()
-                                }
                             }
                         }
                         FileTransferState.Finished -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Finished)
+                                launch(Dispatchers.Main) {
+                                    cancel()
+                                }
                             }
                         }
                         is FileTransferState.Error -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
+                                launch(Dispatchers.Main) {
+                                    cancel()
+                                }
                             }
                         }
                         is FileTransferState.RemoteError -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
+                                launch(Dispatchers.Main) {
+                                    cancel()
+                                }
                             }
                         }
                     }
@@ -132,7 +140,7 @@ class FileSenderDialog(
             val file = it.first.getOrNull()
             val process = it.second
             if (file != null) {
-                val processInPercent = process * 100L / file.size
+                val processInPercent = process.toDouble() / file.size.toDouble() * 100.0
                 binding.filePb.progress = processInPercent.toInt()
                 binding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
             } else {
@@ -145,6 +153,10 @@ class FileSenderDialog(
             .ignoreSeveralClicks(1000L)
             .observeOn(Schedulers.io())
             .doOnNext { sender.get()?.cancel() }
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnNext {
+                cancel()
+            }
             .bindLife()
     }
 
