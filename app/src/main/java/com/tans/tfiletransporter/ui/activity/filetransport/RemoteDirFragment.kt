@@ -223,10 +223,12 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
                         fileExplore.requestDownloadFilesSuspend(exploreFiles)
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request download fails success.")
-                        updateState { it.copy(selectedFiles = emptySet()) }.await()
+                        (requireActivity() as FileTransportActivity)
+                            .downloadFiles(files = exploreFiles, it.maxConnection)
                     }.onFailure {
                         AndroidLog.e(TAG, "Request download files fail: $it", it)
                     }
+                    updateState { it.copy(selectedFiles = emptySet()) }.await()
                 }
             }
             .bindLife()

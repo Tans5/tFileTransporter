@@ -18,6 +18,8 @@
     <string name="connection_handshake_error">Handshake error: %s</string>
     <string name="connection_error_message">A conexão foi interrompida, por favor reconecte.</string>
 
+    <string name="file_transfer_error_title">Transfer Error</string>
+
     <string name="downloading_files_dialog_title">Baixando arquivo(s) (%d/%d)</string>
     <string name="sending_files_dialog_title">Enviando arquivo(s) (%d/%d)</string>
     <string name="file_deal_progress">%s/%s</string>

@@ -35,6 +35,9 @@ import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.file.scanChildren
+import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
+import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion.showSenderDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -43,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.kodein.di.DI
@@ -66,6 +70,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         Environment.getExternalStorageDirectory()
     }
 
+    private val downloadDir: File by lazy {
+        val sysDownloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        File(sysDownloadDir, "tFileTransfer")
+    }
+
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
@@ -78,7 +87,12 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         object : FileExploreRequestHandler<SendFilesReq, SendFilesResp> {
             override fun onRequest(isNew: Boolean, request: SendFilesReq): SendFilesResp {
                 if (isNew) {
-                    // TODO: Download files
+                    launch {
+                        downloadFiles(
+                            request.sendFiles,
+                            request.maxConnection
+                        )
+                    }
                 }
                 return SendFilesResp(bufferSize = 1024 * 512)
             }
@@ -89,7 +103,9 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         object : FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp> {
             override fun onRequest(isNew: Boolean, request: DownloadFilesReq): DownloadFilesResp {
                 if (isNew) {
-                    // TODO: Send files
+                    launch {
+                        sendFiles(request.downloadFiles, request.bufferSize.toLong())
+                    }
                 }
                 return DownloadFilesResp(maxConnection = 8)
             }
@@ -313,6 +329,64 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     suspend fun updateNewMessage(msg: Message) {
         updateState { it.copy(messages = it.messages + msg) }.await()
+    }
+
+    private val fileTransferMutex: Mutex by lazy {
+        Mutex(false)
+    }
+
+    suspend fun sendFiles(files: List<FileExploreFile>, bufferSize: Long) {
+        val fixedFiles = files.filter { it.size > 0 }
+        val senderFiles = fixedFiles.map { SenderFile( File(rootDirFile, it.path), it) }
+        if (senderFiles.isEmpty()) return
+        sendFiles(senderFiles, bufferSize)
+    }
+
+    suspend fun sendFiles(files: List<SenderFile>, bufferSize: Long) {
+        if (files.isEmpty()) return
+        if (fileTransferMutex.isLocked) return
+        fileTransferMutex.lock()
+        val result = withContext(Dispatchers.Main) {
+            showFileSenderDialog(
+                bindAddress = intent.getLocalAddress(),
+                files = files,
+                bufferSize = bufferSize
+            )
+        }
+        if (result is FileTransferResult.Error) {
+            withContext(Dispatchers.Main) {
+                showNoOptionalDialog(
+                    title = getString(R.string.file_transfer_error_title),
+                    message = result.msg
+                ).await()
+            }
+        }
+        fileTransferMutex.unlock()
+    }
+
+    suspend fun downloadFiles(files: List<FileExploreFile>, maxConnection: Int) {
+        val fixedFiles = files.filter { it.size > 0 }
+        if (fixedFiles.isEmpty()) return
+        if (fileTransferMutex.isLocked) return
+        fileTransferMutex.lock()
+        delay(500L)
+        val result = withContext(Dispatchers.Main) {
+            showFileDownloaderDialog(
+                senderAddress = intent.getRemoteAddress(),
+                files = fixedFiles,
+                downloadDir = downloadDir,
+                maxConnectionSize = maxConnection
+            )
+        }
+        if (result is FileTransferResult.Error) {
+            withContext(Dispatchers.Main) {
+                showNoOptionalDialog(
+                    title = getString(R.string.file_transfer_error_title),
+                    message = result.msg
+                ).await()
+            }
+        }
+        fileTransferMutex.unlock()
     }
 
     companion object {

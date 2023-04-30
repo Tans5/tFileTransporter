@@ -185,11 +185,13 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
             .filter { it.first == FileTransportActivity.Companion.DirTabType.MyDir && it.second.isNotEmpty() }
             .flatMapSingle { (_, selectedFiles) ->
                 rxSingle(Dispatchers.IO) {
+                    val exploreFiles = selectedFiles.toList().toExploreFiles()
                     runCatching {
-                        val exploreFiles = selectedFiles.toList().toExploreFiles()
                         fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles)
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request send files success: $it")
+                        (requireActivity() as FileTransportActivity)
+                            .sendFiles(exploreFiles, it.bufferSize.toLong())
                     }.onFailure {
                         AndroidLog.e(TAG, "Request send files fail: $it", it)
                     }

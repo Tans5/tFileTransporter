@@ -15,6 +15,7 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
+import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.utils.dp2px
@@ -106,28 +107,36 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
             .switchMapSingle {
                 rxSingle {
                     val selectedApps = bindState().firstOrError().map { it.selected }.await()
-                    val sendFiles = selectedApps.mapNotNull {
-                        if (File(it.sourceDir).canRead()) {
-                            FileExploreFile(
-                                name = "${it.name}-${it.packageName}.apk",
-                                path = it.sourceDir,
-                                size = it.appSize,
-                                lastModify = System.currentTimeMillis()
+                    val senderFiles = selectedApps.mapNotNull {
+                        val f = File(it.sourceDir)
+                        if (f.canRead()) {
+                            SenderFile(
+                                realFile = f,
+                                exploreFile = FileExploreFile(
+                                    name = "${it.name}-${it.packageName}.apk",
+                                    path = it.sourceDir,
+                                    size = it.appSize,
+                                    lastModify = System.currentTimeMillis()
+                                )
                             )
                         } else {
                             null
                         }
                     }
-                    if (sendFiles.isNotEmpty()) {
+                    if (senderFiles.isNotEmpty()) {
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
-                                sendFiles = sendFiles
+                                sendFiles = senderFiles.map { it.exploreFile }
                             )
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send apps fail: $it", it)
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send apps success: $it")
-                            // TODO: Send Apps.
+                            (requireActivity() as FileTransportActivity)
+                                .sendFiles(
+                                    files = senderFiles,
+                                    bufferSize = it.bufferSize.toLong()
+                                )
                         }
                     }
                     updateState { it.copy(selected = emptySet()) }.await()

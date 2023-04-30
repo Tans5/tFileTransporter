@@ -18,6 +18,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.file.toFileExploreFile
+import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import io.reactivex.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -116,15 +117,16 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                     if (selectImages.isEmpty()) return@rxSingle
                     clearImageCaches()
                     val files = selectImages.createCatches()
-                    val exploreFiles = files.map { it.toFileExploreFile("") }
-                    if (exploreFiles.isNotEmpty()) {
+                    val senderFiles = files.map { SenderFile(it, it.toFileExploreFile("")) }
+                    if (senderFiles.isNotEmpty()) {
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
-                                sendFiles = exploreFiles
+                                sendFiles = senderFiles.map { it.exploreFile }
                             )
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send image success")
-                            // TODO: Send images.
+                            (requireActivity() as FileTransportActivity)
+                                .sendFiles(senderFiles, it.bufferSize.toLong())
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send image fail.")
                         }
