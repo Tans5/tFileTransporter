@@ -31,12 +31,12 @@ object Settings : Stateable<Settings.SettingsData> {
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "tFileTransfer").canonicalPath
     }
 
-    private const val defaultConnectionSize = 8
+    private const val defaultConnectionSize = 4
 
     private const val defaultBufferSize = 1024L * 512L
 
     const val minConnectionSize = 1
-    const val maxConnectionSize = defaultConnectionSize
+    const val maxConnectionSize = 8
     const val minBufferSize = 1024
     const val maxBufferSize = defaultBufferSize
     fun init(context: Context) {
