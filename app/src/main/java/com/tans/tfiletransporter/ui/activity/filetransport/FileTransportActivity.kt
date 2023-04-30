@@ -37,7 +37,6 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion.showSenderDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -339,10 +338,10 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         val fixedFiles = files.filter { it.size > 0 }
         val senderFiles = fixedFiles.map { SenderFile( File(rootDirFile, it.path), it) }
         if (senderFiles.isEmpty()) return
-        sendFiles(senderFiles, bufferSize)
+        sendSenderFiles(senderFiles, bufferSize)
     }
 
-    suspend fun sendFiles(files: List<SenderFile>, bufferSize: Long) {
+    suspend fun sendSenderFiles(files: List<SenderFile>, bufferSize: Long) {
         if (files.isEmpty()) return
         if (fileTransferMutex.isLocked) return
         fileTransferMutex.lock()

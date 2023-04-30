@@ -133,7 +133,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send apps success: $it")
                             (requireActivity() as FileTransportActivity)
-                                .sendFiles(
+                                .sendSenderFiles(
                                     files = senderFiles,
                                     bufferSize = it.bufferSize.toLong()
                                 )
