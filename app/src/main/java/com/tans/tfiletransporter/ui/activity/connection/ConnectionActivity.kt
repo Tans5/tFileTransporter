@@ -9,6 +9,7 @@ import android.provider.Settings
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
+import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
 import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
@@ -53,7 +54,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
 
         binding.toolBar.setOnMenuItemClickListener {
             if (it.itemId == R.id.settings) {
-                // TODO: Show menu.
+                SettingsDialog(this).show()
                 true
             } else {
                 false

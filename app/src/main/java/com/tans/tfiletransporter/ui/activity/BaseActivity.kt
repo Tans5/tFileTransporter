@@ -43,12 +43,14 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private val viewModel: ActivityViewModel<State> by lazy {
         ViewModelProvider(this, object : ViewModelProvider.Factory{
+            @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return ActivityViewModel(defaultState) as T
             }
-        }).get(ActivityViewModel::class.java) as ActivityViewModel<State>
+        })[ActivityViewModel::class.java] as ActivityViewModel<State>
     }
 
     override val coroutineContext: CoroutineContext by lazy { viewModel.coroutineContext }

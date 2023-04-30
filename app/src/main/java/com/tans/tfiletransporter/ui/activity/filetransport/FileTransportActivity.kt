@@ -38,6 +38,7 @@ import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
@@ -254,7 +255,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
             binding.toolBar.setOnMenuItemClickListener {
                 if (it.itemId == R.id.settings) {
-                    // TODO: Show settings
+                    SettingsDialog(this@FileTransportActivity).show()
                     true
                 } else {
                     false

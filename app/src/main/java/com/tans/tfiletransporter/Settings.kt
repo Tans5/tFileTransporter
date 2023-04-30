@@ -75,6 +75,14 @@ object Settings : Stateable<Settings.SettingsData> {
         s.copy(downloadDir = dir)
     }
 
+    fun updateShareDir(shareDir: Boolean) = updateState { s ->
+        sp.get()?.edit()?.let {
+            it.putBoolean(SHARE_MY_DIR_KEY, shareDir)
+            it.apply()
+        }
+        s.copy(shareMyDir = shareDir)
+    }
+
     fun updateTransferFileMaxConnection(maxConnection: Int) = updateState { s ->
         sp.get()?.edit()?.let {
             it.putInt(MAX_CONNECTION_KEY, maxConnection)
@@ -83,7 +91,7 @@ object Settings : Stateable<Settings.SettingsData> {
         s.copy(transferFileMaxConnection = maxConnection)
     }
 
-    fun updateTransferFileMaxBufferSize(bufferSize: Long) = updateState { s ->
+    fun updateTransferFileBufferSize(bufferSize: Long) = updateState { s ->
         sp.get()?.edit()?.let {
             it.putLong(BUFFER_SIZE_KEY, bufferSize)
             it.apply()
