@@ -9,6 +9,7 @@ import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
@@ -126,7 +127,8 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                     if (senderFiles.isNotEmpty()) {
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
-                                sendFiles = senderFiles.map { it.exploreFile }
+                                sendFiles = senderFiles.map { it.exploreFile },
+                                maxConnection = Settings.transferFileMaxConnection().await()
                             )
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send apps fail: $it", it)

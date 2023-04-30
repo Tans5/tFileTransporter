@@ -31,7 +31,7 @@
                     android:layout_height="wrap_content"
                     app:titleTextColor="@color/black_1"
                     app:subtitleTextColor="@color/black_1"
-                    app:menu="@menu/trans_settings"
+                    app:menu="@menu/settings_menu"
                     tools:title="@string/app_name" />
 
             </com.google.android.material.appbar.CollapsingToolbarLayout>

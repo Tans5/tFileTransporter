@@ -11,6 +11,7 @@ import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyImagesFragmentLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
@@ -42,6 +43,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
     private val fileExplore: FileExplore by instance()
 
     private val recyclerViewScrollChannel = Channel<Int>(1)
+    @Suppress("NAME_SHADOWING")
     override fun initViews(binding: MyImagesFragmentLayoutBinding) {
         refreshImages().switchThread().bindLife()
         binding.myImagesRv.layoutManager = GridLayoutManager(requireContext(), 2)
@@ -121,7 +123,8 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                     if (senderFiles.isNotEmpty()) {
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
-                                sendFiles = senderFiles.map { it.exploreFile }
+                                sendFiles = senderFiles.map { it.exploreFile },
+                                maxConnection = Settings.transferFileMaxConnection().await()
                             )
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send image success")

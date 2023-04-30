@@ -76,4 +76,8 @@
     <string name="transfer_setting_share_folder">Compartilhe minha pasta</string>
     <!-- Transfer Settings Menu End -->
 
+    <!-- Settings Start -->
+    <string name="settings_title">Settings</string>
+    <!-- Settings End-->
+
 </resources>

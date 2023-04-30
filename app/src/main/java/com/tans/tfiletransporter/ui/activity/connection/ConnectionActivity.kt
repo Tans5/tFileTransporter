@@ -51,6 +51,15 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
             }
         }
 
+        binding.toolBar.setOnMenuItemClickListener {
+            if (it.itemId == R.id.settings) {
+                // TODO: Show menu.
+                true
+            } else {
+                false
+            }
+        }
+
     }
 
 }

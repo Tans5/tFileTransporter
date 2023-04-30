@@ -17,9 +17,11 @@
                 app:titleEnabled="false">
 
                 <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/tool_bar"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@color/white"
+                    app:menu="@menu/settings_menu"
                     app:title="@string/app_name"
                     app:titleTextColor="@color/black_1"/>
 

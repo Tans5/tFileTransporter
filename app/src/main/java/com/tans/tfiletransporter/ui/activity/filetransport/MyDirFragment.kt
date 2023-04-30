@@ -29,6 +29,7 @@ import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.util.*
 import androidx.activity.addCallback
+import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
@@ -39,6 +40,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.min
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion.MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
@@ -187,11 +189,12 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                 rxSingle(Dispatchers.IO) {
                     val exploreFiles = selectedFiles.toList().toExploreFiles()
                     runCatching {
-                        fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles)
+                        fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles, maxConnection = Settings.transferFileMaxConnection().await())
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request send files success: $it")
+                        val mineBufferSize = Settings.transferFileBufferSize().await()
                         (requireActivity() as FileTransportActivity)
-                            .sendFiles(exploreFiles, it.bufferSize.toLong())
+                            .sendFiles(exploreFiles, Settings.fixTransferFileBufferSize(min(it.bufferSize.toLong(), mineBufferSize)))
                     }.onFailure {
                         AndroidLog.e(TAG, "Request send files fail: $it", it)
                     }

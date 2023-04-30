@@ -14,6 +14,7 @@ import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.plus
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.FileItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
@@ -41,6 +42,7 @@ import com.tans.tfiletransporter.utils.firstVisibleItemPosition
 import kotlinx.coroutines.launch
 import org.kodein.di.instance
 import kotlin.jvm.optionals.getOrNull
+import kotlin.math.min
 
 
 class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragment.Companion.RemoteDirState>(R.layout.remote_dir_fragment, RemoteDirState()) {
@@ -220,11 +222,12 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
                 rxSingle(Dispatchers.IO) {
                     val exploreFiles = leafs.toList().toExploreFiles()
                     runCatching {
-                        fileExplore.requestDownloadFilesSuspend(exploreFiles)
+                        fileExplore.requestDownloadFilesSuspend(exploreFiles, Settings.transferFileBufferSize().await().toInt())
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request download fails success.")
+                        val mineMax = Settings.transferFileMaxConnection().await()
                         (requireActivity() as FileTransportActivity)
-                            .downloadFiles(files = exploreFiles, it.maxConnection)
+                            .downloadFiles(files = exploreFiles, Settings.fixTransferFileConnectionSize(min(it.maxConnection, mineMax)))
                     }.onFailure {
                         AndroidLog.e(TAG, "Request download files fail: $it", it)
                     }

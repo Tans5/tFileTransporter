@@ -29,6 +29,7 @@ class App : Application(), DIAware {
     override fun onCreate() {
         super.onCreate()
         AndroidThreeTen.init(this)
+        Settings.init(this)
     }
 
     companion object {

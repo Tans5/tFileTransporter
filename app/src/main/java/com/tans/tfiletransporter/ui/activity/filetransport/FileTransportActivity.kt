@@ -11,6 +11,7 @@ import com.google.android.material.tabs.TabLayoutMediator
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
@@ -54,7 +55,7 @@ import org.kodein.di.singleton
 import java.net.InetAddress
 import java.util.Optional
 import java.io.File
-
+import kotlin.math.min
 
 
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivity.Companion.FileTransportActivityState>(
@@ -69,15 +70,18 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         Environment.getExternalStorageDirectory()
     }
 
-    private val downloadDir: File by lazy {
-        val sysDownloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        File(sysDownloadDir, "tFileTransfer")
-    }
-
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
-                return request.scanChildren(rootDirFile)
+                return if (Settings.isShareMyDir().blockingGet()) {
+                    request.scanChildren(rootDirFile)
+                } else {
+                    ScanDirResp(
+                        path = request.requestPath,
+                        childrenDirs = emptyList(),
+                        childrenFiles = emptyList()
+                    )
+                }
             }
         }
     }
@@ -87,13 +91,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             override fun onRequest(isNew: Boolean, request: SendFilesReq): SendFilesResp {
                 if (isNew) {
                     launch {
+                        val mineMax = Settings.transferFileMaxConnection().await()
                         downloadFiles(
                             request.sendFiles,
-                            request.maxConnection
+                            Settings.fixTransferFileConnectionSize(min(request.maxConnection, mineMax))
                         )
                     }
                 }
-                return SendFilesResp(bufferSize = 1024 * 512)
+                return SendFilesResp(bufferSize = Settings.transferFileBufferSize().blockingGet().toInt())
             }
         }
     }
@@ -103,10 +108,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             override fun onRequest(isNew: Boolean, request: DownloadFilesReq): DownloadFilesResp {
                 if (isNew) {
                     launch {
-                        sendFiles(request.downloadFiles, request.bufferSize.toLong())
+                        val mineBufferSize = Settings.transferFileBufferSize().await()
+                        sendFiles(request.downloadFiles, Settings.fixTransferFileBufferSize(min(request.bufferSize.toLong(), mineBufferSize)))
                     }
                 }
-                return DownloadFilesResp(maxConnection = 8)
+                return DownloadFilesResp(maxConnection = Settings.transferFileMaxConnection().blockingGet())
             }
         }
     }
@@ -231,8 +237,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             binding.toolBar.title = remoteInfo
             binding.toolBar.subtitle = remoteAddress.hostAddress
 
-            render({ it.shareMyDir }) { binding.toolBar.menu.findItem(R.id.share_my_folder).isChecked = it }.bindLife()
-
             binding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
@@ -249,10 +253,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             }.attach()
 
             binding.toolBar.setOnMenuItemClickListener {
-                if (it.itemId == R.id.share_my_folder) {
-                    updateState { oldState ->
-                        oldState.copy(shareMyDir = !oldState.shareMyDir)
-                    }.bindLife()
+                if (it.itemId == R.id.settings) {
+                    // TODO: Show settings
                     true
                 } else {
                     false
@@ -373,7 +375,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             showFileDownloaderDialog(
                 senderAddress = intent.getRemoteAddress(),
                 files = fixedFiles,
-                downloadDir = downloadDir,
+                downloadDir = File(Settings.getDownloadDir().await()),
                 maxConnectionSize = maxConnection
             )
         }
@@ -418,8 +420,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         data class FileTransportActivityState(
             val selectedTabType: DirTabType = DirTabType.MyApps,
             val handshake: Optional<Handshake> = Optional.empty(),
-            // val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting,
-            val shareMyDir: Boolean = false,
             val messages: List<Message> = emptyList()
         )
 
