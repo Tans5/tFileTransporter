@@ -368,7 +368,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         if (fixedFiles.isEmpty()) return
         if (fileTransferMutex.isLocked) return
         fileTransferMutex.lock()
-        delay(500L)
+        delay(150L)
         val result = withContext(Dispatchers.Main) {
             showFileDownloaderDialog(
                 senderAddress = intent.getRemoteAddress(),

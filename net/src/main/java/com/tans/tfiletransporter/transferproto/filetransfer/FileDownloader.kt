@@ -26,11 +26,6 @@ import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
 import com.tans.tfiletransporter.writeContent
 import kotlinx.coroutines.*
-import okio.BufferedSink
-import okio.FileHandle
-import okio.FileSystem
-import okio.Path.Companion.toOkioPath
-import okio.buffer
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.InetAddress
@@ -95,13 +90,14 @@ class FileDownloader(
             }
             val targetDownloader = waitingDownloader.pollFirst()
             if (targetDownloader != null) {
-                targetDownloader.onActive()
+                targetDownloader.onActive(finishedDownloader)
                 workingDownloader.set(targetDownloader)
                 for (o in observers) {
                     o.onStartFile(targetDownloader.file)
                 }
             } else {
                 newState(FileTransferState.Finished)
+                finishedDownloader?.closeFragmentsConnection()
                 closeConnectionIfActive()
             }
         }
@@ -187,7 +183,7 @@ class FileDownloader(
             AtomicReference(null)
         }
 
-        fun onActive() {
+        fun onActive(lastSingleFileDownloader: SingleFileDownloader?) {
             if (!isSingleFileDownloaderCanceled.get() && !isSingleFileFinished.get() && isSingleFileDownloaderExecuted.compareAndSet(false, true)) {
                 try {
                     val downloadingFile = createDownloadingFile()
@@ -228,10 +224,12 @@ class FileDownloader(
                                 break
                             }
                         }
+                        lastSingleFileDownloader?.closeFragmentsConnection()
                     }
                 } catch (e: Throwable) {
                     val msg = "Create download task fail: ${e.message}"
                     log.e(TAG, msg, e)
+                    lastSingleFileDownloader?.closeFragmentsConnection()
                     errorStateIfActive(msg)
                 }
             }
@@ -239,13 +237,12 @@ class FileDownloader(
 
         fun onCanceled(reason: String, reportRemote: Boolean) {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileFinished.get() && isSingleFileDownloaderCanceled.compareAndSet(false, true)) {
-                for (f in fragmentDownloader) {
-                    if (reportRemote) {
+                if (reportRemote) {
+                    for (f in fragmentDownloader) {
                         f.sendRemoteError(reason)
                     }
-                    f.closeConnectionIfActive()
                 }
-                fragmentDownloader.clear()
+                closeFragmentsConnection()
                 try {
                     downloadingFile.get()?.let {
                         it.delete()
@@ -256,6 +253,13 @@ class FileDownloader(
                 }
                 recycleResource()
             }
+        }
+
+        fun closeFragmentsConnection() {
+            for (f in fragmentDownloader) {
+                f.closeConnectionIfActive()
+            }
+            fragmentDownloader.clear()
         }
 
         private fun updateProgress(downloadedSize: Long) {
@@ -459,12 +463,10 @@ class FileDownloader(
                                                         d: Unit
                                                     ) {
                                                         updateProgress(data.size.toLong())
-                                                        closeConnectionIfActive()
                                                     }
 
                                                     override fun onFail(errorMsg: String) {
                                                         updateProgress(data.size.toLong())
-                                                        closeConnectionIfActive()
                                                     }
 
                                                 }
