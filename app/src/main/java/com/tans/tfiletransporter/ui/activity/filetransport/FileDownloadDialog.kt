@@ -11,16 +11,15 @@ import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.toSizeString
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.FileDownloader
-import com.tans.tfiletransporter.transferproto.filetransfer.FileSender
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
-import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.net.InetAddress
@@ -77,46 +76,46 @@ class FileDownloaderDialog(
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Finished)
                             }
-                            launch(Dispatchers.Main) {
+                            rxSingle(Dispatchers.Main) {
                                 cancel()
-                            }
+                            }.bindLife()
                         }
                         is FileTransferState.Error -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
                             }
-                            launch(Dispatchers.Main) {
+                            rxSingle(Dispatchers.Main) {
                                 cancel()
-                            }
+                            }.bindLife()
                         }
                         is FileTransferState.RemoteError -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
                             }
-                            launch(Dispatchers.Main) {
+                            rxSingle(Dispatchers.Main) {
                                 cancel()
-                            }
+                            }.bindLife()
                         }
                     }
                 }
 
                 override fun onStartFile(file: FileExploreFile) {
-                    launch {
+                    rxSingle {
                         updateState {
                             FileTransferDialogState(
                                 transferFile = Optional.of(file),
                                 process = 0L
                             )
                         }.await()
-                    }
+                    }.bindLife()
                 }
 
                 override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
-                    launch {
+                    rxSingle {
                         updateState { oldState ->
                             oldState.copy(process = progress)
                         }.await()
-                    }
+                    }.bindLife()
                 }
 
                 override fun onEndFile(file: FileExploreFile) {}

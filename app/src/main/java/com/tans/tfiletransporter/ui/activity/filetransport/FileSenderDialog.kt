@@ -19,7 +19,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.InetAddress
 import java.util.Optional
@@ -72,47 +72,43 @@ class FileSenderDialog(
                         FileTransferState.Finished -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Finished)
-                                launch(Dispatchers.Main) {
-                                    cancel()
-                                }
                             }
+                            rxSingle(Dispatchers.Main) {
+                                cancel()
+                            }.bindLife()
                         }
                         is FileTransferState.Error -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
-                                launch(Dispatchers.Main) {
-                                    cancel()
-                                }
                             }
+                            rxSingle(Dispatchers.Main) {
+                                cancel()
+                            }.bindLife()
                         }
                         is FileTransferState.RemoteError -> {
                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                 callback(FileTransferResult.Error(s.msg))
-                                launch(Dispatchers.Main) {
-                                    cancel()
-                                }
                             }
+                            rxSingle(Dispatchers.Main) {
+                                cancel()
+                            }.bindLife()
                         }
                     }
                 }
 
                 override fun onStartFile(file: FileExploreFile) {
-                    launch {
-                        updateState {
-                            FileTransferDialogState(
-                                transferFile = Optional.of(file),
-                                process = 0L
-                            )
-                        }.await()
-                    }
+                    updateState {
+                        FileTransferDialogState(
+                            transferFile = Optional.of(file),
+                            process = 0L
+                        )
+                    }.bindLife()
                 }
 
                 override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
-                    launch {
-                        updateState { oldState ->
-                            oldState.copy(process = progress)
-                        }.await()
-                    }
+                    updateState { oldState ->
+                        oldState.copy(process = progress)
+                    }.bindLife()
                 }
 
                 override fun onEndFile(file: FileExploreFile) {}
@@ -140,7 +136,7 @@ class FileSenderDialog(
             val file = it.first.getOrNull()
             val process = it.second
             if (file != null) {
-                val processInPercent = process.toDouble() / file.size.toDouble() * 100.0
+                val processInPercent = process * 100L / file.size
                 binding.filePb.progress = processInPercent.toInt()
                 binding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
             } else {
