@@ -29,6 +29,7 @@ import org.kodein.di.instance
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.math.min
 
 
 class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.Companion.MyAppsState>(
@@ -137,7 +138,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                             (requireActivity() as FileTransportActivity)
                                 .sendSenderFiles(
                                     files = senderFiles,
-                                    bufferSize = it.bufferSize.toLong()
+                                    bufferSize = Settings.fixTransferFileBufferSize(min(it.bufferSize.toLong(), Settings.transferFileBufferSize().await()))
                                 )
                         }
                     }

@@ -33,6 +33,7 @@ import org.kodein.di.instance
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.io.File
+import kotlin.math.min
 
 
 class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFragment.Companion.MyImagesState>(
@@ -129,7 +130,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send image success")
                             (requireActivity() as FileTransportActivity)
-                                .sendSenderFiles(senderFiles, it.bufferSize.toLong())
+                                .sendSenderFiles(senderFiles, Settings.fixTransferFileBufferSize(min( it.bufferSize.toLong(), Settings.transferFileBufferSize().await())))
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send image fail.")
                         }
