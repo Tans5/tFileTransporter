@@ -42,12 +42,13 @@ class SpeedCalculator : SimpleObservable<SpeedCalculator.Companion.SpeedObserver
                 val lastCycleSize = lastCycleSize.get()
                 val currentSize = currentSize.get()
                 this.lastCycleSize.set(currentSize)
-                val speed = (currentSize - lastCycleSize).coerceAtLeast(0L)
+                val speed = ((currentSize - lastCycleSize).coerceAtLeast(0L).toDouble() /
+                        (CALCULATE_INTERVAL.toDouble() / 1000f )).toLong()
                 val speedString = "${speed.toSizeString()}/s"
                 for (o in observers) {
                     o.onSpeedUpdated(speed, speedString)
                 }
-            }, 1000L, 1000L, TimeUnit.MILLISECONDS)
+            }, CALCULATE_INTERVAL, CALCULATE_INTERVAL, TimeUnit.MILLISECONDS)
             taskFuture.set(future)
         }
     }
@@ -81,6 +82,8 @@ class SpeedCalculator : SimpleObservable<SpeedCalculator.Companion.SpeedObserver
 
 
     companion object {
+
+        private const val CALCULATE_INTERVAL = 400L
 
         interface SpeedObserver {
             fun onSpeedUpdated(speedInBytes: Long, speedInString: String)

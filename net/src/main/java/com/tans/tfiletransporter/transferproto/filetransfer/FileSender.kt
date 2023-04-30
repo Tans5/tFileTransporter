@@ -33,6 +33,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.Arrays
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -267,6 +268,10 @@ class FileSender(
                         fs.sendRemoteError(reason)
                     }
                 }
+                for (fs in fragmentSenders){
+                    fs.closeConnectionIfActive()
+                }
+                fragmentSenders.clear()
                 recycleResource()
             }
         }
@@ -290,10 +295,6 @@ class FileSender(
         }
 
         private fun recycleResource() {
-            for (fs in fragmentSenders){
-                fs.closeConnectionIfActive()
-            }
-            fragmentSenders.clear()
             try {
                 randomAccessFile.get()?.let {
                     it.close()
@@ -491,9 +492,7 @@ class FileSender(
                             if (thisTimeRead == bufferSize) {
                                 sendDataSuspend(byteArray)
                             } else {
-                                val newByteArray = ByteArray(thisTimeRead.toInt())
-                                System.arraycopy(byteArray, 0, newByteArray, 0, thisTimeRead.toInt())
-                                sendDataSuspend(newByteArray)
+                                sendDataSuspend(byteArray.copyOfRange(0, thisTimeRead.toInt()))
                             }
                             updateProgress(thisTimeRead)
                             hasRead += thisTimeRead
