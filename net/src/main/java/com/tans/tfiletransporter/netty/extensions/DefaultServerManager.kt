@@ -37,7 +37,7 @@ class DefaultServerManager(
     ) {
         val server = servers.find { it.couldHandle(msg.type) }
         if (server != null) {
-            val isNew = !handledMessageId.contains(msg.messageId)
+            val isNew = !handledMessageId.containsKey(msg.messageId)
             handledMessageId[msg.messageId] = Unit
             server.dispatchRequest(
                 localAddress = localAddress,
