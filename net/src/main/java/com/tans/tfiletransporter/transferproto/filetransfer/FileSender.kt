@@ -79,14 +79,16 @@ class FileSender(
                     assertActive(
                         notActive = { clientTask.stopTask() }
                     ) {
-                        val workingSender = workingSender.get()
-                        if (workingSender != null) {
-                            workingSender.newChildTask(clientTask)
-                        } else {
-                            clientTask.stopTask()
-                            val msg = "No working sender to handle clientTask."
-                            log.e(TAG, msg)
-                            errorStateIfActive(msg)
+                        synchronized(this) {
+                            val workingSender = workingSender.get()
+                            if (workingSender != null) {
+                                workingSender.newChildTask(clientTask)
+                            } else {
+                                clientTask.stopTask()
+                                val msg = "No working sender to handle clientTask."
+                                log.e(TAG, msg)
+                                errorStateIfActive(msg)
+                            }
                         }
                     }
                 }
@@ -146,23 +148,26 @@ class FileSender(
     }
 
     private fun doNextSender(finishedSender: SingleFileSender?) {
-        assertActive {
-            if (finishedSender != null) {
-                finishedSenders.add(finishedSender)
-                for (o in observers) {
-                    o.onEndFile(finishedSender.file.exploreFile)
+        synchronized(this) {
+            assertActive {
+                if (finishedSender != null) {
+                    finishedSenders.add(finishedSender)
+                    for (o in observers) {
+                        o.onEndFile(finishedSender.file.exploreFile)
+                    }
                 }
-            }
-            val targetSender = waitingSenders.pollFirst()
-            if (targetSender != null) {
-                targetSender.onActive()
-                workingSender.set(targetSender)
-                for (o in observers) {
-                    o.onStartFile(targetSender.file.exploreFile)
+                workingSender.set(null)
+                val targetSender = waitingSenders.pollFirst()
+                if (targetSender != null) {
+                    targetSender.onActive()
+                    workingSender.set(targetSender)
+                    for (o in observers) {
+                        o.onStartFile(targetSender.file.exploreFile)
+                    }
+                } else {
+                    newState(FileTransferState.Finished)
+                    closeConnectionIfActive()
                 }
-            } else {
-                newState(FileTransferState.Finished)
-                closeConnectionIfActive()
             }
         }
     }
@@ -311,11 +316,13 @@ class FileSender(
         }
 
         private fun onFinished() {
-            assertSingleFileSenderActive {
-                if (isSingleFileSenderFinished.compareAndSet(false, true)) {
-                    log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
-                    recycleResource()
-                    doNextSender(this)
+            synchronized(this@FileSender) {
+                assertSingleFileSenderActive {
+                    if (isSingleFileSenderFinished.compareAndSet(false, true)) {
+                        log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
+                        recycleResource()
+                        doNextSender(this)
+                    }
                 }
             }
         }
