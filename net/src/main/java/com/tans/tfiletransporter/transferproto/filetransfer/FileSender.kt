@@ -242,18 +242,7 @@ class FileSender(
                     randomAccessFile.get()?.close()
                     val randomAccessFile = RandomAccessFile(file.realFile, "r")
                     this.randomAccessFile.set(randomAccessFile)
-                    val needMeHandle = unhandledFragmentSenderRequest.filter { it.request.file == file.exploreFile }
-                    log.d(TAG, "Need me handle: $needMeHandle")
-                    for (h in needMeHandle) {
-                        unhandledFragmentSenderRequest.remove(h)
-                        fragmentSenders.add(
-                            SingleFileFragmentSender(
-                                randomAccessFile = randomAccessFile,
-                                downloadReq = h.request,
-                                connection = h.connection
-                            )
-                        )
-                    }
+                    checkUnhandledFragment()
                 } catch (e: Throwable) {
                     val msg = "Read file: $file error: ${e.message}"
                     log.d(TAG, msg)
@@ -279,6 +268,7 @@ class FileSender(
                     log.e(TAG, msg)
                     errorStateIfActive(msg)
                 }
+                checkUnhandledFragment()
             }
         }
 
@@ -304,6 +294,26 @@ class FileSender(
                 }
                 fragmentSenders.clear()
                 recycleResource()
+            }
+        }
+
+        private fun checkUnhandledFragment() {
+            val randomAccessFile = randomAccessFile.get()
+            if (randomAccessFile != null) {
+                val needMeHandle = unhandledFragmentSenderRequest.filter { it.request.file == file.exploreFile }
+                if (needMeHandle.isNotEmpty()) {
+                    log.d(TAG, "Need me handle: $needMeHandle")
+                }
+                for (h in needMeHandle) {
+                    unhandledFragmentSenderRequest.remove(h)
+                    fragmentSenders.add(
+                        SingleFileFragmentSender(
+                            randomAccessFile = randomAccessFile,
+                            downloadReq = h.request,
+                            connection = h.connection
+                        )
+                    )
+                }
             }
         }
 
