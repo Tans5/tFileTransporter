@@ -20,6 +20,7 @@ import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
+import com.tans.tfiletransporter.transferproto.fileexplore.model.DownloadFilesReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
@@ -38,6 +39,7 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.CoroutineContext
 
 class FileSender(
     private val files: List<SenderFile>,
@@ -59,6 +61,8 @@ class FileSender(
         AtomicReference(null)
     }
     private val finishedSenders: LinkedBlockingDeque<SingleFileSender> = LinkedBlockingDeque()
+
+    private val unhandledFragmentSenderRequest: LinkedBlockingDeque<UnhandledFragmentRequest> = LinkedBlockingDeque()
     override fun addObserver(o: FileTransferObserver) {
         super.addObserver(o)
         o.onNewState(state.get())
@@ -193,6 +197,10 @@ class FileSender(
     }
 
     private fun closeConnectionIfActive() {
+        for (uf in unhandledFragmentSenderRequest) {
+            uf.connection.stopTask()
+        }
+        unhandledFragmentSenderRequest.clear()
         serverTask.get()?.stopTask()
         serverTask.set(null)
     }
@@ -232,7 +240,19 @@ class FileSender(
             if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
                 try {
                     randomAccessFile.get()?.close()
-                    randomAccessFile.set(RandomAccessFile(file.realFile, "r"))
+                    val randomAccessFile = RandomAccessFile(file.realFile, "r")
+                    this.randomAccessFile.set(randomAccessFile)
+                    val needMyHandle = unhandledFragmentSenderRequest.filter { it.request.file == file.exploreFile }
+                    unhandledFragmentSenderRequest.removeAll(needMyHandle.toSet())
+                    for (h in needMyHandle) {
+                        fragmentSenders.add(
+                            SingleFileFragmentSender(
+                                randomAccessFile = randomAccessFile,
+                                downloadReq = h.request,
+                                connection = h.connection
+                            )
+                        )
+                    }
                 } catch (e: Throwable) {
                     val msg = "Read file: $file error: ${e.message}"
                     log.d(TAG, msg)
@@ -258,6 +278,16 @@ class FileSender(
                     log.e(TAG, msg)
                     errorStateIfActive(msg)
                 }
+            }
+        }
+
+        fun receiveUnhandedConnection(fragmentSender: SingleFileFragmentSender, downloadReq: DownloadReq, connection: ConnectionServerClientImpl?) {
+            fragmentSenders.remove(fragmentSender)
+            if (connection != null) {
+                unhandledFragmentSenderRequest.add(UnhandledFragmentRequest(
+                    request = downloadReq,
+                    connection = connection
+                ))
             }
         }
 
@@ -313,14 +343,41 @@ class FileSender(
             }
         }
 
-        private inner class SingleFileFragmentSender(
-            private val randomAccessFile: RandomAccessFile,
-            task: NettyTcpServerConnectionTask.ChildConnectionTask): CoroutineScope by CoroutineScope(Dispatchers.IO) {
+        private inner class SingleFileFragmentSender : CoroutineScope   {
 
-            private val serverClientTask: ConnectionServerClientImpl = task.withClient<ConnectionClientImpl>(log = log).withServer(log = log)
+            override val coroutineContext: CoroutineContext = Dispatchers.IO
+
+            private val serverClientTask: AtomicReference<ConnectionServerClientImpl?> by lazy {
+                AtomicReference(null)
+            }
+
+            private val randomAccessFile: RandomAccessFile
 
             private val isFragmentFinished: AtomicBoolean by lazy {
                 AtomicBoolean(false)
+            }
+
+            private val closeObserver: NettyConnectionObserver by lazy {
+                object : NettyConnectionObserver {
+                    override fun onNewState(
+                        nettyState: NettyTaskState,
+                        task: INettyConnectionTask
+                    ) {
+                        if ((nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) && !isFragmentFinished.get()) {
+                            val msg = "Connection closed: $nettyState"
+                            log.e(TAG, msg)
+                            errorStateIfActive(msg)
+                        }
+                    }
+
+                    override fun onNewMessage(
+                        localAddress: InetSocketAddress?,
+                        remoteAddress: InetSocketAddress?,
+                        msg: PackageData,
+                        task: INettyConnectionTask
+                    ) {
+                    }
+                }
             }
 
             private val downloadReq: AtomicReference<DownloadReq?> by lazy {
@@ -334,13 +391,7 @@ class FileSender(
                     log = log,
                     onRequest = { _, _, r, isNew ->
                         if (isNew) {
-                            if (downloadReq.get() == null) {
-                                if (r.file != file.exploreFile) {
-                                    val msg = "Wrong file, require $file, receive ${r.file}"
-                                    log.e(TAG, msg)
-                                    errorStateIfActive(msg)
-                                    return@simplifyServer
-                                }
+                            if (downloadReq.get() == null && r.file == file.exploreFile) {
                                 val startIndex = r.start
                                 val endIndex = r.end
                                 if (startIndex < 0 || endIndex < 0 || startIndex > endIndex || endIndex > r.file.size) {
@@ -349,13 +400,17 @@ class FileSender(
                                     errorStateIfActive(msg)
                                     return@simplifyServer
                                 }
+                                serverClientTask.get()?.registerServer(finishReqServer)
                                 downloadReq.set(r)
                                 startSendData(r)
                             } else {
-                                serverClientTask.stopTask()
-                                val msg = "Receive multi times download request: $r"
-                                log.e(TAG, msg)
-                                errorStateIfActive(msg)
+                                log.e(TAG, "Receive unknown request: $r")
+                                val connectionTask = serverClientTask.get()
+                                connectionTask?.unregisterServer(downloadReqServer)
+                                connectionTask?.unregisterServer(errorReqServer)
+                                connectionTask?.removeObserver(closeObserver)
+                                serverClientTask.set(null)
+                                receiveUnhandedConnection(this, r, connectionTask)
                             }
                         }
                         Unit
@@ -389,37 +444,34 @@ class FileSender(
                     }
                 )
             }
-
-            init {
-                serverClientTask.addObserver(object : NettyConnectionObserver {
-                    override fun onNewState(
-                        nettyState: NettyTaskState,
-                        task: INettyConnectionTask
-                    ) {
-                        if ((nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) && !isFragmentFinished.get()) {
-                            val msg = "Connection closed: $nettyState"
-                            log.e(TAG, msg)
-                            errorStateIfActive(msg)
-                        }
-                    }
-
-                    override fun onNewMessage(
-                        localAddress: InetSocketAddress?,
-                        remoteAddress: InetSocketAddress?,
-                        msg: PackageData,
-                        task: INettyConnectionTask
-                    ) {}
-                })
+            constructor(randomAccessFile: RandomAccessFile,
+                        task: NettyTcpServerConnectionTask.ChildConnectionTask) {
+                this.randomAccessFile = randomAccessFile
+                val serverClientTask = task.withClient<ConnectionClientImpl>(log = log).withServer<ConnectionServerClientImpl>(log = log)
+                this.serverClientTask.set(serverClientTask)
                 serverClientTask.registerServer(downloadReqServer)
                 serverClientTask.registerServer(errorReqServer)
-                serverClientTask.registerServer(finishReqServer)
+                serverClientTask.addObserver(closeObserver)
             }
 
-            fun isActive(): Boolean = serverClientTask.getCurrentState() is NettyTaskState.ConnectionActive
+            constructor(
+                randomAccessFile: RandomAccessFile,
+                downloadReq: DownloadReq,
+                connection: ConnectionServerClientImpl) {
+                this.randomAccessFile = randomAccessFile
+                this.serverClientTask.set(connection)
+                this.downloadReq.set(downloadReq)
+                connection.addObserver(closeObserver)
+                connection.registerServer(errorReqServer)
+                connection.registerServer(finishReqServer)
+                startSendData(downloadReq)
+            }
+
+            fun isActive(): Boolean = serverClientTask.get()?.getCurrentState() is NettyTaskState.ConnectionActive
 
             fun sendRemoteError(errorMsg: String) {
                 if (isActive()) {
-                    serverClientTask.requestSimplify(
+                    serverClientTask.get()?.requestSimplify(
                         type = FileTransferDataType.ErrorReq.type,
                         request = ErrorReq(errorMsg),
                         retryTimes = 0,
@@ -445,13 +497,14 @@ class FileSender(
             fun closeConnectionIfActive() {
                 Dispatchers.IO.asExecutor().execute {
                     Thread.sleep(100)
-                    serverClientTask.stopTask()
+                    serverClientTask.get()?.stopTask()
+                    serverClientTask.set(null)
                 }
                 this@SingleFileFragmentSender.cancel()
             }
 
             private suspend fun sendDataSuspend(bytes: ByteArray) = suspendCancellableCoroutine { cont ->
-                serverClientTask.requestSimplify(
+                serverClientTask.get()!!.requestSimplify(
                     type = FileTransferDataType.SendReq.type,
                     request = bytes,
                     retryTimeout = 2500L,
@@ -509,6 +562,11 @@ class FileSender(
         }
 
     }
+
+    private class UnhandledFragmentRequest(
+        val request: DownloadReq,
+        val connection: ConnectionServerClientImpl
+    )
 
     companion object {
         private const val TAG = "FileSender"

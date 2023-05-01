@@ -31,7 +31,7 @@ object UdpClientTest {
                         repeat(1000) {
                             Thread.sleep(2000)
                             if (taskLocal.getCurrentState() is NettyTaskState.ConnectionActive) {
-                                task.request<String, String>(
+                                task.request(
                                     type = 0,
                                     request = "Hello, Server",
                                     requestClass = String::class.java,
