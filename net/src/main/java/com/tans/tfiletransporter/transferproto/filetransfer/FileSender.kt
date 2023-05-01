@@ -25,12 +25,7 @@ import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asExecutor
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.*
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -344,9 +339,9 @@ class FileSender(
             }
         }
 
-        private inner class SingleFileFragmentSender : CoroutineScope   {
+        private inner class SingleFileFragmentSender : CoroutineScope  {
 
-            override val coroutineContext: CoroutineContext = Dispatchers.IO
+            override val coroutineContext: CoroutineContext = Dispatchers.IO + Job()
 
             private val serverClientTask: AtomicReference<ConnectionServerClientImpl?> by lazy {
                 AtomicReference(null)
@@ -505,7 +500,7 @@ class FileSender(
             }
 
             private suspend fun sendDataSuspend(bytes: ByteArray) = suspendCancellableCoroutine { cont ->
-                serverClientTask.get()!!.requestSimplify(
+                serverClientTask.get()?.requestSimplify(
                     type = FileTransferDataType.SendReq.type,
                     request = bytes,
                     retryTimeout = 4000L,
@@ -525,7 +520,7 @@ class FileSender(
                             cont.resumeExceptionIfActive(Throwable(errorMsg))
                         }
                     }
-                )
+                ) ?: cont.resumeExceptionIfActive(Throwable("Task is null."))
             }
 
             private fun startSendData(downloadReq: DownloadReq) {
