@@ -454,6 +454,8 @@ class FileDownloader(
                                             t.requestSimplify(
                                                 type = FileTransferDataType.FinishedReq.type,
                                                 request = Unit,
+                                                retryTimes = 0,
+                                                retryTimeout = 2500,
                                                 callback = object : IClientManager.RequestCallback<Unit> {
                                                     override fun onSuccess(
                                                         type: Int,
@@ -468,7 +470,7 @@ class FileDownloader(
 
                                                     override fun onFail(errorMsg: String) {
                                                         updateProgress(data.size.toLong())
-                                                        closeConnectionIfActive()
+                                                        // closeConnectionIfActive()
                                                     }
 
                                                 }
@@ -563,7 +565,7 @@ class FileDownloader(
                         type = FileTransferDataType.ErrorReq.type,
                         request = ErrorReq(errorMsg),
                         retryTimes = 0,
-                        object : IClientManager.RequestCallback<Unit> {
+                        callback = object : IClientManager.RequestCallback<Unit> {
                             override fun onSuccess(
                                 type: Int,
                                 messageId: Long,

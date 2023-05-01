@@ -59,6 +59,7 @@ class DefaultClientManager(
         requestClass: Class<Request>,
         responseClass: Class<Response>,
         retryTimes: Int,
+        retryTimeout: Long,
         callback: IClientManager.RequestCallback<Response>
     ) {
         enqueueTask(
@@ -71,6 +72,7 @@ class DefaultClientManager(
                 requestClass = requestClass,
                 responseClass = responseClass,
                 retryTimes = retryTimes,
+                retryTimeout = retryTimeout,
                 delay = 0L,
                 callback = callback
             )
@@ -85,6 +87,7 @@ class DefaultClientManager(
         targetAddress: InetSocketAddress,
         senderAddress: InetSocketAddress?,
         retryTimes: Int,
+        retryTimeout: Long,
         callback: IClientManager.RequestCallback<Response>
     ) {
         enqueueTask(
@@ -97,6 +100,7 @@ class DefaultClientManager(
                 requestClass = requestClass,
                 responseClass = responseClass,
                 retryTimes = retryTimes,
+                retryTimeout = retryTimeout,
                 delay = 0L,
                 callback = callback
             )
@@ -131,6 +135,7 @@ class DefaultClientManager(
         private val requestClass: Class<Request>,
         private val responseClass: Class<Response>,
         private val retryTimes: Int,
+        private val retryTimeout: Long,
         val delay: Long = 0L,
         private val callback: IClientManager.RequestCallback<Response>
     ) : Runnable {
@@ -200,9 +205,9 @@ class DefaultClientManager(
                 if (pckData != null) {
                     val timeoutTask = taskScheduleExecutor.schedule(
                         {
-                            handleError("Waiting Response timeout: $WAIT_RSP_TIMEOUT ms.")
+                            handleError("Waiting Response timeout: $retryTimeout ms.")
                         },
-                        WAIT_RSP_TIMEOUT,
+                        retryTimeout,
                         TimeUnit.MILLISECONDS
                     )
                     this.timeoutTask.set(timeoutTask)
@@ -257,6 +262,7 @@ class DefaultClientManager(
                             callback = callback,
                             retryTimes = retryTimes - 1,
                             delay = RETRY_DELAY,
+                            retryTimeout = retryTimeout,
                             udpTargetAddress = udpTargetAddress,
                             udpSenderAddress = udpSenderAddress
                         )
@@ -280,7 +286,6 @@ class DefaultClientManager(
         }
 
         private const val RETRY_DELAY = 100L
-        private const val WAIT_RSP_TIMEOUT = 1000L
         private const val TAG = "DefaultClientManager"
     }
 }

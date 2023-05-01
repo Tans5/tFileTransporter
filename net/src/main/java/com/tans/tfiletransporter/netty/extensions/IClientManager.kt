@@ -13,6 +13,7 @@ interface IClientManager {
         requestClass: Class<Request>,
         responseClass: Class<Response>,
         retryTimes: Int = 2,
+        retryTimeout: Long = 1000L,
         callback: RequestCallback<Response>
     )
 
@@ -27,6 +28,7 @@ interface IClientManager {
         targetAddress: InetSocketAddress,
         senderAddress: InetSocketAddress? = null,
         retryTimes: Int = 2,
+        retryTimeout: Long = 1000L,
         callback: RequestCallback<Response>
     )
 
@@ -49,6 +51,7 @@ inline fun <reified Request, reified Response> IClientManager.requestSimplify(
     type: Int,
     request: Request,
     retryTimes: Int = 2,
+    retryTimeout: Long = 1000L,
     callback: IClientManager.RequestCallback<Response>
 ) {
     request(
@@ -57,6 +60,7 @@ inline fun <reified Request, reified Response> IClientManager.requestSimplify(
         requestClass = Request::class.java,
         responseClass = Response::class.java,
         retryTimes = retryTimes,
+        retryTimeout = retryTimeout,
         callback = callback
     )
 }
@@ -67,6 +71,7 @@ inline fun <reified Request, reified Response> IClientManager.requestSimplify(
     targetAddress: InetSocketAddress,
     senderAddress: InetSocketAddress? = null,
     retryTimes: Int = 2,
+    retryTimeout: Long = 1000L,
     callback: IClientManager.RequestCallback<Response>
 ) {
     request(
@@ -77,6 +82,7 @@ inline fun <reified Request, reified Response> IClientManager.requestSimplify(
         targetAddress = targetAddress,
         senderAddress = senderAddress,
         retryTimes = retryTimes,
+        retryTimeout = retryTimeout,
         callback = callback
     )
 }

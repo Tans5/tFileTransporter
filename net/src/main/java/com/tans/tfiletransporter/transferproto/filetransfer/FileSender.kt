@@ -423,7 +423,7 @@ class FileSender(
                         type = FileTransferDataType.ErrorReq.type,
                         request = ErrorReq(errorMsg),
                         retryTimes = 0,
-                        object : IClientManager.RequestCallback<Unit> {
+                        callback = object : IClientManager.RequestCallback<Unit> {
                             override fun onSuccess(
                                 type: Int,
                                 messageId: Long,
@@ -454,6 +454,7 @@ class FileSender(
                 serverClientTask.requestSimplify(
                     type = FileTransferDataType.SendReq.type,
                     request = bytes,
+                    retryTimeout = 2500L,
                     callback = object : IClientManager.RequestCallback<Unit> {
                         override fun onSuccess(
                             type: Int,
