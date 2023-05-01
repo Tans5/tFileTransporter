@@ -73,7 +73,7 @@ abstract class BaseActivity<Binding : ViewDataBinding, State>(
             firstLaunchInitData()
         }
         initViews(binding)
-        onBackPressedDispatcher.addCallback(owner = this) {
+        onBackPressedDispatcher.addCallback {
             onActivityBackPressed()
         }
     }

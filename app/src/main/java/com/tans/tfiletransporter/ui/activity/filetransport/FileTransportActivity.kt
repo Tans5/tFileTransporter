@@ -127,7 +127,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         )
     }
 
-    // private val fileTransportScopeData by instance<FileTransportScopeData>()
 
     private val fragments: Map<DirTabType, BaseFragment<*, *>> = mapOf(
         DirTabType.MyApps to MyAppsFragment(),

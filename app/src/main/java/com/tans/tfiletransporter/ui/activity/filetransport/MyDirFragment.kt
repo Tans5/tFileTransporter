@@ -55,7 +55,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
     private val onBackPressedDispatcher: OnBackPressedDispatcher by instance()
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
-        onBackPressedDispatcher.addCallback(this) {
+        onBackPressedDispatcher.addCallback {
             launch {
                 updateState { state ->
                     val i = folderPositionDeque.poll()
@@ -81,8 +81,18 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
         bindState()
             .map { it.fileTree }
             .distinctUntilChanged()
-            .doOnNext {
-                onBackPressedCallback.isEnabled = !it.isRootFileTree()
+            .withLatestFrom((requireActivity() as FileTransportActivity).bindState().map { it.selectedTabType })
+            .doOnNext { (tree, tab) ->
+                onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.MyDir
+            }
+            .bindLife()
+
+        (requireActivity() as FileTransportActivity).bindState()
+            .map { it.selectedTabType }
+            .withLatestFrom(bindState().map { it.fileTree })
+            .distinctUntilChanged()
+            .doOnNext { (tab, tree) ->
+                onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.MyDir
             }
             .bindLife()
 

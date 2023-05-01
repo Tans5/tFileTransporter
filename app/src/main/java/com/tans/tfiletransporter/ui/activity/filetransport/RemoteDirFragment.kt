@@ -53,7 +53,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
     private val onBackPressedDispatcher: OnBackPressedDispatcher by instance()
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
-        onBackPressedDispatcher.addCallback(this) {
+        onBackPressedDispatcher.addCallback {
             launch {
                 updateState { state ->
                     val fileTree = state.fileTree.getOrNull()
@@ -108,6 +108,32 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
             .distinctUntilChanged()
             .doOnNext {
                 onBackPressedCallback.isEnabled = it.getOrNull()?.parentTree != null
+            }
+            .bindLife()
+
+        (requireActivity() as FileTransportActivity).bindState()
+            .map { it.selectedTabType }
+            .distinctUntilChanged()
+            .doOnNext {
+                onBackPressedCallback.isEnabled = it == FileTransportActivity.Companion.DirTabType.RemoteDir
+            }
+            .bindLife()
+
+        bindState()
+            .map { it.fileTree }
+            .distinctUntilChanged()
+            .withLatestFrom((requireActivity() as FileTransportActivity).bindState().map { it.selectedTabType })
+            .doOnNext { (tree, tab) ->
+                onBackPressedCallback.isEnabled = tree.getOrNull()?.parentTree != null && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
+            }
+            .bindLife()
+
+        (requireActivity() as FileTransportActivity).bindState()
+            .map { it.selectedTabType }
+            .withLatestFrom(bindState().map { it.fileTree })
+            .distinctUntilChanged()
+            .doOnNext { (tab, tree) ->
+                onBackPressedCallback.isEnabled = tree.getOrNull()?.parentTree != null && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
             }
             .bindLife()
 
