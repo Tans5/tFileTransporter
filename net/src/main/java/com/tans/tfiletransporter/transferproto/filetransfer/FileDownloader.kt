@@ -442,12 +442,16 @@ class FileDownloader(
                         if (isNew) {
                             if (!isFragmentDownloaderClosed.get() && !isFragmentDownloaderFinished.get()) {
                                 try {
+                                    if (downloadedSize.get() == 0L) {
+                                        log.d(TAG, "Frame: $start download started.")
+                                    }
                                     randomAccessFile.writeContent(
                                         fileOffset = downloadedSize.get() + start,
                                         byteArray = data,
                                         contentLen = data.size
                                     )
                                     if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
+                                        log.d(TAG, "Frame: $start download finished(${end - start} bytes).")
                                         isFragmentDownloaderFinished.set(true)
                                         val t = task.get()
                                         if (t != null) {
@@ -464,12 +468,14 @@ class FileDownloader(
                                                         remoteAddress: InetSocketAddress?,
                                                         d: Unit
                                                     ) {
+                                                        log.d(TAG, "Send fragment finish success.")
                                                         updateProgress(data.size.toLong())
                                                         closeConnectionIfActive()
                                                     }
 
                                                     override fun onFail(errorMsg: String) {
                                                         updateProgress(data.size.toLong())
+                                                        log.e(TAG, "Send fragment finish fail: $errorMsg")
                                                         // closeConnectionIfActive()
                                                     }
 

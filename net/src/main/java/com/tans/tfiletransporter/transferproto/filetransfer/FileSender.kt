@@ -242,9 +242,10 @@ class FileSender(
                     randomAccessFile.get()?.close()
                     val randomAccessFile = RandomAccessFile(file.realFile, "r")
                     this.randomAccessFile.set(randomAccessFile)
-                    val needMyHandle = unhandledFragmentSenderRequest.filter { it.request.file == file.exploreFile }
-                    unhandledFragmentSenderRequest.removeAll(needMyHandle.toSet())
-                    for (h in needMyHandle) {
+                    val needMeHandle = unhandledFragmentSenderRequest.filter { it.request.file == file.exploreFile }
+                    log.d(TAG, "Need me handle: $needMeHandle")
+                    for (h in needMeHandle) {
+                        unhandledFragmentSenderRequest.remove(h)
                         fragmentSenders.add(
                             SingleFileFragmentSender(
                                 randomAccessFile = randomAccessFile,
@@ -507,7 +508,8 @@ class FileSender(
                 serverClientTask.get()!!.requestSimplify(
                     type = FileTransferDataType.SendReq.type,
                     request = bytes,
-                    retryTimeout = 2500L,
+                    retryTimeout = 4000L,
+                    retryTimes = 1,
                     callback = object : IClientManager.RequestCallback<Unit> {
                         override fun onSuccess(
                             type: Int,
@@ -527,6 +529,7 @@ class FileSender(
             }
 
             private fun startSendData(downloadReq: DownloadReq) {
+                log.d(TAG, "Frame: ${downloadReq.start} started")
                 launch {
                     val frameSize = downloadReq.end - downloadReq.start
                     var hasRead = 0L
