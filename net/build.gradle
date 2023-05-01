@@ -20,8 +20,6 @@ dependencies {
 
     api deps.netty.runtime
 
-    api deps.date.runtime
-
     api "com.squareup.okio:okio:3.3.0"
 
     api "androidx.annotation:annotation:1.6.0"
