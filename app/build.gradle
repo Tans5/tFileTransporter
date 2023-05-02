@@ -17,6 +17,11 @@ android {
 
     }
 
+    packagingOptions {
+        exclude "META-INF/INDEX.LIST"
+        exclude "META-INF/io.netty.versions.properties"
+    }
+
     signingConfigs {
         debug {
             storeFile file("debugkey/debug.jks")
