@@ -244,6 +244,7 @@ class FileDownloader(
                 }
                 closeFragmentsConnection()
                 try {
+                    recycleResource()
                     downloadingFile.get()?.let {
                         it.delete()
                         downloadingFile.set(null)
@@ -251,7 +252,6 @@ class FileDownloader(
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
-                recycleResource()
             }
         }
 
@@ -273,12 +273,12 @@ class FileDownloader(
         private fun onFinished() {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileFinished.compareAndSet(false, true)) {
                 try {
+                    recycleResource()
                     downloadingFile.get()?.let {
                         it.renameTo(getDownloadedFile(file.name))
                         downloadingFile.set(null)
                         log.d(TAG, "File: ${file.name} download success!!!")
                     }
-                    recycleResource()
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
