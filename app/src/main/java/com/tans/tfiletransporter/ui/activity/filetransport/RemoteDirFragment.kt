@@ -270,7 +270,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
                         scanRootDir()
                     } else {
                         runCatching {
-                            fileExplore.requestScanDirSuspend(fileTree.parentTree.path)
+                            fileExplore.requestScanDirSuspend(fileTree.path)
                         }.onSuccess {
                             AndroidLog.d(TAG, "Refresh success")
                             updateState { s ->
