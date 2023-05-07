@@ -3,6 +3,7 @@
 
 Use UDP Broadcast or WiFi P2P create  connections, Use TCP protocol to transfer files. This program builds with RxJava and Kotlin Coroutines.
 
+[Install On Google Play](https://play.google.com/store/apps/details?id=com.tans.tfiletransporter)
 
 Desktop Version:  
 [Desktop](https://github.com/Tans5/tFileTransfer_desktop)
