@@ -11,7 +11,8 @@ fun InetAddress.getBroadcastAddress()
         : Pair<InetAddress, Short> = NetworkInterface.getByInetAddress(this).interfaceAddresses
     .filter {
         val broadcast = it.broadcast
-        broadcast != null && broadcast.address?.size == 4
+        val address = it.address
+        address == this && broadcast != null && broadcast.address?.size == 4
     }.firstNotNullOfOrNull {
         val broadcast = it.broadcast
         val maskLen = it.networkPrefixLength
