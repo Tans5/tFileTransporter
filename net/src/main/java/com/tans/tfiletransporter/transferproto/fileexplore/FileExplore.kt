@@ -191,6 +191,7 @@ class FileExplore(
                                 newState(FileExploreState.NoConnection)
                             } else {
                                 if (nettyState is NettyTaskState.ConnectionActive) {
+                                    newState(FileExploreState.Connected)
                                     log.d(TAG, "Connect success.")
                                     exploreTask.addObserver(closeObserver)
                                     exploreTask.registerServer(handshakeServer)
@@ -203,7 +204,6 @@ class FileExplore(
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
                                         simpleCallback.onSuccess(Unit)
                                     }
-                                    newState(FileExploreState.Connected)
                                 }
                             }
                         }
@@ -285,6 +285,7 @@ class FileExplore(
                     newState(FileExploreState.NoConnection)
                 } else {
                     if (nettyState is NettyTaskState.ConnectionActive) {
+                        newState(FileExploreState.Connected)
                         log.d(TAG, "Connect success.")
                         exploreTask.addObserver(closeObserver)
                         this@FileExplore.exploreTask.get()?.stopTask()
@@ -297,7 +298,6 @@ class FileExplore(
                         if (hasInvokeCallback.compareAndSet(false, true)) {
                             simpleCallback.onSuccess(Unit)
                         }
-                        newState(FileExploreState.Connected)
                         val future = taskScheduleExecutor.scheduleAtFixedRate(
                             {
                                 sendHeartbeat()
