@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">tFileTransfer</string>
 
-    <string name="error_toast">Error</string>
+    <string name="error_toast">Error: %s</string>
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_apps">MY APPS</string>
     <string name="file_transport_activity_tab_my_images">MY IMAGES</string>

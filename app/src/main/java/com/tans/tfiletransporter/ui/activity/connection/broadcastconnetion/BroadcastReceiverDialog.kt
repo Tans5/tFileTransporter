@@ -59,7 +59,7 @@ class BroadcastReceiverDialog(
             updateState { state -> state.copy(receiver = Optional.of(receiver)) }.await()
             runCatching {
                 withContext(Dispatchers.IO) {
-                    receiver.startReceiverSuspend(localAddress, localAddress.getBroadcastAddress().first)
+                    receiver.startReceiverSuspend(localAddress.getBroadcastAddress().first)
                 }
             }.onSuccess {
                 receiver.addObserver(object : BroadcastReceiverObserver {
@@ -123,7 +123,7 @@ class BroadcastReceiverDialog(
                                 }.onFailure {
                                     AndroidLog.e(TAG, "Request transfer error: ${it.message}", it)
                                     withContext(Dispatchers.Main) {
-                                        activity.showToastShort(R.string.error_toast)
+                                        activity.showToastShort(context.getString(R.string.error_toast, it.message))
                                     }
                                 }
                             }
