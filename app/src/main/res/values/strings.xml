@@ -33,6 +33,8 @@
     <string name="broadcast_connection_local_device">Local Device: %s</string>
     <string name="broadcast_connection_local_ip_address">Local IP Address: %s</string>
     <string name="broadcast_connection_use_system_broadcast">Use System Broadcast: </string>
+    <string name="local_network_scan_qr_code">Scan QR Code</string>
+    <string name="local_network_show_qr_code">Show QR Code</string>
     <string name="broadcast_connection_as_receiver">Search Servers</string>
     <string name="broadcast_connection_as_sender">As Server</string>
 

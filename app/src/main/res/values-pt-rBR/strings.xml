@@ -32,6 +32,8 @@
     <string name="broadcast_connection_local_device">Dispositivo local: %s</string>
     <string name="broadcast_connection_local_ip_address">IP local: %s</string>
     <string name="broadcast_connection_use_system_broadcast">Use sistema Broadcast: </string>
+    <string name="local_network_scan_qr_code">Scan QR Code</string>
+    <string name="local_network_show_qr_code">Show QR Code</string>
     <string name="broadcast_connection_as_receiver">Procurar servidores</string>
     <string name="broadcast_connection_as_sender">Criar servidor</string>
 

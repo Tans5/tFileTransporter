@@ -35,6 +35,40 @@
             tools:text="@string/wifi_p2p_connection_local_address" />
 
         <FrameLayout
+            android:id="@+id/scan_qr_code_layout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/common_line_button_color_bg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/local_network_scan_qr_code"
+                android:textSize="18sp"
+                android:textColor="@color/teal_200"/>
+
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/show_qr_code_layout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/common_line_button_color_bg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/local_network_show_qr_code"
+                android:textSize="18sp"
+                android:textColor="@color/teal_200"/>
+
+        </FrameLayout>
+
+        <FrameLayout
             android:id="@+id/search_server_layout"
             android:layout_width="match_parent"
             android:layout_height="52dp"
@@ -55,7 +89,7 @@
             android:id="@+id/as_server_layout"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="25dp"
+            android:layout_marginTop="20dp"
             android:background="@drawable/common_line_button_color_bg">
 
             <TextView

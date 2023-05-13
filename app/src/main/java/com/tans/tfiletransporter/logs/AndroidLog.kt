@@ -4,15 +4,6 @@ import android.util.Log
 import com.tans.tfiletransporter.ILog
 
 object AndroidLog : ILog {
-    private const val TAG = "tFileTransfer"
-
-    fun d(msg: String) {
-        d(TAG, msg)
-    }
-
-    fun e(msg: String, throwable: Throwable?) {
-        e(TAG, msg, throwable)
-    }
 
     override fun d(tag: String, msg: String) {
         Log.d(tag, msg)

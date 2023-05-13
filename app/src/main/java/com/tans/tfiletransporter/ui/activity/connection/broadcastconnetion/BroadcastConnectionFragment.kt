@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import com.afollestad.inlineactivityresult.startActivityForResult
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
@@ -14,6 +15,7 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
+import com.tans.tfiletransporter.ui.activity.qrcodescan.ScanQrCodeActivity
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,6 +74,27 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
                 binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
             }
         }.bindLife()
+
+        binding.scanQrCodeLayout.clicks()
+            .ignoreSeveralClicks()
+            .doOnNext {
+                // TODO:
+                startActivityForResult<ScanQrCodeActivity> { success, data ->
+                    if (success) {
+                        AndroidLog.d(TAG, "Scan qrcode result: ${ScanQrCodeActivity.getResult(data)}")
+                    } else {
+                        AndroidLog.e(TAG, "Scan qrcode error")
+                    }
+                }
+            }
+            .bindLife()
+
+        binding.showQrCodeLayout.clicks()
+            .ignoreSeveralClicks()
+            .doOnNext {
+                // TODO:
+            }
+            .bindLife()
 
         binding.searchServerLayout.clicks()
             .ignoreSeveralClicks()
