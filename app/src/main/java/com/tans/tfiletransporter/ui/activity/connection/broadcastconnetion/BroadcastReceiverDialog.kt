@@ -59,7 +59,7 @@ class BroadcastReceiverDialog(
             updateState { state -> state.copy(receiver = Optional.of(receiver)) }.await()
             runCatching {
                 withContext(Dispatchers.IO) {
-                    receiver.startReceiverSuspend(localAddress.getBroadcastAddress().first)
+                    receiver.startReceiverSuspend(localAddress, localAddress.getBroadcastAddress().first)
                 }
             }.onSuccess {
                 receiver.addObserver(object : BroadcastReceiverObserver {

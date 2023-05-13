@@ -13,7 +13,6 @@ import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
-import com.tans.tfiletransporter.netty.tcp.NettyTcpClientConnectionTask
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.SimpleObservable
@@ -37,12 +36,16 @@ import java.util.concurrent.atomic.AtomicReference
 class BroadcastReceiver(
     private val deviceName: String,
     private val log: ILog,
-    private val activeDeviceDuration: Long = 5000
+    private val activeDeviceDuration: Long = 8000
 ) : SimpleStateable<BroadcastReceiverState>, SimpleObservable<BroadcastReceiverObserver> {
 
     override val state: AtomicReference<BroadcastReceiverState> = AtomicReference(BroadcastReceiverState.NoConnection)
 
     override val observers: LinkedBlockingDeque<BroadcastReceiverObserver> = LinkedBlockingDeque()
+
+    private val transferRequestTask: AtomicReference<ConnectionClientImpl?> by lazy {
+        AtomicReference(null)
+    }
 
     private val receiverTask: AtomicReference<ConnectionServerImpl?> by lazy {
         AtomicReference(null)
@@ -91,6 +94,7 @@ class BroadcastReceiver(
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     fun startBroadcastReceiver(
+        localAddress: InetAddress,
         broadcastAddress: InetAddress,
         simpleCallback: SimpleCallback<Unit>
     ) {
@@ -108,6 +112,14 @@ class BroadcastReceiver(
         ).withServer<ConnectionServerImpl>(log = log)
         this.receiverTask.get()?.stopTask()
         this.receiverTask.set(receiverTask)
+        val transferRequestTask = NettyUdpConnectionTask(
+            connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
+                address = localAddress,
+                port = TransferProtoConstant.BROADCAST_TRANSFER_CLIENT_PORT
+            )
+        ).withClient<ConnectionClientImpl>(log = log)
+        this.transferRequestTask.get()?.stopTask()
+        this.transferRequestTask.set(transferRequestTask)
 
         val hasInvokeCallback = AtomicBoolean(false)
 
@@ -133,13 +145,47 @@ class BroadcastReceiver(
                     if (receiverTaskState is NettyTaskState.ConnectionActive) {
                         log.d(TAG, "Bind receiver task success")
                         receiverTask.removeObserver(this)
-                        log.d(TAG, "Bind transfer req task success")
-                        if (hasInvokeCallback.compareAndSet(false, true)) {
-                            simpleCallback.onSuccess(Unit)
-                        }
-                        receiverTask.registerServer(receiveBroadcastServer)
-                        receiverTask.addObserver(closeObserver)
-                        newState(BroadcastReceiverState.Active)
+                        transferRequestTask.addObserver(
+                            object : NettyConnectionObserver {
+                                override fun onNewMessage(
+                                    localAddress: InetSocketAddress?,
+                                    remoteAddress: InetSocketAddress?,
+                                    msg: PackageData,
+                                    task: INettyConnectionTask
+                                ) {}
+                                override fun onNewState(
+                                    transferTaskState: NettyTaskState,
+                                    task: INettyConnectionTask
+                                ) {
+                                    if (transferTaskState is NettyTaskState.Error
+                                        || transferTaskState is NettyTaskState.ConnectionClosed
+                                        || receiverTask.getCurrentState() !is NettyTaskState.ConnectionActive
+                                        || getCurrentState() !is BroadcastReceiverState.Requesting) {
+                                        log.e(TAG, "Bind transfer req task error: $transferTaskState, ${receiverTask.getCurrentState()}, ${getCurrentState()}")
+                                        if (hasInvokeCallback.compareAndSet(false, true)) {
+                                            simpleCallback.onError(transferTaskState.toString())
+                                        }
+                                        transferRequestTask.stopTask()
+                                        transferRequestTask.removeObserver(this)
+                                        receiverTask.stopTask()
+                                        onNewState(BroadcastReceiverState.NoConnection)
+                                    } else {
+                                        if (transferTaskState is NettyTaskState.ConnectionActive) {
+                                            log.d(TAG, "Bind transfer req task success")
+                                            if (hasInvokeCallback.compareAndSet(false, true)) {
+                                                simpleCallback.onSuccess(Unit)
+                                            }
+                                            transferRequestTask.removeObserver(this)
+                                            transferRequestTask.addObserver(closeObserver)
+                                            receiverTask.registerServer(receiveBroadcastServer)
+                                            receiverTask.addObserver(closeObserver)
+                                            newState(BroadcastReceiverState.Active)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                        transferRequestTask.startTask()
                     }
                 }
             }
@@ -151,77 +197,43 @@ class BroadcastReceiver(
 
     fun requestFileTransfer(targetAddress: InetAddress, simpleCallback: SimpleCallback<BroadcastTransferFileResp>) {
         val currentState = getCurrentState()
-        if (currentState !is BroadcastReceiverState.Active) {
+        val transferTask = transferRequestTask.get()
+        if (currentState !is BroadcastReceiverState.Active || transferTask == null) {
             simpleCallback.onError("Current state is not active: $currentState")
             return
         }
-        val clientTask = NettyTcpClientConnectionTask(
-            serverAddress = targetAddress,
-            serverPort = TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT
-        ).withClient<ConnectionClientImpl>(log = log)
-        val hasInvokeCallback = AtomicBoolean(false)
+        transferTask.requestSimplify<BroadcastTransferFileReq, BroadcastTransferFileResp>(
+            type = BroadcastDataType.TransferFileReq.type,
+            request = BroadcastTransferFileReq(
+                version = TransferProtoConstant.VERSION,
+                deviceName = deviceName
+            ),
+            targetAddress = InetSocketAddress(targetAddress, TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT),
+            callback = object : IClientManager.RequestCallback<BroadcastTransferFileResp> {
 
-        fun onErrorCallback(errorMsg: String) {
-            if (hasInvokeCallback.compareAndSet(false, true)) {
-                simpleCallback.onError(errorMsg)
-            }
-            clientTask.stopTask()
-        }
-
-        fun onSuccessCallback(r: BroadcastTransferFileResp) {
-            if (hasInvokeCallback.compareAndSet(false, true)) {
-                simpleCallback.onSuccess(r)
-            }
-            clientTask.stopTask()
-        }
-
-        clientTask.addObserver(object : NettyConnectionObserver {
-            override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
-                if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
-                    log.e(TAG, nettyState.toString())
-                    onErrorCallback(nettyState.toString())
+                override fun onSuccess(
+                    type: Int,
+                    messageId: Long,
+                    localAddress: InetSocketAddress?,
+                    remoteAddress: InetSocketAddress?,
+                    d: BroadcastTransferFileResp
+                ) {
+                    simpleCallback.onSuccess(d)
                 }
-                if (nettyState is NettyTaskState.ConnectionActive) {
-                    clientTask.requestSimplify(
-                        type = BroadcastDataType.TransferFileReq.type,
-                        request = BroadcastTransferFileReq(
-                            version = TransferProtoConstant.VERSION,
-                            deviceName = deviceName
-                        ),
-                        callback = object : IClientManager.RequestCallback<BroadcastTransferFileResp> {
 
-                            override fun onSuccess(
-                                type: Int,
-                                messageId: Long,
-                                localAddress: InetSocketAddress?,
-                                remoteAddress: InetSocketAddress?,
-                                d: BroadcastTransferFileResp
-                            ) {
-                                onSuccessCallback(d)
-                            }
-
-                            override fun onFail(errorMsg: String) {
-                                log.e(TAG, errorMsg)
-                                onErrorCallback(errorMsg)
-                            }
-                        }
-                    )
+                override fun onFail(errorMsg: String) {
+                    simpleCallback.onError(errorMsg)
                 }
-            }
 
-            override fun onNewMessage(
-                localAddress: InetSocketAddress?,
-                remoteAddress: InetSocketAddress?,
-                msg: PackageData,
-                task: INettyConnectionTask
-            ) {}
-        })
-        clientTask.startTask()
+            }
+        )
     }
 
     fun closeConnectionIfActive() {
         this.receiverTask.get()?.stopTask()
         this.receiverTask.set(null)
+        this.transferRequestTask.get()?.stopTask()
+        this.transferRequestTask.set(null)
         newState(BroadcastReceiverState.NoConnection)
         clearObserves()
         for (a in activeDevices) {

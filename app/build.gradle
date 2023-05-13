@@ -98,6 +98,26 @@ dependencies {
     //noinspection LifecycleAnnotationProcessorWithJava8
     kapt 'androidx.lifecycle:lifecycle-compiler:2.6.1'
 
+    // CameraX
+    def camerax_version = "1.2.2"
+    implementation "androidx.camera:camera-core:${camerax_version}"
+    implementation "androidx.camera:camera-camera2:${camerax_version}"
+    implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+    implementation "androidx.camera:camera-video:${camerax_version}"
+    implementation "androidx.camera:camera-view:${camerax_version}"
+    implementation "androidx.camera:camera-extensions:${camerax_version}"
+
+    // BarcodeScan
+    implementation 'com.google.mlkit:barcode-scanning:17.1.0'
+
+    // QRCode Gen
+    implementation 'com.github.kenglxn.QRGen:android:3.0.1'
+    // implementation 'com.github.kenglxn.QRGen:javase:3.0.1'
+
+    // Start Result
+    implementation 'com.afollestad.inline-activity-result:core:0.2.0'
+    implementation 'com.afollestad.inline-activity-result:coroutines:0.2.0'
+
     // Others
     implementation files("libs/tadapter-release.aar")
     implementation "com.jakewharton.threetenabp:threetenabp:1.4.6"

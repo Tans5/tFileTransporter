@@ -13,7 +13,6 @@ import com.tans.tfiletransporter.netty.extensions.requestSimplify
 import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
-import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask.Companion.ConnectionType
 import com.tans.tfiletransporter.transferproto.SimpleCallback
@@ -39,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference
 class BroadcastSender(
     private val deviceName: String,
     private val log: ILog,
-    private val broadcastSendIntervalMillis: Long = 600
+    private val broadcastSendIntervalMillis: Long = 1000
 ) : SimpleObservable<BroadcastSenderObserver>, SimpleStateable<BroadcastSenderState> {
 
     override val state: AtomicReference<BroadcastSenderState> = AtomicReference(BroadcastSenderState.NoConnection)
@@ -72,8 +71,7 @@ class BroadcastSender(
         AtomicReference(null)
     }
 
-
-    private val handleReqServerTask: AtomicReference<NettyTcpServerConnectionTask?> by lazy {
+    private val requestReceiverTask: AtomicReference<ConnectionServerImpl?> by lazy {
         AtomicReference(null)
     }
 
@@ -99,7 +97,7 @@ class BroadcastSender(
             val state = getCurrentState()
             if (state is BroadcastSenderState.Active) {
                 log.d(TAG, "Send broadcast.")
-                broadcastSenderTask.get()?.requestSimplify(
+                broadcastSenderTask.get()?.requestSimplify<BroadcastMsg, Unit>(
                     type = BroadcastDataType.BroadcastMsg.type,
                     request = BroadcastMsg(
                         version = TransferProtoConstant.VERSION,
@@ -150,42 +148,15 @@ class BroadcastSender(
         this.broadcastSenderTask.get()?.stopTask()
         this.broadcastSenderTask.set(senderTask)
 
-        val hasReceiveClientReq = AtomicBoolean(false)
-        val handleReqServerTask = NettyTcpServerConnectionTask(
-            bindAddress = localAddress,
-            bindPort = TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT,
-            newClientTaskCallback = { newConnection ->
-                if (hasReceiveClientReq.compareAndSet(false, true)) {
-                    log.d(TAG, "Receive client connection.")
-                    val serverConnection = newConnection.withServer<ConnectionServerImpl>(log = log)
-                    serverConnection.registerServer(transferServer)
-                    serverConnection.addObserver(object : NettyConnectionObserver {
-                        override fun onNewState(
-                            nettyState: NettyTaskState,
-                            task: INettyConnectionTask
-                        ) {
-                            if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
-                                log.d(TAG, "Client connection closed.")
-                                hasReceiveClientReq.set(false)
-                            }
-                        }
-
-                        override fun onNewMessage(
-                            localAddress: InetSocketAddress?,
-                            remoteAddress: InetSocketAddress?,
-                            msg: PackageData,
-                            task: INettyConnectionTask
-                        ) {}
-
-                    })
-                } else {
-                    newConnection.stopTask()
-                    log.e(TAG, "Already received client connection.")
-                }
-            }
-        )
-        this.handleReqServerTask.get()?.stopTask()
-        this.handleReqServerTask.set(handleReqServerTask)
+        val requestReceiverTask = NettyUdpConnectionTask(
+            connectionType = ConnectionType.Bind(
+                address = localAddress,
+                port = TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT
+            )
+        ).withServer<ConnectionServerImpl>(log = log)
+        requestReceiverTask.registerServer(transferServer)
+        this.requestReceiverTask.get()?.stopTask()
+        this.requestReceiverTask.set(requestReceiverTask)
 
         senderTask.addObserver(object : NettyConnectionObserver {
             override fun onNewMessage(
@@ -209,7 +180,7 @@ class BroadcastSender(
                 } else {
                     if (senderState is NettyTaskState.ConnectionActive) {
                         log.d(TAG, "Sender task connect success")
-                        handleReqServerTask.addObserver(object : NettyConnectionObserver {
+                        requestReceiverTask.addObserver(object : NettyConnectionObserver {
 
                             override fun onNewMessage(
                                 localAddress: InetSocketAddress?,
@@ -232,8 +203,8 @@ class BroadcastSender(
                                         simpleCallback.onError(receiverState.toString())
                                     }
                                     newState(BroadcastSenderState.NoConnection)
-                                    handleReqServerTask.removeObserver(this)
-                                    handleReqServerTask.stopTask()
+                                    requestReceiverTask.removeObserver(this)
+                                    requestReceiverTask.stopTask()
                                     senderTask.stopTask()
                                 } else {
                                     if (receiverState is NettyTaskState.ConnectionActive) {
@@ -253,12 +224,12 @@ class BroadcastSender(
                                                 broadcastAddress = broadcastAddress)
                                         )
                                         senderTask.addObserver(closeObserver)
-                                        handleReqServerTask.addObserver(closeObserver)
+                                        requestReceiverTask.addObserver(closeObserver)
                                     }
                                 }
                             }
                         })
-                        handleReqServerTask.startTask()
+                        requestReceiverTask.startTask()
                         senderTask.removeObserver(this)
                     }
                 }
@@ -273,8 +244,8 @@ class BroadcastSender(
         sendFuture.set(null)
         broadcastSenderTask.get()?.stopTask()
         broadcastSenderTask.set(null)
-        handleReqServerTask.get()?.stopTask()
-        handleReqServerTask.set(null)
+        requestReceiverTask.get()?.stopTask()
+        requestReceiverTask.set(null)
         newState(BroadcastSenderState.NoConnection)
         clearObserves()
     }
