@@ -8,6 +8,7 @@ import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.SettingsDialogBinding
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.await
 
 class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
     context = context,
