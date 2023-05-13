@@ -18,7 +18,7 @@ import org.kodein.di.DIAware
 import org.kodein.di.android.subDI
 import org.kodein.di.android.x.di
 
-abstract class BaseFragment<Binding: ViewDataBinding, State>(
+abstract class BaseFragment<Binding: ViewDataBinding, State : Any>(
     @LayoutRes
     val layoutId: Int,
     default: State

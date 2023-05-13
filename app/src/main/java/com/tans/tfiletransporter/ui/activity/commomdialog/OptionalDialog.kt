@@ -4,7 +4,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import java.util.*
 
 fun Activity.showOptionalDialog(

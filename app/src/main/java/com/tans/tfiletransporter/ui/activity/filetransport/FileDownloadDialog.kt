@@ -3,7 +3,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.media.MediaScannerConnection
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
@@ -17,12 +17,12 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.net.InetAddress

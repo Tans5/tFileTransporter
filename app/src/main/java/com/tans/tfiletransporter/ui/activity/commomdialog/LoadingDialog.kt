@@ -5,7 +5,7 @@ import android.app.Dialog
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.LoadingDialogLayoutBinding
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 fun Activity.showLoadingDialog(cancelable: Boolean = false): Dialog {
     return object : BaseCustomDialog<LoadingDialogLayoutBinding, Unit>(
@@ -17,7 +17,7 @@ fun Activity.showLoadingDialog(cancelable: Boolean = false): Dialog {
     ) {}.apply { setCancelable(cancelable); show() }
 }
 
-fun <T> Single<T>.loadingDialog(context: Activity): Single<T> {
+fun <T : Any> Single<T>.loadingDialog(context: Activity): Single<T> {
     var dialog: Dialog? = null
     return this.doOnSubscribe {
         dialog = context.showLoadingDialog(false)

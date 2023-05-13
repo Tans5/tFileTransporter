@@ -8,7 +8,7 @@ import android.net.wifi.p2p.*
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
@@ -28,13 +28,13 @@ import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
-import io.reactivex.rxkotlin.withLatestFrom
+import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout

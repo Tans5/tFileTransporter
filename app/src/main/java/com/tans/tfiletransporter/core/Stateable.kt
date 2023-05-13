@@ -1,17 +1,17 @@
 
 package com.tans.tfiletransporter.core
 
-import io.reactivex.Completable
-import io.reactivex.Observable
-import io.reactivex.Single
-import io.reactivex.subjects.BehaviorSubject
-import io.reactivex.subjects.Subject
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.subjects.BehaviorSubject
+import io.reactivex.rxjava3.subjects.Subject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 
-interface Stateable<State> {
+interface Stateable<State : Any> {
 
     val stateStore: Subject<State>
 
@@ -19,11 +19,11 @@ interface Stateable<State> {
 
     fun updateState(newState: (State) -> State): Single<State> = stateStore.firstOrError()
         .map(newState)
-        .doOnSuccess { state: State -> if (state != null) stateStore.onNext(state) }
+        .doOnSuccess { state: State -> stateStore.onNext(state) }
 
     fun updateStateCompletable(newState: (State) -> State): Completable = updateState(newState).ignoreElement()
 
-    fun <T> CoroutineScope.render(mapper: ((State) -> T), handler: suspend (T) -> Unit): Completable = bindState()
+    fun <T : Any> CoroutineScope.render(mapper: ((State) -> T), handler: suspend (T) -> Unit): Completable = bindState()
         .map(mapper)
         .distinctUntilChanged()
         .switchMapSingle { t ->
@@ -39,6 +39,6 @@ interface Stateable<State> {
         .ignoreElements()
 }
 
-fun <State> Stateable(defaultState: State) = object : Stateable<State> {
+fun <State : Any> Stateable(defaultState: State) = object : Stateable<State> {
     override val stateStore: Subject<State> = BehaviorSubject.createDefault(defaultState).toSerialized()
 }

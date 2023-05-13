@@ -6,7 +6,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.os.Bundle
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
@@ -14,11 +14,11 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
-import io.reactivex.rxkotlin.withLatestFrom
+import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.net.InetAddress

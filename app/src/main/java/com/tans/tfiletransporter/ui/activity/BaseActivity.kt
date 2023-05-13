@@ -11,23 +11,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.tans.tfiletransporter.core.BindLife
 import com.tans.tfiletransporter.core.Stateable
-import io.reactivex.subjects.Subject
+import io.reactivex.rxjava3.subjects.Subject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import org.kodein.di.*
-import org.kodein.di.android.di
 import org.kodein.di.android.retainedSubDI
 import kotlin.coroutines.CoroutineContext
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.android.di
 
-abstract class BaseActivity<Binding : ViewDataBinding, State>(
+abstract class BaseActivity<Binding : ViewDataBinding, State : Any>(
     @LayoutRes
     layoutId: Int,
     val defaultState: State
 ) : AppCompatActivity(), CoroutineScope, Stateable<State>, BindLife by BindLife(), DIAware {
 
-    class ActivityViewModel<State>(defaultState: State) : ViewModel(),
+    class ActivityViewModel<State : Any>(defaultState: State) : ViewModel(),
         BindLife by BindLife(),
         CoroutineScope by CoroutineScope(Dispatchers.Main),
         Stateable<State> by Stateable(defaultState) {

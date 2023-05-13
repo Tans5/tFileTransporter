@@ -2,7 +2,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
@@ -12,9 +12,9 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestMsgSuspend
 import com.tans.tfiletransporter.ui.activity.BaseFragment
-import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent
 import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener

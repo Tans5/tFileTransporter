@@ -4,10 +4,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.jakewharton.rxbinding3.appcompat.itemClicks
-import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
-import com.jakewharton.rxbinding3.view.clicks
 import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
 import com.tans.tadapter.spec.SimpleAdapterSpec
@@ -20,15 +16,15 @@ import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.utils.dp2px
-import io.reactivex.rxkotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.rx2.await
-import kotlinx.coroutines.rx2.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
 import java.util.*
 import androidx.activity.addCallback
+import com.jakewharton.rxbinding4.appcompat.itemClicks
+import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
@@ -36,9 +32,12 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspe
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.utils.firstVisibleItemPosition
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.kotlin.withLatestFrom
+import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.rx3.rxSingle
 import java.io.File
 import kotlin.math.min
 

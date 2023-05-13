@@ -8,7 +8,7 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
@@ -40,13 +40,13 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
-import io.reactivex.Observable
-import io.reactivex.subjects.PublishSubject
-import io.reactivex.subjects.Subject
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.subjects.PublishSubject
+import io.reactivex.rxjava3.subjects.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout

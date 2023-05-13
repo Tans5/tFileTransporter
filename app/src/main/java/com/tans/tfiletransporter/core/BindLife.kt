@@ -1,15 +1,16 @@
 package com.tans.tfiletransporter.core
 
-import io.reactivex.Completable
-import io.reactivex.Maybe
-import io.reactivex.Observable
-import io.reactivex.Single
-import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Maybe
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+
 
 interface BindLife {
     val lifeCompositeDisposable: CompositeDisposable
 
-    fun <T> Observable<T>.bindLife() {
+    fun <T : Any> Observable<T>.bindLife() {
         lifeCompositeDisposable.add(this.subscribe({
             // Log.d(this@BindLife.javaClass.name, "Next: ${it.toString()}")
         }, {
@@ -27,7 +28,7 @@ interface BindLife {
         }))
     }
 
-    fun <T> Single<T>.bindLife() {
+    fun <T : Any> Single<T>.bindLife() {
         lifeCompositeDisposable.add(this.subscribe({
             // Log.d(this@BindLife.javaClass.name, it.toString())
         }, {
@@ -35,7 +36,7 @@ interface BindLife {
         }))
     }
 
-    fun <T> Maybe<T>.bindLife() {
+    fun <T : Any> Maybe<T>.bindLife() {
         lifeCompositeDisposable.add(this.subscribe ({
             // Log.d(this@BindLife.javaClass.name,"Success: $it")
         }, {
