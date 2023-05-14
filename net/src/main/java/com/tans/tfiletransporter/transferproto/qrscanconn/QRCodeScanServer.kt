@@ -63,7 +63,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         o.onNewState(state.get())
     }
 
-    fun startQrCodeScanServer(localAddress: InetAddress, callback: SimpleCallback<Unit>) {
+    fun startQRCodeScanServer(localAddress: InetAddress, callback: SimpleCallback<Unit>) {
         if (getCurrentState() != QRCodeScanState.NoConnection) {
             val eMsg = "Wrong state: ${getCurrentState()}"
             log.e(TAG, eMsg)
