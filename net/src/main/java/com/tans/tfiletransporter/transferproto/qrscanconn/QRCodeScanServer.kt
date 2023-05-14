@@ -120,6 +120,12 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         connectionTask.startTask()
     }
 
+    override fun onNewState(s: QRCodeScanState) {
+        for (o in observers) {
+            o.onNewState(s)
+        }
+    }
+
     fun closeConnectionIfActive() {
         newState(QRCodeScanState.NoConnection)
         connectionTask.get()?.let {

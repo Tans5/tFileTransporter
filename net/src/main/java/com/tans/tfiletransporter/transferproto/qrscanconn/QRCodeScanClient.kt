@@ -64,11 +64,11 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
                 if (nettyState is NettyTaskState.ConnectionActive) {
                     val currentState = getCurrentState()
                     if (currentState == QRCodeScanState.Requesting) {
+                        newState(QRCodeScanState.Active)
                         log.d(TAG, "Connection is active.")
                         if (hasInvokeCallback.compareAndSet(false, true)) {
                             callback.onSuccess(Unit)
                         }
-                        newState(QRCodeScanState.Active)
                     } else {
                         val eMsg = "Error current state: $currentState"
                         log.e(TAG, eMsg)
@@ -131,6 +131,12 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
 
             }
         )
+    }
+
+    override fun onNewState(s: QRCodeScanState) {
+        for (o in observers) {
+            o.onNewState(s)
+        }
     }
 
     fun closeConnectionIfActive() {
