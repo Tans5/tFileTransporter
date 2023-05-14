@@ -6,6 +6,8 @@ import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.QrCodeServerDialogBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.netty.toInt
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
@@ -40,14 +42,19 @@ class QRCodeServerDialog(
 
         launch {
             val qrcodeBitmap = withContext(Dispatchers.IO) {
-                val qrcodeContent = QRCodeShare(
-                    version = TransferProtoConstant.VERSION,
-                    deviceName = LOCAL_DEVICE,
-                    address = -1
-                ).toJson()
-                if (qrcodeContent != null) {
-                    QRCode.from(qrcodeContent).withSize(320, 320).bitmap()
-                } else {
+                try {
+                    val qrcodeContent = QRCodeShare(
+                        version = TransferProtoConstant.VERSION,
+                        deviceName = LOCAL_DEVICE,
+                        address = localAddress.toInt()
+                    ).toJson()
+                    if (qrcodeContent != null) {
+                        QRCode.from(qrcodeContent).withSize(320, 320).bitmap()
+                    } else {
+                        null
+                    }
+                } catch (e: Throwable) {
+                    AndroidLog.e(TAG, "Create qrcode fail: ${e.message}", e)
                     null
                 }
             }
@@ -55,6 +62,10 @@ class QRCodeServerDialog(
                 binding.qrCodeIv.setImageBitmap(qrcodeBitmap)
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "QRCodeServerDialog"
     }
 
 }
