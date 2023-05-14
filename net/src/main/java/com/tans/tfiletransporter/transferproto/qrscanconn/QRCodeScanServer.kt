@@ -41,7 +41,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
             onRequest = { _, ra, r, isNew ->
                 if (ra != null && isNew) {
                     val currentState = getCurrentState()
-                    if (currentState == QRCodeScanState.Active) {
+                    if (currentState == QRCodeScanState.Active && r.version == TransferProtoConstant.VERSION) {
                         Dispatchers.IO.asExecutor().execute {
                             val remoteDevice = RemoteDevice(remoteAddress = ra, deviceName = r.deviceName)
                             for (o in observers) {
