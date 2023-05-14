@@ -33,12 +33,12 @@ object Settings : Stateable<Settings.SettingsData> {
 
     private const val defaultConnectionSize = 4
 
-    private const val defaultBufferSize = 1024L * 512L
+    private const val defaultBufferSize = 1024L * 256L
 
     const val minConnectionSize = 1
     const val maxConnectionSize = 8
     const val minBufferSize = 1024
-    const val maxBufferSize = defaultBufferSize
+    const val maxBufferSize = 1024L * 512L
     fun init(context: Context) {
         ioExecutor.execute {
             val sp = context.getSharedPreferences(SP_FILE_NAME, Context.MODE_PRIVATE)
