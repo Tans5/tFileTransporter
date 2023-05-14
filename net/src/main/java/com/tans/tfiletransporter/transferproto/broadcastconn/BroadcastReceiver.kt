@@ -208,6 +208,7 @@ class BroadcastReceiver(
                 version = TransferProtoConstant.VERSION,
                 deviceName = deviceName
             ),
+            retryTimeout = 2000L,
             targetAddress = InetSocketAddress(targetAddress, TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT),
             callback = object : IClientManager.RequestCallback<BroadcastTransferFileResp> {
 

@@ -139,33 +139,35 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             launch(Dispatchers.IO) {
                 while (true) {
                     val (isP2pEnabled, connection) = bindState().map { it.isP2pEnabled to it.wifiP2PConnection.getOrNull() }.firstOrError().await()
-                    if (!isP2pEnabled) {
-                        updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
-                    } else {
-                        if (connection == null) {
-                            val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
-                            if (state == WifiActionResult.Success) {
-                                AndroidLog.d(TAG, "Request discover peer success")
-                                val peers =
-                                    wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
-                                AndroidLog.d(
-                                    TAG,
-                                    "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}"
-                                )
-                                updateState { oldState ->
-                                    oldState.copy(peers = peers.getOrNull()?.deviceList?.map {
-                                        P2pPeer(
-                                            it.deviceName,
-                                            it.deviceAddress
-                                        )
-                                    } ?: emptyList())
-                                }.await()
+                    if (isResumed && isVisible) {
+                        if (!isP2pEnabled) {
+                            updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
+                        } else {
+                            if (connection == null) {
+                                val state = wifiP2pManager.discoverPeersSuspend(wifiChannel)
+                                if (state == WifiActionResult.Success) {
+                                    AndroidLog.d(TAG, "Request discover peer success")
+                                    val peers =
+                                        wifiP2pManager.requestPeersSuspend(channel = wifiChannel)
+                                    AndroidLog.d(
+                                        TAG,
+                                        "WIFI p2p devices: ${peers.orElseGet { null }?.deviceList?.joinToString { "${it.deviceName} -> ${it.deviceAddress}" }}"
+                                    )
+                                    updateState { oldState ->
+                                        oldState.copy(peers = peers.getOrNull()?.deviceList?.map {
+                                            P2pPeer(
+                                                it.deviceName,
+                                                it.deviceAddress
+                                            )
+                                        } ?: emptyList())
+                                    }.await()
+                                } else {
+                                    updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
+                                    AndroidLog.e(TAG, "Request discover peer fail: $state")
+                                }
                             } else {
                                 updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
-                                AndroidLog.e(TAG, "Request discover peer fail: $state")
                             }
-                        } else {
-                            updateState { oldState -> oldState.copy(peers = emptyList()) }.await()
                         }
                     }
                     delay(4000)

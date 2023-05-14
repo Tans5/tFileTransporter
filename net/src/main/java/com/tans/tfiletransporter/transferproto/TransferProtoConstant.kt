@@ -24,4 +24,9 @@ object TransferProtoConstant {
      * File Transfer
      */
     const val FILE_TRANSFER_PORT = 2001
+
+    /**
+     * QR code scan connection
+     */
+    const val QR_CODE_SCAN_SERVER_PORT = 2002
 }

@@ -77,6 +77,10 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
 
         binding.scanQrCodeLayout.clicks()
             .ignoreSeveralClicks()
+            .withLatestFrom(bindState().map { it.address })
+            .map { it.second }
+            .filter { it.isPresent }
+            .map { it.get() }
             .doOnNext {
                 // TODO:
                 startActivityForResult<ScanQrCodeActivity> { success, data ->
@@ -91,8 +95,16 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
 
         binding.showQrCodeLayout.clicks()
             .ignoreSeveralClicks()
-            .doOnNext {
+            .withLatestFrom(bindState().map { it.address })
+            .map { it.second }
+            .filter { it.isPresent }
+            .map { it.get() }
+            .doOnNext { localAddress ->
                 // TODO:
+                QRCodeServerDialog(
+                    context = requireActivity(),
+                    localAddress = localAddress
+                ).show()
             }
             .bindLife()
 
