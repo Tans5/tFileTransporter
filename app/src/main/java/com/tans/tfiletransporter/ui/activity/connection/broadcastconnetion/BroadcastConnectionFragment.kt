@@ -99,12 +99,20 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
             .map { it.second }
             .filter { it.isPresent }
             .map { it.get() }
-            .doOnNext { localAddress ->
-                // TODO:
-                QRCodeServerDialog(
-                    context = requireActivity(),
-                    localAddress = localAddress
-                ).show()
+            .flatMapSingle { localAddress ->
+                rxSingle(Dispatchers.Main) {
+                    runCatching {
+                        requireActivity().showQRCodeServerDialogSuspend(localAddress)
+                    }.onSuccess { remoteAddress ->
+                        requireActivity().startActivity(FileTransportActivity.getIntent(
+                            context = requireContext(),
+                            localAddress = localAddress,
+                            remoteAddress = remoteAddress.remoteAddress.address,
+                            remoteDeviceInfo = remoteAddress.deviceName,
+                            isServer = true
+                        ))
+                    }
+                }
             }
             .bindLife()
 
