@@ -10,9 +10,11 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
 import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx2.await
+import kotlin.jvm.optionals.getOrNull
 
 class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     layoutId = R.layout.connection_activity,
@@ -46,9 +48,15 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
                 .firstOrError()
                 .await()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                i.data = Uri.fromParts("package", packageName, null)
-                startActivity(i)
+                val grant = this@ConnectionActivity.showOptionalDialog(
+                    title = getString(R.string.permission_request_title),
+                    message = getString(R.string.permission_storage_request_content)
+                ).await().getOrNull() ?: false
+                if (grant) {
+                    val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    i.data = Uri.fromParts("package", packageName, null)
+                    startActivity(i)
+                }
             }
         }
 

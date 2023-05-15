@@ -85,4 +85,10 @@
     <string name="setting_max_connections_size">Max Tcp Connections</string>
     <string name="setting_buffer_size_kb">%d KB</string>
     <!-- Settings End-->
+
+    <!-- Request Permission Start -->
+    <string name="permission_request_title">Request Permission</string>
+    <string name="permission_storage_request_content">tFileTransfer needs MANAGE STORAGE permission to share your files.</string>
+    <!-- Request Permission End -->
+
 </resources>
