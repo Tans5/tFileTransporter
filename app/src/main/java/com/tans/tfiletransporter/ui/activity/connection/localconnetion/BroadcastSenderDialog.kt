@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
+package com.tans.tfiletransporter.ui.activity.connection.localconnetion
 
 import android.app.Activity
 import com.jakewharton.rxbinding3.view.clicks

@@ -27,8 +27,8 @@
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
-    <string name="broadcast_connection_title">Conectar dispositivo remoto via Broadcast</string>
-    <string name="broadcast_connection_description">Use transmissão UDP para conectar ao dispositivo alvo, tanto seu dispositivo como o outro deve estar na mesma rede. \nUse o sistema Broadcast rápido, embora alguns dispositivos podem não ter suporte para isto.</string>
+    <string name="local_network_connection_title">Conectar dispositivo remoto via Broadcast</string>
+    <string name="local_network_connection_description">Use transmissão UDP para conectar ao dispositivo alvo, tanto seu dispositivo como o outro deve estar na mesma rede. \nUse o sistema Broadcast rápido, embora alguns dispositivos podem não ter suporte para isto.</string>
     <string name="broadcast_connection_local_device">Dispositivo local: %s</string>
     <string name="broadcast_connection_local_ip_address">IP local: %s</string>
     <string name="broadcast_connection_use_system_broadcast">Use sistema Broadcast: </string>

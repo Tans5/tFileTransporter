@@ -28,8 +28,8 @@
     <!-- File Transport Activity End -->
 
     <!-- Connection Activity Start -->
-    <string name="broadcast_connection_title">Connect Remote Device via Broadcast</string>
-    <string name="broadcast_connection_description">Use UDP broadcast to connect target device, your device must be in the same network with target device. </string>
+    <string name="local_network_connection_title">Connect Remote Device via LocalNetwork</string>
+    <string name="local_network_connection_description">If two devices in the same local network, you can use this way create connection. \n Use QR code scan or UDP broadcast.</string>
     <string name="broadcast_connection_local_device">Local Device: %s</string>
     <string name="broadcast_connection_local_ip_address">Local IP Address: %s</string>
     <string name="broadcast_connection_use_system_broadcast">Use System Broadcast: </string>

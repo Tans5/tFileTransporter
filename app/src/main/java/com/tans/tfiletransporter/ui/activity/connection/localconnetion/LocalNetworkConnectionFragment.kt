@@ -1,4 +1,4 @@
-package com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion
+package com.tans.tfiletransporter.ui.activity.connection.localconnetion
 
 import android.net.ConnectivityManager
 import android.net.Network
@@ -9,7 +9,7 @@ import android.os.Bundle
 import com.jakewharton.rxbinding3.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
-import com.tans.tfiletransporter.databinding.BroadcastConnectionFragmentBinding
+import com.tans.tfiletransporter.databinding.LocalNetworkConnectionFragmentBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.ui.activity.BaseFragment
@@ -25,9 +25,9 @@ import java.net.InetAddress
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 
-class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBinding, BroadcastConnectionFragment.Companion.BroadcastState>(
-    layoutId = R.layout.broadcast_connection_fragment,
-    default = BroadcastState()
+class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragmentBinding, LocalNetworkConnectionFragment.Companion.LocalNetworkState>(
+    layoutId = R.layout.local_network_connection_fragment,
+    default = LocalNetworkState()
 ) {
 
     private val wifiManager: WifiManager by instance()
@@ -62,7 +62,7 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
         connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
     }
 
-    override fun initViews(binding: BroadcastConnectionFragmentBinding) {
+    override fun initViews(binding: LocalNetworkConnectionFragmentBinding) {
 
         render({ it.address }) {
             val address = it.getOrNull()
@@ -141,8 +141,8 @@ class BroadcastConnectionFragment : BaseFragment<BroadcastConnectionFragmentBind
     }
 
     companion object {
-        private const val TAG = "BroadcastConnectionFragment"
-        data class BroadcastState(
+        private const val TAG = "LocalNetworkConnectionFragment"
+        data class LocalNetworkState(
             val address: Optional<InetAddress> = Optional.empty()
         )
     }

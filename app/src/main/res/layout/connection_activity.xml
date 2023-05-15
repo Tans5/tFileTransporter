@@ -73,7 +73,7 @@
                         android:id="@+id/broadcast_fragment"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:name="com.tans.tfiletransporter.ui.activity.connection.broadcastconnetion.BroadcastConnectionFragment" />
+                        android:name="com.tans.tfiletransporter.ui.activity.connection.localconnetion.LocalNetworkConnectionFragment" />
 
                 </FrameLayout>
 
