@@ -4,9 +4,9 @@
 Create tcp connections to transfer files without Internet.  
   
 Create connections ways:
-- Wi-Fi P2P/Direct (Recommend， Super Fast)
-- Scan QR Code
-- UDP Broadcast
+- Wi-Fi P2P/Direct (Recommend， Super Fast) (No LocalNetwork Limit)
+- Scan QR Code (LocalNetwork Limit)
+- UDP Broadcast (LocalNetwork Limit)
 
 [Install On Google Play](https://play.google.com/store/apps/details?id=com.tans.tfiletransporter)
 
