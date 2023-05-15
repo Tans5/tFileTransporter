@@ -9,9 +9,9 @@ import android.os.Bundle
 import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
-import com.tans.rxutils.switchThread
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.LocalNetworkConnectionFragmentBinding
+import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.netty.toInetAddress
 import com.tans.tfiletransporter.toBytes
@@ -25,7 +25,6 @@ import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
 import com.tans.tfiletransporter.ui.activity.qrcodescan.ScanQrCodeActivity
 import com.tans.tfiletransporter.utils.fromJson
 import com.tans.tfiletransporter.utils.showToastShort
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
@@ -108,7 +107,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
                                 val serverAddress = qrcodeShare.address.toInetAddress()
                                 scanClient.startQRCodeScanClientSuspend(serverAddress)
                                 AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
-                                scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = qrcodeShare.deviceName)
+                                scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
                                 serverAddress
                             }.onSuccess { serverAddress ->
                                 withContext(Dispatchers.Main) {
