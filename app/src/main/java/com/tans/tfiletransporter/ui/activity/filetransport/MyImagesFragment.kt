@@ -2,7 +2,7 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
+import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
 import com.tans.rxutils.QueryMediaItem
 import com.tans.rxutils.QueryMediaType
 import com.tans.rxutils.getMedia
@@ -20,11 +20,11 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspe
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.file.toFileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.rx2.await
-import kotlinx.coroutines.rx2.rxSingle
+import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.rx3.rxSingle
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 import okio.buffer

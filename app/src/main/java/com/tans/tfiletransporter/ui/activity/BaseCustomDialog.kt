@@ -10,7 +10,7 @@ import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatDialog
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.core.BindLife
 import com.tans.tfiletransporter.core.Stateable
@@ -22,7 +22,7 @@ import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.closestDI
 
-abstract class BaseCustomDialog<Binding: ViewDataBinding, State>(context: Context, @LayoutRes val layoutId: Int, defaultState: State, private val clearBackground: Boolean = false, private val outSizeCancelable: Boolean = true)
+abstract class BaseCustomDialog<Binding: ViewDataBinding, State : Any>(context: Context, @LayoutRes val layoutId: Int, defaultState: State, private val clearBackground: Boolean = false, private val outSizeCancelable: Boolean = true)
     : AppCompatDialog(context), BindLife by BindLife(), DIAware, CoroutineScope by CoroutineScope(Dispatchers.Main), Stateable<State> by Stateable(defaultState) {
 
     override val di: DI by closestDI()

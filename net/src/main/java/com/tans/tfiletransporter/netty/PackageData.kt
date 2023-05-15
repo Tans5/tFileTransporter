@@ -14,9 +14,7 @@ data class PackageData(
         other as PackageData
 
         if (type != other.type) return false
-        if (!body.contentEquals(other.body)) return false
-
-        return true
+        return body.contentEquals(other.body)
     }
 
     override fun hashCode(): Int {

@@ -27,14 +27,14 @@ class CheckerHandler(
         }
     }
 
-    override fun channelInactive(ctx: ChannelHandlerContext?) {
+    override fun channelInactive(ctx: ChannelHandlerContext) {
         super.channelInactive(ctx)
-        ctx?.close()
+        ctx.close()
     }
 
     override fun channelRead(
         ctx: ChannelHandlerContext,
-        msg: Any?
+        msg: Any
     ) {
         val localAddress = channel.localAddress() as? InetSocketAddress
         if (msg is PackageData) {
@@ -86,6 +86,7 @@ class CheckerHandler(
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun exceptionCaught(
         ctx: ChannelHandlerContext,
         cause: Throwable

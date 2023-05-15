@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.netty
 
 import com.tans.tfiletransporter.toBytes
+import com.tans.tfiletransporter.toInt
 import java.net.InetAddress
 import java.net.NetworkInterface
 
@@ -19,8 +20,6 @@ fun InetAddress.getBroadcastAddress()
         broadcast to maskLen
     } ?: (InetAddress.getByAddress((-1).toBytes()) to 24.toShort())
 
-fun getAndroidBroadcastAddress(): InetAddress = InetAddress.getByAddress((-1).toBytes())
-
 
 fun findLocalAddressV4(): List<InetAddress> {
     val interfaces = NetworkInterface.getNetworkInterfaces()
@@ -35,4 +34,12 @@ fun findLocalAddressV4(): List<InetAddress> {
         }
     }
     return result
+}
+
+fun InetAddress.toInt(): Int {
+    return address.toInt()
+}
+
+fun Int.toInetAddress(): InetAddress {
+    return InetAddress.getByAddress(this.toBytes())
 }

@@ -60,48 +60,70 @@ android {
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.10.0'
+    implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "androidx.fragment:fragment-ktx:1.5.6"
-    implementation 'androidx.appcompat:appcompat:1.7.0-alpha02'
-    implementation deps.view.swiperefresh
+    implementation "androidx.fragment:fragment-ktx:1.5.7"
 
-    implementation deps.rxJava.runtime
-    implementation deps.rxJava.kotlin
-    implementation deps.rxAndroid.runtime
-    implementation deps.rxpermissions.runtime
-    implementation deps.rxbinding.runtime
-    implementation deps.rxbinding.appcompat
-    implementation deps.rxbinding.core
-    implementation deps.rxbinding.swiperefreshlayout
+    // RxJava3
+    implementation "io.reactivex.rxjava3:rxjava:3.1.6"
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
+    implementation 'io.reactivex.rxjava3:rxkotlin:3.0.1'
+    implementation 'com.github.tbruyelle:rxpermissions:0.12'
 
-    implementation deps.coroutines.runtime
-    implementation deps.coroutines.android
-    implementation deps.coroutines.rx
+    // RxBinding
+    implementation 'com.jakewharton.rxbinding4:rxbinding-core:4.0.0'
+    implementation 'com.jakewharton.rxbinding4:rxbinding-appcompat:4.0.0'
+    implementation 'com.jakewharton.rxbinding4:rxbinding-swiperefreshlayout:4.0.0'
 
-    implementation deps.tadapter.runtime
+    // Coroutines
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.7.1"
 
-    implementation deps.date.runtime
+    // Kodein
+    implementation "org.kodein.di:kodein-di-framework-android-core:7.2.0"
+    implementation "org.kodein.di:kodein-di-framework-android-x:7.2.0"
 
-    implementation deps.kodein.runtime
-    implementation deps.kodein.androidx
+    // Moshi
+    implementation "com.squareup.moshi:moshi:1.14.0"
+    implementation "com.squareup.moshi:moshi-kotlin:1.14.0"
+    implementation "com.squareup.moshi:moshi-adapters:1.14.0"
+    kapt "com.squareup.moshi:moshi-kotlin-codegen:1.14.0"
 
-    implementation deps.moshi.runtime
-    implementation deps.moshi.ktx
-    implementation deps.moshi.adapters
-    kapt deps.moshi.ktxCodegen
+    // Lifecycle
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
+    //noinspection LifecycleAnnotationProcessorWithJava8
+    kapt 'androidx.lifecycle:lifecycle-compiler:2.6.1'
 
+    // CameraX
+    def camerax_version = "1.2.2"
+    implementation "androidx.camera:camera-core:${camerax_version}"
+    implementation "androidx.camera:camera-camera2:${camerax_version}"
+    implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+    implementation "androidx.camera:camera-video:${camerax_version}"
+    implementation "androidx.camera:camera-view:${camerax_version}"
+    implementation "androidx.camera:camera-extensions:${camerax_version}"
+
+    // BarcodeScan
+    implementation 'com.google.mlkit:barcode-scanning:17.1.0'
+
+    // QRCode Gen
+    implementation 'com.github.kenglxn.QRGen:android:3.0.1'
+    // implementation 'com.github.kenglxn.QRGen:javase:3.0.1'
+
+    // Start Result
+    implementation 'com.afollestad.inline-activity-result:core:0.2.0'
+    implementation 'com.afollestad.inline-activity-result:coroutines:0.2.0'
+
+    // Others
+    implementation files("libs/tadapter-release.aar")
+    implementation "com.jakewharton.threetenabp:threetenabp:1.4.6"
     implementation 'net.yslibrary.keyboardvisibilityevent:keyboardvisibilityevent:3.0.0-RC2'
-
-    implementation deps.rxutils.runtime
-
-    implementation deps.glide.runtime
-
-    implementation deps.lifecycle.runtime
-    implementation deps.lifecycle.viewmodel
-    kapt deps.lifecycle.compiler
+    implementation "com.github.Tans5:RxUtils:0.3.2"
+    implementation "com.github.bumptech.glide:glide:4.15.1"
 
     implementation project(":net")
 }

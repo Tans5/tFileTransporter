@@ -1,7 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.connection.localconnetion
 
 import android.app.Activity
-import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding

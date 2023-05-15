@@ -11,10 +11,10 @@ import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
-import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
 import kotlin.jvm.optionals.getOrNull
+import com.tbruyelle.rxpermissions3.RxPermissions
+import kotlinx.coroutines.rx3.await
 
 class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
     layoutId = R.layout.connection_activity,

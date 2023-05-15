@@ -1,14 +1,14 @@
 package com.tans.tfiletransporter.ui.activity.commomdialog
 
 import android.app.Activity
-import com.jakewharton.rxbinding3.widget.checkedChanges
-import com.jakewharton.rxbinding3.widget.userChanges
+import com.jakewharton.rxbinding4.widget.checkedChanges
+import com.jakewharton.rxbinding4.widget.userChanges
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.SettingsDialogBinding
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx3.await
 
 class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
     context = context,

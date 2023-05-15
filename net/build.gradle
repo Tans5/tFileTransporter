@@ -11,16 +11,15 @@ java {
 }
 
 dependencies {
-    api deps.coroutines.runtime
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1"
 
-    api deps.moshi.runtime
-    api deps.moshi.ktx
-    api deps.moshi.adapters
-    kapt deps.moshi.ktxCodegen
+    // Moshi
+    api "com.squareup.moshi:moshi:1.14.0"
+    api "com.squareup.moshi:moshi-kotlin:1.14.0"
+    api "com.squareup.moshi:moshi-adapters:1.14.0"
+    kapt "com.squareup.moshi:moshi-kotlin-codegen:1.14.0"
 
-    api deps.netty.runtime
-
+    api "io.netty:netty-all:4.1.86.Final"
     api "com.squareup.okio:okio:3.3.0"
-
     api "androidx.annotation:annotation:1.6.0"
 }
