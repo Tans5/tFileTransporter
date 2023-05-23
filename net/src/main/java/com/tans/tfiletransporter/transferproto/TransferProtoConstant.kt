@@ -1,7 +1,7 @@
 package com.tans.tfiletransporter.transferproto
 
 object TransferProtoConstant {
-    const val VERSION: Int = 20230417
+    const val VERSION: Int = 20230523
 
     /**
      * P2P Connect
