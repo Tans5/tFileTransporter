@@ -43,10 +43,6 @@ import kotlin.math.min
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion.MyDirFragmentState>(R.layout.my_dir_fragment, MyDirFragmentState()) {
 
-    private val rootDir: File by lazy {
-        (requireActivity() as FileTransportActivity).rootDirFile
-    }
-
     private val recyclerViewScrollChannel = Channel<Int>(1)
 
     private val folderPositionDeque: Deque<Int> = ArrayDeque()
@@ -73,7 +69,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
     override fun initViews(binding: MyDirFragmentBinding) {
         launch(Dispatchers.IO) {
             updateState {
-                it.copy(fileTree = createLocalRootTree(rootDir))
+                it.copy(fileTree = createLocalRootTree(requireContext()))
             }.await()
         }
 
@@ -121,7 +117,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                             folderPositionDeque.push(i)
                             updateState { oldState ->
                                 oldState.copy(
-                                    fileTree = oldState.fileTree.newLocalSubTree(data, rootDir),
+                                    fileTree = oldState.fileTree.newLocalSubTree(data),
                                     selectedFiles = emptySet()
                                 )
                             }.await()
@@ -220,7 +216,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                     val oldTree = oldState.fileTree
                     if (oldTree.isRootFileTree()) {
                         oldState.copy(
-                            fileTree = createLocalRootTree(rootDir),
+                            fileTree = createLocalRootTree(requireContext()),
                             selectedFiles = emptySet()
                         )
                     } else {
@@ -228,7 +224,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                         val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
                         if (parentTree != null && dirLeaf != null) {
                             oldState.copy(
-                                fileTree = parentTree.newLocalSubTree(dirLeaf, rootDir),
+                                fileTree = parentTree.newLocalSubTree(dirLeaf),
                                 selectedFiles = emptySet()
                             )
                         } else {
