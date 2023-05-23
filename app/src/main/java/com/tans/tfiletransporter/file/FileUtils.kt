@@ -88,14 +88,18 @@ fun List<FileLeaf.CommonFileLeaf>.toExploreFiles(): List<FileExploreFile> {
 }
 
 fun File.hasTargetParent(targetParent: File): Boolean {
-    val parent = parentFile
-    return if (parent == null) {
-        false
+    return if (canonicalPath == targetParent.canonicalPath) {
+        true
     } else {
-        if (parent.canonicalPath == targetParent.canonicalPath) {
-            true
+        val parent = parentFile
+      if (parent == null) {
+            false
         } else {
-            parent.hasTargetParent(targetParent)
+            if (parent.canonicalPath == targetParent.canonicalPath) {
+                true
+            } else {
+                parent.hasTargetParent(targetParent)
+            }
         }
     }
 }
