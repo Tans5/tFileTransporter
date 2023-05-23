@@ -120,7 +120,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                     if (selectImages.isEmpty()) return@rxSingle
                     clearImageCaches()
                     val files = selectImages.createCatches()
-                    val senderFiles = files.map { SenderFile(it, it.toFileExploreFile("")) }
+                    val senderFiles = files.map { SenderFile(it, it.toFileExploreFile()) }
                     if (senderFiles.isNotEmpty()) {
                         runCatching {
                             fileExplore.requestSendFilesSuspend(

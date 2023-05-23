@@ -67,15 +67,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         PublishSubject.create<Unit?>().toSerialized()
     }
 
-    val rootDirFile: File by lazy {
-        Environment.getExternalStorageDirectory()
-    }
-
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
                 return if (Settings.isShareMyDir().blockingGet()) {
-                    request.scanChildren(rootDirFile)
+                    request.scanChildren(this@FileTransportActivity)
                 } else {
                     ScanDirResp(
                         path = request.requestPath,
@@ -338,7 +334,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
     suspend fun sendFiles(files: List<FileExploreFile>, bufferSize: Long) {
         val fixedFiles = files.filter { it.size > 0 }
-        val senderFiles = fixedFiles.map { SenderFile( File(rootDirFile, it.path), it) }
+        val senderFiles = fixedFiles.map { SenderFile( File(it.path), it) }
         if (senderFiles.isEmpty()) return
         sendSenderFiles(senderFiles, bufferSize)
     }

@@ -1,6 +1,8 @@
 package com.tans.tfiletransporter.file
 
+import android.content.Context
 import android.os.Build
+import android.os.Environment
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreDir
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirReq
@@ -9,39 +11,55 @@ import java.io.File
 
 val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
 
-fun ScanDirReq.scanChildren(rootDir: File): ScanDirResp {
-    val rootDirString = rootDir.canonicalPath
-    val currentFile = File(rootDir, requestPath)
-    return if (currentFile.isDirectory && currentFile.canRead()) {
-        try {
-            val children = currentFile.listFiles() ?: emptyArray<File>()
-            val childrenDirs = mutableListOf<FileExploreDir>()
-            val childrenFiles = mutableListOf<FileExploreFile>()
-            for (c in children) {
-                if (c.canRead()) {
-                    if (c.isDirectory) {
-                        childrenDirs.add(c.toFileExploreDir(rootDirString))
-                    } else {
-                        if (c.length() > 0) {
-                            childrenFiles.add(c.toFileExploreFile(rootDirString))
+fun ScanDirReq.scanChildren(context: Context): ScanDirResp {
+    return try {
+        val fileSeparator = File.separator
+        if (requestPath.isBlank() || requestPath == fileSeparator) {
+            val defaultStorageFile = Environment.getExternalStorageDirectory()
+            val othersSdCardFiles =
+                getSdCardPaths(context, true).map { File(it) }.filter { !defaultStorageFile.hasTargetParent(it) }
+            ScanDirResp(
+                path = fileSeparator,
+                childrenFiles = emptyList(),
+                childrenDirs = listOf(FileExploreDir(
+                    name = "Default Storage",
+                    path = defaultStorageFile.canonicalPath,
+                    childrenCount = defaultStorageFile.listFiles()?.size ?: 0,
+                    lastModify = defaultStorageFile.lastModified()
+                )) + othersSdCardFiles.map { it.toFileExploreDir() }
+            )
+        } else {
+            val currentFile = File(requestPath)
+            if (currentFile.isDirectory && currentFile.canRead()) {
+                val children = currentFile.listFiles() ?: emptyArray<File>()
+                val childrenDirs = mutableListOf<FileExploreDir>()
+                val childrenFiles = mutableListOf<FileExploreFile>()
+                for (c in children) {
+                    if (c.canRead()) {
+                        if (c.isDirectory) {
+                            childrenDirs.add(c.toFileExploreDir())
+                        } else {
+                            if (c.length() > 0) {
+                                childrenFiles.add(c.toFileExploreFile())
+                            }
                         }
                     }
                 }
+                ScanDirResp(
+                    path = requestPath,
+                    childrenDirs = childrenDirs,
+                    childrenFiles = childrenFiles
+                )
+            } else {
+                ScanDirResp(
+                    path = requestPath,
+                    childrenDirs = emptyList(),
+                    childrenFiles = emptyList()
+                )
             }
-            ScanDirResp(
-                path = requestPath,
-                childrenDirs = childrenDirs,
-                childrenFiles = childrenFiles
-            )
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            ScanDirResp(
-                path = requestPath,
-                childrenDirs = emptyList(),
-                childrenFiles = emptyList()
-            )
         }
-    } else {
+    } catch (e: Throwable) {
+        e.printStackTrace()
         ScanDirResp(
             path = requestPath,
             childrenDirs = emptyList(),
@@ -50,11 +68,11 @@ fun ScanDirReq.scanChildren(rootDir: File): ScanDirResp {
     }
 }
 
-fun File.toFileExploreDir(rootDirString: String): FileExploreDir {
+fun File.toFileExploreDir(): FileExploreDir {
     return if (isDirectory) {
         FileExploreDir(
             name = name,
-            path = this.canonicalPath.removePrefix(rootDirString),
+            path = this.canonicalPath,
             childrenCount = listFiles()?.size ?: 0,
             lastModify = lastModified()
         )
@@ -63,11 +81,11 @@ fun File.toFileExploreDir(rootDirString: String): FileExploreDir {
     }
 }
 
-fun File.toFileExploreFile(rootDirString: String): FileExploreFile {
+fun File.toFileExploreFile(): FileExploreFile {
     return if (isFile) {
         FileExploreFile(
             name = name,
-            path = this.canonicalPath.removePrefix(rootDirString),
+            path = this.canonicalPath,
             size = length(),
             lastModify = lastModified()
         )
