@@ -17,7 +17,6 @@ import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
-import com.tans.tfiletransporter.transferproto.fileexplore.model.DownloadFilesReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.DownloadReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.ErrorReq
 import com.tans.tfiletransporter.transferproto.filetransfer.model.FileTransferDataType
@@ -26,7 +25,6 @@ import kotlinx.coroutines.*
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.util.Arrays
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -588,7 +586,6 @@ class FileSender(
                 val durationNeedFix = (oldBufferSize - differCost.toDouble() / anchorBufferDurationInMillis.toDouble() * oldBufferSize.toDouble()).toInt()
                 val newBufferSize = max(min(durationNeedFix, MAX_FILE_SEND_BUFFER_SIZE), MIN_FILE_SEND_BUFFER_SIZE)
                 this.bufferSize.set(newBufferSize)
-                log.d(TAG, "New buffer size: ${newBufferSize.toLong().toSizeString()}")
             }
         }
 
