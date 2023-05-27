@@ -248,7 +248,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
                 rxSingle(Dispatchers.IO) {
                     val exploreFiles = leafs.toList().toExploreFiles()
                     runCatching {
-                        fileExplore.requestDownloadFilesSuspend(exploreFiles, Settings.transferFileBufferSize().await().toInt())
+                        fileExplore.requestDownloadFilesSuspend(exploreFiles)
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request download fails success.")
                         val mineMax = Settings.transferFileMaxConnection().await()

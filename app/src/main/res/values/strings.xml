@@ -83,9 +83,7 @@
     <string name="settings_title">Settings</string>
     <string name="setting_download_dir">Download Dir</string>
     <string name="setting_share_my_dir">Share My Folder</string>
-    <string name="setting_buffer_size">Buffer Size</string>
     <string name="setting_max_connections_size">Max Tcp Connections</string>
-    <string name="setting_buffer_size_kb">%d KB</string>
     <!-- Settings End-->
 
     <!-- Request Permission Start -->

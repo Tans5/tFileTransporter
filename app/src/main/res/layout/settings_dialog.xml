@@ -102,6 +102,8 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/max_connection_title_tv"
             app:layout_constraintEnd_toStartOf="@id/max_connection_tv"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginBottom="20dp"
             android:layout_marginStart="?attr/dialogPreferredPadding"
             android:layout_marginTop="6dp"/>
 
@@ -117,47 +119,6 @@
             app:layout_constraintBottom_toBottomOf="@id/max_connection_sb"
             app:layout_constraintEnd_toEndOf="parent"
             tools:text="8" />
-
-        <TextView
-            android:id="@+id/buffer_size_title_tv"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:textColor="@color/md_dialog_title_color"
-            android:textStyle="bold"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:layout_marginTop="12dp"
-            android:text="@string/setting_buffer_size"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/max_connection_sb"
-            app:layout_constraintEnd_toEndOf="parent" />
-
-        <androidx.appcompat.widget.AppCompatSeekBar
-            android:id="@+id/buffer_size_sb"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buffer_size_title_tv"
-            app:layout_constraintEnd_toStartOf="@id/buffer_size_tv"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginBottom="20dp"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginTop="6dp"/>
-
-        <TextView
-            android:id="@+id/buffer_size_tv"
-            android:layout_width="50dp"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="@color/gray_1"
-            android:layout_marginEnd="?attr/dialogPreferredPadding"
-            app:layout_constraintStart_toEndOf="@id/buffer_size_sb"
-            app:layout_constraintTop_toTopOf="@id/buffer_size_sb"
-            app:layout_constraintBottom_toBottomOf="@id/buffer_size_sb"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:gravity="start"
-            tools:text="512 KB"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

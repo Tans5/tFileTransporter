@@ -95,7 +95,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         )
                     }
                 }
-                return SendFilesResp(bufferSize = Settings.transferFileBufferSize().blockingGet().toInt())
+                return SendFilesResp(bufferSize = 512 * 1024)
             }
         }
     }

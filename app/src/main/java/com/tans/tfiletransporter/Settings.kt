@@ -33,12 +33,9 @@ object Settings : Stateable<Settings.SettingsData> {
 
     private const val defaultConnectionSize = 4
 
-    private const val defaultBufferSize = 1024L * 256L
 
     const val minConnectionSize = 1
     const val maxConnectionSize = 8
-    const val minBufferSize = 1024
-    const val maxBufferSize = 1024L * 512L
     fun init(context: Context) {
         ioExecutor.execute {
             val sp = context.getSharedPreferences(SP_FILE_NAME, Context.MODE_PRIVATE)
@@ -48,7 +45,6 @@ object Settings : Stateable<Settings.SettingsData> {
                     downloadDir = sp.getString(DOWNLOAD_DIR_KEY, defaultDownloadDir) ?: defaultDownloadDir,
                     shareMyDir = sp.getBoolean(SHARE_MY_DIR_KEY, true),
                     transferFileMaxConnection = sp.getInt(MAX_CONNECTION_KEY, defaultConnectionSize),
-                    transFileBufferSize = sp.getLong(BUFFER_SIZE_KEY, defaultBufferSize)
                 )
             }.blockingGet()
         }
@@ -62,10 +58,6 @@ object Settings : Stateable<Settings.SettingsData> {
 
     fun transferFileMaxConnection(): Single<Int> = stateStore.firstOrError()
         .map { fixTransferFileConnectionSize(it.transferFileMaxConnection) }
-
-    fun transferFileBufferSize(): Single<Long> = stateStore
-        .firstOrError()
-        .map { fixTransferFileBufferSize(it.transFileBufferSize) }
 
     fun updateDownloadDir(dir: String) = updateState { s ->
         sp.get()?.edit()?.let {
@@ -91,14 +83,6 @@ object Settings : Stateable<Settings.SettingsData> {
         s.copy(transferFileMaxConnection = maxConnection)
     }
 
-    fun updateTransferFileBufferSize(bufferSize: Long) = updateState { s ->
-        sp.get()?.edit()?.let {
-            it.putLong(BUFFER_SIZE_KEY, bufferSize)
-            it.apply()
-        }
-        s.copy(transFileBufferSize = bufferSize)
-    }
-
     fun fixTransferFileConnectionSize(needToFix: Int): Int {
         return if (needToFix in minConnectionSize .. maxConnectionSize) {
             needToFix
@@ -107,19 +91,10 @@ object Settings : Stateable<Settings.SettingsData> {
         }
     }
 
-    fun fixTransferFileBufferSize(needToFix: Long): Long {
-        return if (needToFix in minBufferSize .. maxBufferSize) {
-            needToFix
-        } else {
-            defaultBufferSize
-        }
-    }
-
     data class SettingsData(
         val downloadDir: String = defaultDownloadDir,
         val shareMyDir: Boolean = true,
         val transferFileMaxConnection: Int = defaultConnectionSize,
-        val transFileBufferSize: Long = defaultBufferSize
     )
 
     private const val SP_FILE_NAME = "settings"
@@ -127,5 +102,4 @@ object Settings : Stateable<Settings.SettingsData> {
     private const val DOWNLOAD_DIR_KEY = "download_dir"
     private const val SHARE_MY_DIR_KEY = "share_my_dir"
     private const val MAX_CONNECTION_KEY = "max_connection"
-    private const val BUFFER_SIZE_KEY = "buffer_size"
 }

@@ -24,12 +24,6 @@ class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding
             val connection = Settings.transferFileMaxConnection().await()
             binding.maxConnectionSb.progress = connection
             binding.maxConnectionTv.text = connection.toString()
-            binding.bufferSizeSb.min = Settings.minBufferSize / 1024
-            binding.bufferSizeSb.max = Settings.maxBufferSize.toInt() / 1024
-            val bufferSize = Settings.transferFileBufferSize().await()
-            val bufferSizeInKb = bufferSize.toInt() / 1024
-            binding.bufferSizeSb.progress = bufferSizeInKb
-            binding.bufferSizeTv.text = context.getString(R.string.setting_buffer_size_kb, bufferSizeInKb)
         }
 
         binding.shareMyDirSt.checkedChanges()
@@ -47,16 +41,6 @@ class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding
                 Settings.updateTransferFileMaxConnection(it)
             }
             .bindLife()
-
-        binding.bufferSizeSb.userChanges()
-            .distinctUntilChanged()
-            .skip(1)
-            .switchMapSingle {
-                binding.bufferSizeTv.text = context.getString(R.string.setting_buffer_size_kb, it)
-                Settings.updateTransferFileBufferSize(it * 1024L)
-            }
-            .bindLife()
-
 
     }
 }
