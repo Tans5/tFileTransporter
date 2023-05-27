@@ -1,6 +1,6 @@
 package com.tans.tfiletransporter.transferproto.filetransfer
 
-import com.tans.tfiletransporter.ILog
+import com.tans.tfiletransporter.*
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
@@ -14,9 +14,6 @@ import com.tans.tfiletransporter.netty.extensions.simplifyServer
 import com.tans.tfiletransporter.netty.extensions.withClient
 import com.tans.tfiletransporter.netty.extensions.withServer
 import com.tans.tfiletransporter.netty.tcp.NettyTcpServerConnectionTask
-import com.tans.tfiletransporter.readContent
-import com.tans.tfiletransporter.resumeExceptionIfActive
-import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.transferproto.SimpleObservable
 import com.tans.tfiletransporter.transferproto.SimpleStateable
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
@@ -591,6 +588,7 @@ class FileSender(
                 val durationNeedFix = (oldBufferSize - differCost.toDouble() / anchorBufferDurationInMillis.toDouble() * oldBufferSize.toDouble()).toInt()
                 val newBufferSize = max(min(durationNeedFix, MAX_FILE_SEND_BUFFER_SIZE), MIN_FILE_SEND_BUFFER_SIZE)
                 this.bufferSize.set(newBufferSize)
+                log.d(TAG, "New buffer size: ${newBufferSize.toLong().toSizeString()}")
             }
         }
 
@@ -608,6 +606,6 @@ class FileSender(
 
         private const val DEFAULT_FILE_SEND_BUFFER_SIZE = 1024 * 128 // 128 KB
 
-        private const val MAX_FILE_SEND_BUFFER_SIZE = 1024 * 512 * 3 // 1.5 MB
+        private const val MAX_FILE_SEND_BUFFER_SIZE = 1024 * 1024 * 3 // 3 MB
     }
 }
