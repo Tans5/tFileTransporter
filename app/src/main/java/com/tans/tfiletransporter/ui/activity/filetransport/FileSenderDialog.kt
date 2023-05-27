@@ -32,7 +32,6 @@ class FileSenderDialog(
     private val context: Activity,
     private val bindAddress: InetAddress,
     private val files: List<SenderFile>,
-    private val bufferSize: Long,
     private val callback: (result: FileTransferResult) -> Unit
 ) : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, FileTransferDialogState>(
     context = context,
@@ -59,7 +58,6 @@ class FileSenderDialog(
             val sender = FileSender(
                 files = files,
                 bindAddress = bindAddress,
-                bufferSize = bufferSize,
                 log = AndroidLog
             )
             this@FileSenderDialog.sender.get()?.cancel()
@@ -203,13 +201,11 @@ data class FileTransferDialogState(
 suspend fun Activity.showFileSenderDialog(
     bindAddress: InetAddress,
     files: List<SenderFile>,
-    bufferSize: Long,
 ): FileTransferResult = suspendCancellableCoroutine { cont ->
     val d = FileSenderDialog(
         context = this,
         bindAddress = bindAddress,
         files = files,
-        bufferSize = bufferSize,
         callback = { result ->
             cont.resumeIfActive(result)
         }

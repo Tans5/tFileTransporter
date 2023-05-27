@@ -51,7 +51,6 @@ object FileSenderTest {
                 )
             ),
             bindAddress = localAddress,
-            bufferSize = 1024 * 512, // 512kb
             log = TestLog
         )
 

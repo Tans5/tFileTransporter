@@ -105,8 +105,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             override fun onRequest(isNew: Boolean, request: DownloadFilesReq): DownloadFilesResp {
                 if (isNew) {
                     launch {
-                        val mineBufferSize = Settings.transferFileBufferSize().await()
-                        sendFiles(request.downloadFiles, Settings.fixTransferFileBufferSize(min(request.bufferSize.toLong(), mineBufferSize)))
+                        sendFiles(request.downloadFiles)
                     }
                 }
                 return DownloadFilesResp(maxConnection = Settings.transferFileMaxConnection().blockingGet())
@@ -332,22 +331,21 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         Mutex(false)
     }
 
-    suspend fun sendFiles(files: List<FileExploreFile>, bufferSize: Long) {
+    suspend fun sendFiles(files: List<FileExploreFile>) {
         val fixedFiles = files.filter { it.size > 0 }
         val senderFiles = fixedFiles.map { SenderFile( File(it.path), it) }
         if (senderFiles.isEmpty()) return
-        sendSenderFiles(senderFiles, bufferSize)
+        sendSenderFiles(senderFiles)
     }
 
-    suspend fun sendSenderFiles(files: List<SenderFile>, bufferSize: Long) {
+    suspend fun sendSenderFiles(files: List<SenderFile>) {
         if (files.isEmpty()) return
         if (fileTransferMutex.isLocked) return
         fileTransferMutex.lock()
         val result = withContext(Dispatchers.Main) {
             showFileSenderDialog(
                 bindAddress = intent.getLocalAddress(),
-                files = files,
-                bufferSize = bufferSize
+                files = files
             )
         }
         if (result is FileTransferResult.Error) {

@@ -32,14 +32,17 @@ import java.net.InetSocketAddress
 import java.util.Arrays
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.max
+import kotlin.math.min
 
 class FileSender(
     private val files: List<SenderFile>,
     private val bindAddress: InetAddress,
-    private val bufferSize: Long,
+    private val anchorBufferDurationInMillis: Long = 200L,
     private val log: ILog
 ) : SimpleObservable<FileTransferObserver>, SimpleStateable<FileTransferState> {
 
@@ -364,6 +367,10 @@ class FileSender(
                 AtomicReference(null)
             }
 
+            private val bufferSize: AtomicInteger by lazy {
+                AtomicInteger(DEFAULT_FILE_SEND_BUFFER_SIZE)
+            }
+
             private val randomAccessFile: RandomAccessFile
 
             private val isFragmentFinished: AtomicBoolean by lazy {
@@ -546,7 +553,8 @@ class FileSender(
                     val frameSize = downloadReq.end - downloadReq.start
                     var hasRead = 0L
                     try {
-                        val byteArray = ByteArray(bufferSize.toInt())
+                        val bufferSize = bufferSize.get().toLong()
+                        val byteArray = ByteArray(MAX_FILE_SEND_BUFFER_SIZE)
                         while (hasRead < frameSize) {
                             val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
                                 frameSize - hasRead
@@ -558,11 +566,10 @@ class FileSender(
                                 byteArray = byteArray,
                                 contentLen = thisTimeRead.toInt()
                             )
-                            if (thisTimeRead == bufferSize) {
-                                sendDataSuspend(byteArray)
-                            } else {
-                                sendDataSuspend(byteArray.copyOfRange(0, thisTimeRead.toInt()))
-                            }
+                            val startTime = System.currentTimeMillis()
+                            sendDataSuspend(byteArray.copyOfRange(0, thisTimeRead.toInt()))
+                            val endTime = System.currentTimeMillis()
+                            updateBufferSize(endTime - startTime)
                             updateProgress(thisTimeRead)
                             hasRead += thisTimeRead
                         }
@@ -573,6 +580,17 @@ class FileSender(
                         errorStateIfActive("Send file error: ${e.message}")
                     }
                 }
+            }
+
+            private fun updateBufferSize(bufferSendTimeCost: Long) {
+                if (bufferSendTimeCost <= 0) {
+                    return
+                }
+                val oldBufferSize = this.bufferSize.get()
+                val differCost = bufferSendTimeCost - anchorBufferDurationInMillis
+                val durationNeedFix = (oldBufferSize - differCost.toDouble() / anchorBufferDurationInMillis.toDouble() * oldBufferSize.toDouble()).toInt()
+                val newBufferSize = max(min(durationNeedFix, MAX_FILE_SEND_BUFFER_SIZE), MIN_FILE_SEND_BUFFER_SIZE)
+                this.bufferSize.set(newBufferSize)
             }
         }
 
@@ -585,5 +603,11 @@ class FileSender(
 
     companion object {
         private const val TAG = "FileSender"
+
+        private const val MIN_FILE_SEND_BUFFER_SIZE = 512 // 512 Bytes
+
+        private const val DEFAULT_FILE_SEND_BUFFER_SIZE = 1024 * 128 // 128 KB
+
+        private const val MAX_FILE_SEND_BUFFER_SIZE = 1024 * 512 * 3 // 1.5 MB
     }
 }

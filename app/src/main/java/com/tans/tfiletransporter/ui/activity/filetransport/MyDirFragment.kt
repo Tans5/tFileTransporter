@@ -197,9 +197,8 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
                         fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles, maxConnection = Settings.transferFileMaxConnection().await())
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request send files success: $it")
-                        val mineBufferSize = Settings.transferFileBufferSize().await()
                         (requireActivity() as FileTransportActivity)
-                            .sendFiles(exploreFiles, Settings.fixTransferFileBufferSize(min(it.bufferSize.toLong(), mineBufferSize)))
+                            .sendFiles(exploreFiles)
                     }.onFailure {
                         AndroidLog.e(TAG, "Request send files fail: $it", it)
                     }

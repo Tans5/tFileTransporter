@@ -129,8 +129,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                             )
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send image success")
-                            (requireActivity() as FileTransportActivity)
-                                .sendSenderFiles(senderFiles, Settings.fixTransferFileBufferSize(min( it.bufferSize.toLong(), Settings.transferFileBufferSize().await())))
+                            (requireActivity() as FileTransportActivity).sendSenderFiles(senderFiles)
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send image fail.")
                         }
