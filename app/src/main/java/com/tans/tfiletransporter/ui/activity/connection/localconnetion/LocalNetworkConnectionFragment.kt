@@ -1,10 +1,10 @@
 package com.tans.tfiletransporter.ui.activity.connection.localconnetion
 
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.net.wifi.WifiManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.*
 import android.os.Bundle
 import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
 import com.jakewharton.rxbinding4.view.clicks
@@ -13,8 +13,8 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.LocalNetworkConnectionFragmentBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.netty.findLocalAddressV4
 import com.tans.tfiletransporter.netty.toInetAddress
-import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanClient
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.requestFileTransferSuspend
@@ -28,8 +28,6 @@ import com.tans.tfiletransporter.utils.showToastShort
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
@@ -42,29 +40,33 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
     default = LocalNetworkState()
 ) {
 
-    private val wifiManager: WifiManager by instance()
     private val connectivityManager: ConnectivityManager by instance()
 
     private val networkRequest: NetworkRequest by lazy {
         NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
             .build()
     }
 
     private val netWorkerCallback: ConnectivityManager.NetworkCallback by lazy {
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                val address = InetAddress.getByAddress(wifiManager.dhcpInfo.ipAddress.toBytes(isRevert = true))
-                updateState { it.copy(address = Optional.of(address)) }.bindLife()
+                AndroidLog.d(TAG, "Network available: $network")
+                updateAddress()
             }
-
             override fun onLost(network: Network) {
-                // to deal as hotspot host situation, ugly code.
-                launch {
-                    updateState {
-                        it.copy(address = Optional.empty())
-                    }.await()
-                }
+                AndroidLog.d(TAG, "Network lost: $network")
+                updateAddress()
+            }
+        }
+    }
+
+    private val wifiApChangeBroadcastReceiver: BroadcastReceiver by lazy {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                AndroidLog.d(TAG, "Wifi AP changed.")
+                updateAddress()
             }
         }
     }
@@ -72,11 +74,15 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
+        val wifiApIf = IntentFilter()
+        // wifiApIf.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
+        wifiApIf.addAction("android.net.conn.TETHER_STATE_CHANGED")
+        requireContext().registerReceiver(wifiApChangeBroadcastReceiver, wifiApIf)
     }
 
     override fun initViews(binding: LocalNetworkConnectionFragmentBinding) {
 
-        render({ it.address }) {
+        render({ it.selectedAddress }) {
             val address = it.getOrNull()
             if (address != null) {
                 binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, address.toString().removePrefix("/"))
@@ -85,9 +91,13 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             }
         }.bindLife()
 
+        render({ it.availableAddresses }) {
+            AndroidLog.d(TAG, "Available addresses: $it")
+        }.bindLife()
+
         binding.scanQrCodeLayout.clicks()
             .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.address })
+            .withLatestFrom(bindState().map { it.selectedAddress })
             .map { it.second }
             .filter { it.isPresent }
             .map { it.get() }
@@ -140,7 +150,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
 
         binding.showQrCodeLayout.clicks()
             .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.address })
+            .withLatestFrom(bindState().map { it.selectedAddress })
             .map { it.second }
             .filter { it.isPresent }
             .map { it.get() }
@@ -163,7 +173,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
 
         binding.searchServerLayout.clicks()
             .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.address })
+            .withLatestFrom(bindState().map { it.selectedAddress })
             .map { it.second }
             .filter { it.isPresent }
             .map { it.get() }
@@ -193,7 +203,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
 
         binding.asServerLayout.clicks()
             .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.address })
+            .withLatestFrom(bindState().map { it.selectedAddress })
             .map { it.second }
             .filter { it.isPresent }
             .map { it.get() }
@@ -223,15 +233,41 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             .bindLife()
     }
 
+    private fun updateAddress() {
+        updateState { oldState ->
+            val availableAddresses = findLocalAddressV4()
+            if (availableAddresses.isEmpty()) {
+                oldState.copy(selectedAddress = Optional.empty(), availableAddresses = emptyList())
+            } else {
+                val oldSelectedAddress = oldState.selectedAddress
+                val newSelectedAddress = if (oldSelectedAddress.isPresent) {
+                    if (availableAddresses.contains(oldSelectedAddress.get())) {
+                        oldSelectedAddress
+                    } else {
+                        Optional.of(availableAddresses[0])
+                    }
+                } else {
+                    Optional.of(availableAddresses[0])
+                }
+                oldState.copy(
+                    selectedAddress = newSelectedAddress,
+                    availableAddresses = availableAddresses
+                )
+            }
+        }.bindLife()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         connectivityManager.unregisterNetworkCallback(netWorkerCallback)
+        requireContext().unregisterReceiver(wifiApChangeBroadcastReceiver)
     }
 
     companion object {
         private const val TAG = "LocalNetworkConnectionFragment"
         data class LocalNetworkState(
-            val address: Optional<InetAddress> = Optional.empty()
+            val selectedAddress: Optional<InetAddress> = Optional.empty(),
+            val availableAddresses: List<InetAddress> = emptyList()
         )
     }
 }
