@@ -9,7 +9,10 @@ import android.os.Bundle
 import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
+import com.tans.tadapter.spec.SimpleAdapterSpec
+import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
+import com.tans.tfiletransporter.databinding.LocalAddressItemLayoutBinding
 import com.tans.tfiletransporter.databinding.LocalNetworkConnectionFragmentBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
@@ -28,6 +31,7 @@ import com.tans.tfiletransporter.utils.showToastShort
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import org.kodein.di.instance
@@ -82,18 +86,31 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
 
     override fun initViews(binding: LocalNetworkConnectionFragmentBinding) {
 
-        render({ it.selectedAddress }) {
-            val address = it.getOrNull()
-            if (address != null) {
-                binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, address.toString().removePrefix("/"))
-            } else {
-                binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
-            }
-        }.bindLife()
-
         render({ it.availableAddresses }) {
             AndroidLog.d(TAG, "Available addresses: $it")
         }.bindLife()
+
+        binding.localAddressesRv.adapter = SimpleAdapterSpec<Pair<InetAddress, Boolean>, LocalAddressItemLayoutBinding>(
+            layoutId = R.layout.local_address_item_layout,
+            bindData = { _, data, lBinding ->
+                lBinding.addressRb.isChecked = data.second
+                lBinding.addressTv.text = data.first.toString().removePrefix("/")
+            },
+            itemClicks = listOf { lBinding, _ ->
+                lBinding.root to { _, data ->
+                    rxSingle {
+                        updateState { oldState ->
+                            oldState.copy(selectedAddress = Optional.of(data.first))
+                        }.await()
+                        Unit
+                    }
+                }
+            },
+            dataUpdater = bindState()
+                .map { it.selectedAddress to it.availableAddresses }
+                .distinctUntilChanged()
+                .map { it.second.map { address -> address to (address == it.first.getOrNull()) } }
+        ).toAdapter()
 
         binding.scanQrCodeLayout.clicks()
             .ignoreSeveralClicks()

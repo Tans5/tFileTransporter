@@ -371,7 +371,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
         super.onDestroyView()
         Dispatchers.IO.asExecutor().execute {
             try {
-                bindState().firstOrError().blockingGet()?.p2pHandshake?.get()?.p2pConnection?.closeConnectionIfActive()
+                bindState().firstOrError().blockingGet().p2pHandshake.getOrNull()?.p2pConnection?.closeConnectionIfActive()
             } catch (_: Throwable) {
 
             }

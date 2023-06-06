@@ -58,7 +58,7 @@
     <string name="wifi_p2p_connection_title">Connect via WiFi P2P</string>
     <string name="wifi_p2p_connection_tips">Just open the WiFi and GPS, close to the target device and system will find it.</string>
     <string name="wifi_p2p_connection_remote_device">Connected Remote Device\n Name: %s\n Ip Address: %s</string>
-    <string name="wifi_p2p_connection_local_address">Local Address:\n %s</string>
+    <string name="wifi_p2p_connection_local_address">Local Addresses: </string>
     <string name="wifi_p2p_connection_transfer_files">Transfer Files</string>
     <string name="wifi_p2p_connection_close_current_connection">Close Connection</string>
     <!-- Connection Activity End -->

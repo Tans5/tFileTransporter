@@ -57,7 +57,7 @@
     <string name="wifi_p2p_connection_title">Conectar via WiFi P2P</string>
     <string name="wifi_p2p_connection_tips">Basta usar o WiFi perto do dispositivo alvo e o sistema o encontrará. Você não precisa manter os dois dispositivos na mesma rede.</string>
     <string name="wifi_p2p_connection_remote_device">Dispositivo remoto conectado\n Nome: %s\n Endereço IP: %s</string>
-    <string name="wifi_p2p_connection_local_address">Endereço local:\n %s</string>
+    <string name="wifi_p2p_connection_local_address">Endereço local:</string>
     <string name="wifi_p2p_connection_transfer_files">Transferir arquivos</string>
     <string name="wifi_p2p_connection_close_current_connection">Terminar a conexão</string>
     <!-- Connection Activity End -->

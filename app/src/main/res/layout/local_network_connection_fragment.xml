@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+        xmlns:tools="http://schemas.android.com/tools" xmlns:app="http://schemas.android.com/apk/res-auto">
 
 
     <LinearLayout
@@ -32,7 +32,16 @@
             android:textStyle="bold"
             android:textSize="12sp"
             android:textColor="@color/gray_1"
-            tools:text="@string/wifi_p2p_connection_local_address" />
+            android:text="@string/wifi_p2p_connection_local_address" />
+
+        <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/local_addresses_rv"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="3"
+                tools:listitem="@layout/local_address_item_layout"/>
 
         <FrameLayout
             android:id="@+id/scan_qr_code_layout"
