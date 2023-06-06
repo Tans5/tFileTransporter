@@ -32,7 +32,7 @@
             android:textStyle="bold"
             android:textSize="12sp"
             android:textColor="@color/gray_1"
-            android:text="@string/wifi_p2p_connection_local_address" />
+            android:text="@string/local_network_local_address" />
 
         <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/local_addresses_rv"

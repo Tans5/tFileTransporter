@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.*
+import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
 import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
+import com.tans.tadapter.adapter.DifferHandler
 import com.tans.tadapter.spec.SimpleAdapterSpec
 import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
@@ -25,6 +27,7 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanClientS
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
+import com.tans.tfiletransporter.ui.activity.filetransport.MyAppsFragment
 import com.tans.tfiletransporter.ui.activity.qrcodescan.ScanQrCodeActivity
 import com.tans.tfiletransporter.utils.fromJson
 import com.tans.tfiletransporter.utils.showToastShort
@@ -75,6 +78,15 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
         }
     }
 
+    private val wifiP2pConnectionBroadcastReceiver: BroadcastReceiver by lazy {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                AndroidLog.d(TAG, "Wifi p2p changed.")
+                updateAddress()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
@@ -82,6 +94,10 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
         // wifiApIf.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
         wifiApIf.addAction("android.net.conn.TETHER_STATE_CHANGED")
         requireContext().registerReceiver(wifiApChangeBroadcastReceiver, wifiApIf)
+
+        val wifiP2pConnFilter = IntentFilter()
+        wifiP2pConnFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
+        requireContext().registerReceiver(wifiP2pConnectionBroadcastReceiver, wifiP2pConnFilter)
     }
 
     override fun initViews(binding: LocalNetworkConnectionFragmentBinding) {
@@ -90,6 +106,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             AndroidLog.d(TAG, "Available addresses: $it")
         }.bindLife()
 
+        val selectAddressChangePayload = Any()
         binding.localAddressesRv.adapter = SimpleAdapterSpec<Pair<InetAddress, Boolean>, LocalAddressItemLayoutBinding>(
             layoutId = R.layout.local_address_item_layout,
             bindData = { _, data, lBinding ->
@@ -104,6 +121,23 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
                         }.await()
                         Unit
                     }
+                }
+            },
+            differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first == d2.first },
+                contentTheSame = { d1, d2 -> d1 == d2 },
+                changePayLoad = { d1, d2 ->
+                    if (d1.first == d2.first && d1.second != d2.second) {
+                        selectAddressChangePayload
+                    } else {
+                        null
+                    }
+                }),
+            bindDataPayload = { _, data, lBinding, payloads ->
+                if (payloads.contains(selectAddressChangePayload)) {
+                    lBinding.addressRb.isChecked = data.second
+                    true
+                } else {
+                    false
                 }
             },
             dataUpdater = bindState()
@@ -278,6 +312,7 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
         super.onDestroy()
         connectivityManager.unregisterNetworkCallback(netWorkerCallback)
         requireContext().unregisterReceiver(wifiApChangeBroadcastReceiver)
+        requireContext().unregisterReceiver(wifiP2pConnectionBroadcastReceiver)
     }
 
     companion object {
