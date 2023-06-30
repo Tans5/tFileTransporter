@@ -262,6 +262,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, RemoteDirFragme
             }
             .bindLife()
 
+        binding.refreshLayout.setColorSchemeResources(R.color.teal_200)
         binding.refreshLayout.refreshes()
             .flatMapSingle {
                 rxSingle(Dispatchers.IO) {

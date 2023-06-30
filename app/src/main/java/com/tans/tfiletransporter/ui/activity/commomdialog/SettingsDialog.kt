@@ -16,6 +16,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 
@@ -55,10 +56,16 @@ class SettingsDialog(private val context: Activity) : BaseCustomDialog<SettingsD
 
         binding.downloadDirEditIv.clicks()
             .flatMapSingle {
-                rxSingle {
-                    withContext(Dispatchers.Main) {
-                        (this@SettingsDialog.context as FragmentActivity)
-                            .startActivityAwaitResult<FolderSelectActivity>()
+                rxSingle(Dispatchers.Main) {
+                    val result = (this@SettingsDialog.context as FragmentActivity)
+                        .startActivityAwaitResult<FolderSelectActivity>()
+                    val selectedFolder = FolderSelectActivity.getResult(result.data)
+                    if (!selectedFolder.isNullOrBlank()) {
+                        withContext(Dispatchers.IO) {
+                            runCatching {
+                                Settings.updateDownloadDir(selectedFolder).await()
+                            }
+                        }
                     }
                 }
             }

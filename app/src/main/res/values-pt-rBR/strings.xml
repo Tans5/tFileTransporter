@@ -94,6 +94,9 @@
     <!-- Folder Select Start -->
     <string name="folder_select_title">Select a Folder</string>
     <string name="folder_select_create">Create a new folder</string>
+    <string name="folder_select_error_title">Select folder fail</string>
+    <string name="folder_select_error_body">Error: %s</string>
+    <string name="folder_select_create_folder_error">Create dir fail</string>
     <!-- Folder Select End -->
 
 </resources>

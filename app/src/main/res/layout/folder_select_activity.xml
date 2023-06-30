@@ -49,18 +49,26 @@
                 app:layout_constraintTop_toTopOf="parent"
                 tools:text="/a/b/c" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/folder_rv"
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/refresh_layout"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:clipToPadding="false"
-                android:paddingBottom="85dp"
-                android:paddingTop="5dp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/path_tv"
-                app:layout_constraintBottom_toBottomOf="parent"
-                tools:listitem="@layout/folder_item_layout"/>
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/folder_rv"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:paddingBottom="85dp"
+                    android:paddingTop="5dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/folder_item_layout" />
+
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

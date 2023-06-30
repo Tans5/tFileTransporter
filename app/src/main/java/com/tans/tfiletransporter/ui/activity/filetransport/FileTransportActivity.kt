@@ -247,14 +247,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 }
             }.attach()
 
-            binding.toolBar.setOnMenuItemClickListener {
-                if (it.itemId == R.id.settings) {
+            binding.toolBar.menu.findItem(R.id.settings).clicks()
+                .doOnNext {
                     SettingsDialog(this@FileTransportActivity).show()
-                    true
-                } else {
-                    false
                 }
-            }
+                .bindLife()
 
             binding.tabLayout.addOnTabSelectedListener(object :
                 TabLayout.OnTabSelectedListener {

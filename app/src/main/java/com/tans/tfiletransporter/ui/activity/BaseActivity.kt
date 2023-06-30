@@ -69,14 +69,14 @@ abstract class BaseActivity<Binding : ViewDataBinding, State : Any>(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback {
+            onActivityBackPressed()
+        }
         viewModel.clearRxLife()
         if (savedInstanceState == null) {
             firstLaunchInitData()
         }
         initViews(binding)
-        onBackPressedDispatcher.addCallback {
-            onActivityBackPressed()
-        }
     }
 
     open fun firstLaunchInitData() {

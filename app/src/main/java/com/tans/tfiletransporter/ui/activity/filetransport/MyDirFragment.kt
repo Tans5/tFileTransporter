@@ -208,6 +208,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, MyDirFragment.Companion
             }
             .bindLife()
 
+        binding.refreshLayout.setColorSchemeResources(R.color.teal_200)
         binding.refreshLayout.refreshes()
             .observeOn(Schedulers.io())
             .flatMapSingle {

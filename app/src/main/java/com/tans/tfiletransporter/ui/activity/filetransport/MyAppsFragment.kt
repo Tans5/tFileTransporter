@@ -43,6 +43,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
 
         refreshApps().subscribeOn(Schedulers.io()).bindLife()
 
+        binding.appsRefreshLayout.setColorSchemeResources(R.color.teal_200)
         binding.appsRefreshLayout.refreshes()
                 .switchMapSingle {
                     refreshApps()

@@ -6,6 +6,7 @@ import android.net.*
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
@@ -60,14 +61,11 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
             }
         }
 
-        binding.toolBar.setOnMenuItemClickListener {
-            if (it.itemId == R.id.settings) {
+        binding.toolBar.menu.findItem(R.id.settings).clicks()
+            .doOnNext {
                 SettingsDialog(this).show()
-                true
-            } else {
-                false
             }
-        }
+            .bindLife()
 
     }
 

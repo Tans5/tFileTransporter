@@ -96,6 +96,7 @@ class MyImagesFragment : BaseFragment<MyImagesFragmentLayoutBinding, MyImagesFra
                 }
             }
 
+        binding.imagesRefreshLayout.setColorSchemeResources(R.color.teal_200)
         binding.imagesRefreshLayout.refreshes()
             .switchMapSingle {
                 refreshImages()
