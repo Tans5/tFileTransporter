@@ -64,6 +64,13 @@
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize"/>
 
+        <activity
+            android:name=".ui.activity.folderselect.FolderSelectActivity"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:taskAffinity=".transfer"
+            android:configChanges="orientation|screenSize"/>
+
     </application>
 
 </manifest>

@@ -92,4 +92,9 @@
     <string name="permission_storage_request_content">tFileTransfer needs MANAGE STORAGE permission to share your files.</string>
     <!-- Request Permission End -->
 
+    <!-- Folder Select Start -->
+    <string name="folder_select_title">Select a Folder</string>
+    <string name="folder_select_create">Create a new folder</string>
+    <!-- Folder Select End -->
+
 </resources>

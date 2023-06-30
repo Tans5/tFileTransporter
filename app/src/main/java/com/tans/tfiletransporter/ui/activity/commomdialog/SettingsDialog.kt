@@ -2,6 +2,8 @@ package com.tans.tfiletransporter.ui.activity.commomdialog
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.fragment.app.FragmentActivity
+import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
 import com.jakewharton.rxbinding4.view.clicks
 import com.jakewharton.rxbinding4.widget.checkedChanges
 import com.jakewharton.rxbinding4.widget.userChanges
@@ -9,11 +11,15 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.SettingsDialogBinding
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
+import com.tans.tfiletransporter.ui.activity.folderselect.FolderSelectActivity
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.rx3.rxSingle
+import kotlinx.coroutines.withContext
 
-class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
+class SettingsDialog(private val context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
     context = context,
     layoutId = R.layout.settings_dialog,
     defaultState = Unit,
@@ -48,8 +54,13 @@ class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding
             .bindLife()
 
         binding.downloadDirEditIv.clicks()
-            .doOnNext {
-                // TODO:
+            .flatMapSingle {
+                rxSingle {
+                    withContext(Dispatchers.Main) {
+                        (this@SettingsDialog.context as FragmentActivity)
+                            .startActivityAwaitResult<FolderSelectActivity>()
+                    }
+                }
             }
             .bindLife()
 
