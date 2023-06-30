@@ -23,12 +23,13 @@ import com.tans.tfiletransporter.file.isRootFileTree
 import com.tans.tfiletransporter.file.newLocalSubTree
 import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
+import com.tans.tfiletransporter.ui.activity.commomdialog.TextInputDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showTextInputDialog
 import com.tans.tfiletransporter.utils.dp2px
 import com.tans.tfiletransporter.utils.firstVisibleItemPosition
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
@@ -90,8 +91,42 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
 
         binding.toolBar.menu.findItem(R.id.create_new_folder).clicks()
             .flatMapSingle {
-                // TODO: create new folder.
-                Single.just(Unit)
+                rxSingle(Dispatchers.Main) {
+                    val inputResult = this@FolderSelectActivity.showTextInputDialog(getString(R.string.folder_select_create_new_folder_hint))
+                    if (inputResult is TextInputDialog.Companion.Result.Success) {
+                        val tree = bindState().firstOrError().await().fileTree
+                        if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
+                            this@FolderSelectActivity.showNoOptionalDialog(
+                                title = getString(R.string.folder_select_create_folder_error),
+                                message = getString(R.string.folder_select_error_body, "Can't create new folder.")
+                            ).await()
+                        } else {
+                            val createFolderResult = withContext(Dispatchers.IO) {
+                                try {
+                                    val f = File(tree.path, inputResult.text)
+                                    f.mkdirs()
+                                } catch (e: Throwable) {
+                                    e.printStackTrace()
+                                    false
+                                }
+                            }
+                            if (createFolderResult) {
+                                updateState { oldState ->
+                                    val oldTree = oldState.fileTree
+                                    val parentTree = oldTree.parentTree
+                                    val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
+                                    if (parentTree != null && dirLeaf != null) {
+                                        oldState.copy(
+                                            fileTree = parentTree.newLocalSubTree(dirLeaf)
+                                        )
+                                    } else {
+                                        oldState
+                                    }
+                                }.await()
+                            }
+                        }
+                    }
+                }
             }
             .bindLife()
 
@@ -172,7 +207,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
                     if (tree.isRootFileTree()) {
                         this@FolderSelectActivity.showNoOptionalDialog(
                             title = getString(R.string.folder_select_error_title),
-                            message = getString(R.string.folder_select_error_body, "Root fold can't be selected.")
+                            message = getString(R.string.folder_select_error_body, "Root folder can't be selected.")
                         ).await()
                     } else {
                         if (withContext(Dispatchers.IO) { Settings.isDirWriteable(tree.path) }) {

@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">tFileTransfer</string>
 
+    <string name="dialog_positive">OK</string>
+    <string name="dialog_negative">Cancel</string>
+
     <string name="error_toast">Error: %s</string>
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_apps">MY APPS</string>
@@ -82,7 +85,7 @@
 
     <!-- Settings Start -->
     <string name="settings_title">Settings</string>
-    <string name="setting_download_dir">Download Dir</string>
+    <string name="setting_download_dir">Download Folder</string>
     <string name="setting_share_my_dir">Share My Folder</string>
     <string name="setting_max_connections_size">Max Tcp Connections</string>
     <!-- Settings End-->
@@ -97,7 +100,8 @@
     <string name="folder_select_create">Create a new folder</string>
     <string name="folder_select_error_title">Select folder fail</string>
     <string name="folder_select_error_body">Error: %s</string>
-    <string name="folder_select_create_folder_error">Create dir fail</string>
+    <string name="folder_select_create_folder_error">Create folder fail</string>
+    <string name="folder_select_create_new_folder_hint">Input folder name</string>
     <!-- Folder Select End -->
 
 </resources>
