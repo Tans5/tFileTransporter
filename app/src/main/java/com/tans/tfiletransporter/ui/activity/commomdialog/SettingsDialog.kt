@@ -1,6 +1,7 @@
 package com.tans.tfiletransporter.ui.activity.commomdialog
 
 import android.app.Activity
+import com.jakewharton.rxbinding4.view.clicks
 import com.jakewharton.rxbinding4.widget.checkedChanges
 import com.jakewharton.rxbinding4.widget.userChanges
 import com.tans.tfiletransporter.R
@@ -25,6 +26,18 @@ class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding
             binding.maxConnectionSb.progress = connection
             binding.maxConnectionTv.text = connection.toString()
         }
+
+        binding.downloadDirEditIv.clicks()
+            .doOnNext {
+                // TODO:
+            }
+            .bindLife()
+
+        binding.downloadDirResetIv.clicks()
+            .doOnNext {
+                // TODO:
+            }
+            .bindLife()
 
         binding.shareMyDirSt.checkedChanges()
             .skipInitialValue()

@@ -54,6 +54,29 @@
             app:layout_constraintTop_toBottomOf="@id/download_dir_title_tv"
             app:layout_constraintEnd_toEndOf="parent"/>
 
+
+        <ImageView
+            android:id="@+id/download_dir_edit_iv"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="?attr/dialogPreferredPadding"
+            android:padding="4dp"
+            android:background="@drawable/default_click_ripple_bg"
+            android:src="@drawable/ic_edit"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/download_dir_tv"/>
+
+        <ImageView
+            android:id="@+id/download_dir_reset_iv"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_reset"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/default_click_ripple_bg"
+            android:padding="4dp"
+            app:layout_constraintTop_toBottomOf="@id/download_dir_tv"
+            app:layout_constraintStart_toEndOf="@id/download_dir_edit_iv"/>
+
         <TextView
             android:id="@+id/share_dir_title_tv"
             android:layout_width="0dp"
@@ -63,10 +86,10 @@
             android:textStyle="bold"
             android:layout_marginStart="?attr/dialogPreferredPadding"
             android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:text="@string/setting_share_my_dir"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/download_dir_tv"
+            app:layout_constraintTop_toBottomOf="@id/download_dir_edit_iv"
             app:layout_constraintEnd_toEndOf="parent" />
 
         <androidx.appcompat.widget.SwitchCompat
