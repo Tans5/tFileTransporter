@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.activity.commomdialog
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import com.jakewharton.rxbinding4.view.clicks
 import com.jakewharton.rxbinding4.widget.checkedChanges
@@ -8,24 +9,43 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.SettingsDialogBinding
 import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
 
 class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
     context = context,
     layoutId = R.layout.settings_dialog,
     defaultState = Unit,
 ) {
+    @SuppressLint("ClickableViewAccessibility")
     override fun bindingStart(binding: SettingsDialogBinding) {
-        launch {
-            binding.downloadDirTv.text = Settings.getDownloadDir().await()
-            binding.shareMyDirSt.isChecked = Settings.isShareMyDir().await()
-            binding.maxConnectionSb.min = Settings.minConnectionSize
-            binding.maxConnectionSb.max = Settings.maxConnectionSize
-            val connection = Settings.transferFileMaxConnection().await()
-            binding.maxConnectionSb.progress = connection
-            binding.maxConnectionTv.text = connection.toString()
+        // To solve seekbar in dialog ui problem.
+        binding.root.setOnTouchListener { _, _ -> true }
+        binding.maxConnectionSb.min = Settings.minConnectionSize
+        binding.maxConnectionSb.max = Settings.maxConnectionSize
+
+        fun <T : Any> observeSingleFromUI(map: (Settings.SettingsData) -> T): Observable<T> {
+            return Settings.bindState()
+                .map(map)
+                .distinctUntilChanged()
+                .observeOn(AndroidSchedulers.mainThread())
         }
+
+        observeSingleFromUI { it.downloadDir }
+            .doOnNext { binding.downloadDirTv.text = it }
+            .bindLife()
+
+        observeSingleFromUI { it.shareMyDir }
+            .doOnNext { binding.shareMyDirSt.isChecked = it }
+            .bindLife()
+
+        observeSingleFromUI { it.transferFileMaxConnection }
+            .doOnNext {
+                binding.maxConnectionSb.progress = it
+                binding.maxConnectionTv.text = it.toString()
+            }
+            .bindLife()
 
         binding.downloadDirEditIv.clicks()
             .doOnNext {
@@ -34,8 +54,9 @@ class SettingsDialog(context: Activity) : BaseCustomDialog<SettingsDialogBinding
             .bindLife()
 
         binding.downloadDirResetIv.clicks()
-            .doOnNext {
-                // TODO:
+            .flatMapSingle {
+                Settings.updateDownloadDir(Settings.defaultDownloadDir)
+                    .onErrorResumeNext { Single.just(Unit) }
             }
             .bindLife()
 

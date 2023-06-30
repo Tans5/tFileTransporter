@@ -101,6 +101,7 @@ class ScanQrCodeActivity : BaseActivity<ScanQrcodeActivityBinding, Unit>(
                                             i.putExtra(QR_CODE_RESULT_KEY, barcodeStrings)
                                             setResult(Activity.RESULT_OK, i)
                                             finish()
+                                            this@ScanQrCodeActivity.overridePendingTransition(0, 0)
                                         }
                                     }
                                 }

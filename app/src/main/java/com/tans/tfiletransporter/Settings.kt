@@ -10,6 +10,7 @@ import io.reactivex.rxjava3.subjects.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
@@ -27,11 +28,11 @@ object Settings : Stateable<Settings.SettingsData> {
         AtomicReference(null)
     }
 
-    private val defaultDownloadDir by lazy {
+    val defaultDownloadDir: String by lazy {
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "tFileTransfer").canonicalPath
     }
 
-    private const val defaultConnectionSize = 4
+    private const val defaultConnectionSize = 6
 
 
     const val minConnectionSize = 1
@@ -41,8 +42,19 @@ object Settings : Stateable<Settings.SettingsData> {
             val sp = context.getSharedPreferences(SP_FILE_NAME, Context.MODE_PRIVATE)
             this.sp.set(sp)
             val s = updateState {
+                val storedDownloadDir = sp.getString(DOWNLOAD_DIR_KEY, defaultDownloadDir)?.let {
+                    if (isDirWriteable(it)) {
+                        it
+                    } else {
+                        sp.edit().let { et ->
+                            et.putString(DOWNLOAD_DIR_KEY, defaultDownloadDir)
+                            et.apply()
+                        }
+                        defaultDownloadDir
+                    }
+                }
                 SettingsData(
-                    downloadDir = sp.getString(DOWNLOAD_DIR_KEY, defaultDownloadDir) ?: defaultDownloadDir,
+                    downloadDir =  storedDownloadDir ?: defaultDownloadDir,
                     shareMyDir = sp.getBoolean(SHARE_MY_DIR_KEY, true),
                     transferFileMaxConnection = sp.getInt(MAX_CONNECTION_KEY, defaultConnectionSize),
                 )
@@ -59,29 +71,39 @@ object Settings : Stateable<Settings.SettingsData> {
     fun transferFileMaxConnection(): Single<Int> = stateStore.firstOrError()
         .map { fixTransferFileConnectionSize(it.transferFileMaxConnection) }
 
-    fun updateDownloadDir(dir: String) = updateState { s ->
-        sp.get()?.edit()?.let {
-            it.putString(DOWNLOAD_DIR_KEY, dir)
-            it.apply()
+    fun updateDownloadDir(dir: String): Single<Unit>  {
+        return if (isDirWriteable(dir)) {
+            updateState { s ->
+                if (dir != s.downloadDir) {
+                    sp.get()?.edit()?.let {
+                        it.putString(DOWNLOAD_DIR_KEY, dir)
+                        it.apply()
+                    }
+                    s.copy(downloadDir = dir)
+                } else {
+                    s
+                }
+            }.map { }
+        } else {
+            Single.error(IOException("$dir is not writeable dir."))
         }
-        s.copy(downloadDir = dir)
     }
 
-    fun updateShareDir(shareDir: Boolean) = updateState { s ->
+    fun updateShareDir(shareDir: Boolean): Single<Unit> = updateState { s ->
         sp.get()?.edit()?.let {
             it.putBoolean(SHARE_MY_DIR_KEY, shareDir)
             it.apply()
         }
         s.copy(shareMyDir = shareDir)
-    }
+    }.map {  }
 
-    fun updateTransferFileMaxConnection(maxConnection: Int) = updateState { s ->
+    fun updateTransferFileMaxConnection(maxConnection: Int): Single<Unit> = updateState { s ->
         sp.get()?.edit()?.let {
             it.putInt(MAX_CONNECTION_KEY, maxConnection)
             it.apply()
         }
         s.copy(transferFileMaxConnection = maxConnection)
-    }
+    }.map { }
 
     fun fixTransferFileConnectionSize(needToFix: Int): Int {
         return if (needToFix in minConnectionSize .. maxConnectionSize) {
@@ -89,6 +111,11 @@ object Settings : Stateable<Settings.SettingsData> {
         } else {
             defaultConnectionSize
         }
+    }
+
+    fun isDirWriteable(dir: String): Boolean {
+        val f = File(dir)
+        return f.isDirectory && f.canWrite()
     }
 
     data class SettingsData(
