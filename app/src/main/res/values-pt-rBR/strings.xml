@@ -10,6 +10,7 @@
     <string name="file_transport_activity_tab_my_dir">MINHA PASTA</string>
     <string name="file_transport_activity_tab_remote_dir">PASTA REMOTA</string>
     <string name="file_transport_activity_tab_message">CHAT</string>
+    <string name="file_transport_activity_tab_my_videos">MY VIDEOS</string>
     <string name="file_size_B">%d B</string>
     <string name="file_size_KB">%.2f KB</string>
     <string name="file_size_MB">%.2f MB</string>
