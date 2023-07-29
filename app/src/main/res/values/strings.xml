@@ -12,6 +12,7 @@
     <string name="file_transport_activity_tab_remote_dir">REMOTE FOLDER</string>
     <string name="file_transport_activity_tab_message">MESSAGE</string>
     <string name="file_transport_activity_tab_my_videos">MY VIDEOS</string>
+    <string name="file_transport_activity_tab_my_audios">MY AUDIOS</string>
     <string name="file_size_B">%d B</string>
     <string name="file_size_KB">%.2f KB</string>
     <string name="file_size_MB">%.2f MB</string>
