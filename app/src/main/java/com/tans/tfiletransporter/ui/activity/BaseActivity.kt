@@ -5,6 +5,8 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.addCallback
 import androidx.annotation.LayoutRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
 import androidx.lifecycle.ViewModel
@@ -76,6 +78,10 @@ abstract class BaseActivity<Binding : ViewDataBinding, State : Any>(
         if (savedInstanceState == null) {
             firstLaunchInitData()
         }
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.show(WindowInsetsCompat.Type.systemBars())
+        insetsController.isAppearanceLightStatusBars = true
         initViews(binding)
     }
 

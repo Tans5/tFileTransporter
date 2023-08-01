@@ -8,7 +8,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Vibrator
 import android.util.Size
-import android.view.View
 import android.view.animation.Animation
 import android.view.animation.TranslateAnimation
 import androidx.camera.core.CameraSelector
@@ -16,6 +15,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.core.view.WindowCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -40,7 +40,9 @@ class ScanQrCodeActivity : BaseActivity<ScanQrcodeActivityBinding, Unit>(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.isAppearanceLightStatusBars = false
         window.statusBarColor = Color.TRANSPARENT
     }
 
