@@ -227,12 +227,14 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 if (!connection.isPresent) {
                                     val config = WifiP2pConfig()
                                     config.deviceAddress = data.macAddress
+                                    updateState { it.copy(connectionStatus = ConnectionStatus.Connecting) }.await()
                                     val state = wifiP2pManager.connectSuspend(wifiChannel, config)
                                     if (state == WifiActionResult.Success) {
                                         AndroidLog.d(TAG, "Request P2P connection success !!!")
                                         val connectionInfo = wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()
                                         AndroidLog.d(TAG, "Connection group address: ${connectionInfo?.groupOwnerAddress}, is group owner: ${connectionInfo?.isGroupOwner}")
                                     } else {
+                                        updateState { it.copy(connectionStatus = ConnectionStatus.NoConnection) }.await()
                                         AndroidLog.e(TAG, "Request P2P connection fail: $state !!!")
                                     }
                                 }
@@ -290,6 +292,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                             if (connectionResult.isFailure) {
                                 connection.closeConnectionIfActive()
                             } else {
+                                updateState { it.copy(connectionStatus = ConnectionStatus.Handshaking) }.await()
                                 val handshakeResult = runCatching {
                                     withTimeout(1000) {
                                         connection.waitHandshaking()
@@ -307,8 +310,9 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                                 localAddress = handshake.localAddress.address,
                                                 remoteAddress = handshake.remoteAddress.address,
                                                 remoteDeviceName = handshake.remoteDeviceName,
-                                                p2pConnection = connection
-                                            ))
+                                                p2pConnection = connection,
+                                            )),
+                                            connectionStatus = ConnectionStatus.Connected
                                         )
                                     }.await()
                                     connection.addObserver(object : P2pConnectionObserver {
@@ -336,6 +340,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                                 updateState { it.copy(p2pHandshake = Optional.empty()) }.await()
                             }
                         }
+                        closeCurrentWifiConnection()
                     }
                 }
                 .bindLife()
@@ -361,7 +366,14 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
         AndroidLog.d(TAG, "Connection group address: ${connectionNew?.groupOwnerAddress}, is group owner: ${connectionNew?.isGroupOwner}")
         if (connectionNew != connectionOld) {
             updateState {
-                it.copy(wifiP2PConnection = Optional.ofNullable(connectionNew))
+                it.copy(
+                    wifiP2PConnection = Optional.ofNullable(connectionNew),
+                    connectionStatus = if (connectionNew == null) {
+                        ConnectionStatus.NoConnection
+                    } else {
+                        it.connectionStatus
+                    }
+                )
             }.await()
         }
         return connectionNew
@@ -405,11 +417,19 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             val remoteDeviceName: String
         )
 
+        enum class ConnectionStatus {
+            NoConnection,
+            Connecting,
+            Handshaking,
+            Connected
+        }
+
         data class WifiP2pConnectionState(
             val isP2pEnabled: Boolean = false,
             val peers: List<P2pPeer> = emptyList(),
             val wifiP2PConnection: Optional<WifiP2pConnection> = Optional.empty(),
-            val p2pHandshake: Optional<P2pHandshake> = Optional.empty()
+            val p2pHandshake: Optional<P2pHandshake> = Optional.empty(),
+            val connectionStatus: ConnectionStatus = ConnectionStatus.NoConnection
         )
     }
 }
