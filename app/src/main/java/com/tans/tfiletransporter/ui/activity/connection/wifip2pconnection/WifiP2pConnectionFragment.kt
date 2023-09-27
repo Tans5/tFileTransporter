@@ -109,15 +109,15 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
             launch {
                 closeCurrentWifiConnection()
             }
-            render({ it.p2pHandshake }) {
-                if (it.isPresent) {
-                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, it.get().localAddress.toString().removePrefix("/"))
+            render({ it.p2pHandshake to it.connectionStatus }) { (handShake, status) ->
+                if (handShake.isPresent) {
+                    binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, handShake.get().localAddress.toString().removePrefix("/"))
                     binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                        it.get().remoteDeviceName, it.get().remoteAddress.toString().removePrefix("/"))
+                        handShake.get().remoteDeviceName, handShake.get().remoteAddress.toString().removePrefix("/"), status)
                 } else {
                     binding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
                     binding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                        "Not Available", "Not Available")
+                        "Not Available", "Not Available", status.toString())
                 }
             }.bindLife()
 
@@ -349,7 +349,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
 
     private suspend fun closeCurrentWifiConnection() {
         updateState {  oldState ->
-            oldState.copy(wifiP2PConnection = Optional.empty())
+            oldState.copy(wifiP2PConnection = Optional.empty(), connectionStatus = ConnectionStatus.NoConnection)
         }.await()
         wifiP2pManager.cancelConnectionSuspend(wifiChannel)
         wifiP2pManager.removeGroupSuspend(wifiChannel)
