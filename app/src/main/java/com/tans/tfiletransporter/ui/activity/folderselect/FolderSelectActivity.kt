@@ -2,87 +2,63 @@ package com.tans.tfiletransporter.ui.activity.folderselect
 
 import android.app.Activity
 import android.content.Intent
-import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
 import com.jakewharton.rxbinding4.view.clicks
-import com.tans.tadapter.adapter.DifferHandler
-import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
-import com.tans.tadapter.spec.SimpleAdapterSpec
-import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
-import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderSelectActivityBinding
-import com.tans.tfiletransporter.file.FileLeaf
-import com.tans.tfiletransporter.file.FileTree
 import com.tans.tfiletransporter.file.createLocalRootTree
 import com.tans.tfiletransporter.file.isRootFileTree
 import com.tans.tfiletransporter.file.newLocalSubTree
-import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.activity.BaseActivity
+import com.tans.tfiletransporter.ui.activity.FileTreeUI
 import com.tans.tfiletransporter.ui.activity.commomdialog.TextInputDialog
-import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showTextInputDialog
-import com.tans.tfiletransporter.utils.dp2px
-import com.tans.tfiletransporter.utils.firstVisibleItemPosition
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
-import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.ArrayDeque
-import java.util.Deque
 
-class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSelectActivity.Companion.FolderSelectState>(
+class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
     layoutId = R.layout.folder_select_activity,
-    defaultState = FolderSelectState()
+    defaultState = Unit
 ) {
 
-    private val recyclerViewScrollChannel = Channel<Int>(1)
-
-    private val folderPositionDeque: Deque<Int> = ArrayDeque()
+    private var fileTreeUI: FileTreeUI? = null
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
         onBackPressedDispatcher.addCallback {
             launch {
-                updateState { state ->
-                    val i = folderPositionDeque.poll()
-                    if (i != null) {
-                        recyclerViewScrollChannel.trySend(i).isSuccess
-                    }
-                    if (state.fileTree.parentTree == null) state else FolderSelectState(
-                        state.fileTree.parentTree
-                    )
-                }.await()
+                fileTreeUI?.backPress()?.await()
             }
-        }
-    }
-
-    override fun firstLaunchInitData() {
-
-        launch(Dispatchers.IO) {
-            updateState {
-                it.copy(fileTree = createLocalRootTree(this@FolderSelectActivity))
-            }.await()
         }
     }
 
     override fun initViews(binding: FolderSelectActivityBinding) {
 
-        render({ it.fileTree.path }) {
-            binding.pathTv.text = it
-        }.bindLife()
+        val fileTreeUI = FileTreeUI(
+            binding = binding.fileTreeLayout,
+            rootTreeUpdater = {
+                Single.fromCallable {
+                    createLocalRootTree(this@FolderSelectActivity).copy(fileLeafs = emptyList())
+                }
+            },
+            subTreeUpdater = { parentTree, dir ->
+                Single.fromCallable {
+                    parentTree.newLocalSubTree(dir).copy(fileLeafs = emptyList())
+                }
+            }
+        )
+        this.fileTreeUI = fileTreeUI
+        fileTreeUI.start()
 
-        bindState()
+        fileTreeUI.bindState()
             .distinctUntilChanged()
             .doOnNext {
                 onBackPressedCallback.isEnabled = !it.fileTree.isRootFileTree()
@@ -94,7 +70,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
                 rxSingle(Dispatchers.Main) {
                     val inputResult = this@FolderSelectActivity.showTextInputDialog(getString(R.string.folder_select_create_new_folder_hint))
                     if (inputResult is TextInputDialog.Companion.Result.Success) {
-                        val tree = bindState().firstOrError().await().fileTree
+                        val tree = fileTreeUI.bindState().firstOrError().await().fileTree
                         if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
                             this@FolderSelectActivity.showNoOptionalDialog(
                                 title = getString(R.string.folder_select_create_folder_error),
@@ -111,7 +87,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
                                 }
                             }
                             if (createFolderResult) {
-                                updateState { oldState ->
+                                fileTreeUI.updateState { oldState ->
                                     val oldTree = oldState.fileTree
                                     val parentTree = oldTree.parentTree
                                     val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
@@ -130,78 +106,8 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
             }
             .bindLife()
 
-        binding.folderRv.adapter = SimpleAdapterSpec<FileLeaf.DirectoryFileLeaf, FolderItemLayoutBinding>(
-            layoutId = R.layout.folder_item_layout,
-            bindData = { _, data, lBinding ->
-                lBinding.titleTv.text = data.name
-                DataBindingAdapter.dateText(lBinding.modifiedDateTv, data.lastModified)
-                lBinding.filesCountTv.visibility = View.INVISIBLE
-            },
-            dataUpdater = bindState().map { it.fileTree.dirLeafs },
-            differHandler = DifferHandler(
-                itemsTheSame = { a, b -> a.path == b.path },
-                contentTheSame = { a, b -> a == b }
-            ),
-            itemClicks = listOf { lBinding, _ ->
-                lBinding.root to { _, data ->
-                    rxSingle(Dispatchers.IO) {
-                        val i = withContext(Dispatchers.Main) {
-                            binding.folderRv.firstVisibleItemPosition()
-                        }
-                        folderPositionDeque.push(i)
-                        updateState { oldState ->
-                            oldState.copy(fileTree = oldState.fileTree.newLocalSubTree(data))
-                        }.await()
-                        Unit
-                    }
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .loadingDialog(this)
-                }
-            }).toAdapter { list ->
-            val position = recyclerViewScrollChannel.tryReceive().getOrNull()
-            if (position != null && position < list.size) {
-                (binding.folderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                    position,
-                    0
-                )
-            }
-        }
-
-        binding.folderRv.addItemDecoration(
-            MarginDividerItemDecoration.Companion.Builder()
-            .divider(MarginDividerItemDecoration.Companion.ColorDivider(getColor(R.color.line_color), dp2px(1)))
-            .marginStart(dp2px(65))
-            .build()
-        )
-
-        binding.refreshLayout.setColorSchemeResources(R.color.teal_200)
-        binding.refreshLayout.refreshes()
-            .observeOn(Schedulers.io())
-            .flatMapSingle {
-                updateState { oldState ->
-                    val oldTree = oldState.fileTree
-                    if (oldTree.isRootFileTree()) {
-                        oldState.copy(fileTree = createLocalRootTree(this))
-                    } else {
-                        val parentTree = oldTree.parentTree
-                        val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
-                        if (parentTree != null && dirLeaf != null) {
-                            oldState.copy(
-                                fileTree = parentTree.newLocalSubTree(dirLeaf)
-                            )
-                        } else {
-                            oldState
-                        }
-                    }
-                }.observeOn(AndroidSchedulers.mainThread())
-                    .doFinally {
-                        binding.refreshLayout.isRefreshing = false
-                    }
-            }
-            .bindLife()
-
         binding.doneActionBt.clicks()
-            .withLatestFrom(bindState().map { it.fileTree })
+            .withLatestFrom(fileTreeUI.bindState().map { it.fileTree })
             .flatMapSingle { (_, tree) ->
                 rxSingle(Dispatchers.Main) {
                     if (tree.isRootFileTree()) {
@@ -227,18 +133,14 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, FolderSel
             .bindLife()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        fileTreeUI?.stop()
+    }
+
     companion object {
 
         private const val FOLDER_SELECT_KEY = "folder_select_key"
-
-        data class FolderSelectState(
-            val fileTree: FileTree = FileTree(
-                dirLeafs = emptyList(),
-                fileLeafs = emptyList(),
-                path = File.separator,
-                parentTree = null
-            )
-        )
 
         fun getResult(i: Intent): String? {
             return i.getStringExtra(FOLDER_SELECT_KEY)
