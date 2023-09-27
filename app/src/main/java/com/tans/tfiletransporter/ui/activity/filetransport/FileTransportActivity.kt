@@ -2,7 +2,6 @@ package com.tans.tfiletransporter.ui.activity.filetransport
 
 import android.content.Context
 import android.content.Intent
-import android.os.Environment
 import android.view.View
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
@@ -395,7 +394,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         ) as? InetAddress ?: error("FileTransportActivity get local address fail.")
 
         private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(
-            REMOTE_ADDRESS_EXTRA_KEY
+            REMOTE_ADDRESS_EXTRA_KEY,
         ) as? InetAddress ?: error("FileTransportActivity get remote address fail.")
 
         private fun Intent.getRemoteInfo(): String = getStringExtra(REMOTE_INFO_EXTRA_KEY) ?: ""
