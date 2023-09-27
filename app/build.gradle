@@ -1,17 +1,20 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
 }
 
 android {
-    compileSdkVersion = 33
-    buildToolsVersion = "33.0.2"
+    compileSdkVersion = 34
+    buildToolsVersion = "34.0.0"
+
+    namespace "com.tans.tfiletransporter"
 
     defaultConfig {
         applicationId "com.tans.tfiletransporter"
         minSdkVersion 26
-        targetSdkVersion 33
+        targetSdkVersion 34
         versionCode 23070201
         versionName "2.3.0"
 
@@ -60,11 +63,11 @@ android {
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation "androidx.fragment:fragment-ktx:1.5.7"
+    implementation "androidx.fragment:fragment-ktx:1.6.1"
 
     // RxJava3
     implementation "io.reactivex.rxjava3:rxjava:3.1.6"
@@ -73,30 +76,34 @@ dependencies {
     implementation 'com.github.tbruyelle:rxpermissions:0.12'
 
     // RxBinding
-    implementation 'com.jakewharton.rxbinding4:rxbinding-core:4.0.0'
-    implementation 'com.jakewharton.rxbinding4:rxbinding-appcompat:4.0.0'
-    implementation 'com.jakewharton.rxbinding4:rxbinding-swiperefreshlayout:4.0.0'
+    def rxbinding_version = "4.0.0"
+    implementation "com.jakewharton.rxbinding4:rxbinding-core:${rxbinding_version}"
+    implementation "com.jakewharton.rxbinding4:rxbinding-appcompat:${rxbinding_version}"
+    implementation "com.jakewharton.rxbinding4:rxbinding-swiperefreshlayout:${rxbinding_version}"
 
     // Coroutines
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.7.1"
+    def coroutine_version = "1.7.3"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:${coroutine_version}"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${coroutine_version}"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:${coroutine_version}"
 
     // Kodein
     implementation "org.kodein.di:kodein-di-framework-android-core:7.2.0"
     implementation "org.kodein.di:kodein-di-framework-android-x:7.2.0"
 
     // Moshi
-    implementation "com.squareup.moshi:moshi:1.14.0"
-    implementation "com.squareup.moshi:moshi-kotlin:1.14.0"
-    implementation "com.squareup.moshi:moshi-adapters:1.14.0"
-    kapt "com.squareup.moshi:moshi-kotlin-codegen:1.14.0"
+    def moshi_version = "1.15.0"
+    implementation "com.squareup.moshi:moshi:${moshi_version}"
+    implementation "com.squareup.moshi:moshi-kotlin:${moshi_version}"
+    implementation "com.squareup.moshi:moshi-adapters:${moshi_version}"
+    ksp "com.squareup.moshi:moshi-kotlin-codegen:${moshi_version}"
 
     // Lifecycle
-    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
+    def lifecycle_version = "2.6.2"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:${lifecycle_version}"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:${lifecycle_version}"
     //noinspection LifecycleAnnotationProcessorWithJava8
-    kapt 'androidx.lifecycle:lifecycle-compiler:2.6.1'
+    kapt "androidx.lifecycle:lifecycle-compiler:${lifecycle_version}"
 
     // CameraX
     def camerax_version = "1.2.3"
@@ -108,7 +115,7 @@ dependencies {
     implementation "androidx.camera:camera-extensions:${camerax_version}"
 
     // BarcodeScan
-    implementation 'com.google.mlkit:barcode-scanning:17.1.0'
+    implementation 'com.google.mlkit:barcode-scanning:17.2.0'
 
     // QRCode Gen
     implementation 'com.github.kenglxn.QRGen:android:3.0.1'

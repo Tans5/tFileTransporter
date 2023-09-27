@@ -3,23 +3,26 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
     id 'kotlin'
     id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
+//java {
+//    sourceCompatibility = JavaVersion.VERSION_1_8
+//    targetCompatibility = JavaVersion.VERSION_1_8
+//}
 
 dependencies {
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1"
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
 
     // Moshi
-    api "com.squareup.moshi:moshi:1.14.0"
-    api "com.squareup.moshi:moshi-kotlin:1.14.0"
-    api "com.squareup.moshi:moshi-adapters:1.14.0"
-    kapt "com.squareup.moshi:moshi-kotlin-codegen:1.14.0"
+    // Moshi
+    def moshi_version = "1.15.0"
+    api "com.squareup.moshi:moshi:${moshi_version}"
+    api "com.squareup.moshi:moshi-kotlin:${moshi_version}"
+    api "com.squareup.moshi:moshi-adapters:${moshi_version}"
+    ksp "com.squareup.moshi:moshi-kotlin-codegen:${moshi_version}"
 
     api "io.netty:netty-all:4.1.86.Final"
     api "com.squareup.okio:okio:3.3.0"
-    api "androidx.annotation:annotation:1.6.0"
+    api "androidx.annotation:annotation:1.7.0"
 }
