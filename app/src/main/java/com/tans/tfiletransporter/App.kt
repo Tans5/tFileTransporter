@@ -6,7 +6,6 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.JsonReader
 import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.Moshi
-import com.tans.tfiletransporter.netty.extensions.DefaultConverterFactory
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.androidCoreModule

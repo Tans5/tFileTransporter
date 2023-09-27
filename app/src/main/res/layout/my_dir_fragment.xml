@@ -1,85 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/white">
 
-        <LinearLayout
-            android:id="@+id/header_layout"
+        <include
+            android:id="@+id/file_tree_layout"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="@color/white"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:layout_height="match_parent"
+            layout="@layout/file_tree_layout" />
 
-            <TextView
-                android:id="@+id/path_tv"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_marginStart="15dp"
-                android:layout_marginEnd="15dp"
-                android:layout_weight="1"
-                android:ellipsize="start"
-                android:singleLine="true"
-                android:textColor="@color/black_1"
-                android:textSize="16sp"
-                tools:text="/a/b/c" />
-
-            <FrameLayout
-                android:id="@+id/folder_menu_layout"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="5dp"
-                android:layout_marginTop="5dp"
-                android:foreground="?attr/selectableItemBackgroundBorderless">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/dots_vertical"
-                    android:layout_gravity="center"/>
-
-            </FrameLayout>
-
-        </LinearLayout>
-
-        <View
-            android:id="@+id/header_line"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/gray_2"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header_layout" />
-
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/refresh_layout"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header_line">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/file_folder_rv"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="85dp"
-                android:scrollbars="vertical"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                tools:listitem="@layout/folder_item_layout" />
-
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </FrameLayout>
 
 </layout>
