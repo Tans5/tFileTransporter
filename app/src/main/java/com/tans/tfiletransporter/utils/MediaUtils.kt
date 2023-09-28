@@ -1,5 +1,7 @@
 package com.tans.tfiletransporter.utils
 
+import java.util.Locale
+
 val mediaFileSuffixAndMimeType: Map<String, String> = mapOf(
     "aac" to "audio/aac",
     "avi" to "video/x-msvideo",
@@ -32,7 +34,8 @@ val mediaFileSuffixAndMimeType: Map<String, String> = mapOf(
     "flv" to "video/x-flv",
     "mkv" to "video/x-matroska",
     "3gp" to "video/3gp",
-    "3g2" to "video/3g2"
+    "3g2" to "video/3g2",
+    "flac" to "audio/flac"
 )
 
 enum class MediaType {
@@ -47,7 +50,7 @@ enum class MediaType {
 fun getMediaMimeTypeWithFileName(fileName: String): Pair<String, MediaType>? {
     val fileSuffixRegex = ".*\\.(.+)$".toRegex()
     val matchResult = fileSuffixRegex.find(fileName)
-    return matchResult?.groupValues?.get(1)?.let { suffix ->
+    return matchResult?.groupValues?.get(1)?.lowercase(Locale.US).let { suffix ->
         val mimeType = mediaFileSuffixAndMimeType[suffix]
         when {
             mimeType?.startsWith("audio") == true -> mimeType to MediaType.Audio
