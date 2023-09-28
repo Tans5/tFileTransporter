@@ -105,4 +105,7 @@
     <string name="folder_select_create_new_folder_hint">Input folder name</string>
     <!-- Folder Select End -->
 
+    <string name="media_artist_name">Artist: %s</string>
+    <string name="media_album_name">Album: %s</string>
+
 </resources>

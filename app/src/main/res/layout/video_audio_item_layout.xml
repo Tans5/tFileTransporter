@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?attr/selectableItemBackgroundBorderless">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:background="@color/white">
+
+            <ImageView
+                android:id="@+id/media_item_iv"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="20dp"
+                android:src="@drawable/ic_audio"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/title_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="5dp"
+                android:ellipsize="middle"
+                android:singleLine="true"
+                android:textColor="@color/black_1"
+                android:textSize="16sp"
+                app:layout_constraintBottom_toTopOf="@id/artist_tv"
+                app:layout_constraintEnd_toStartOf="@id/media_cb"
+                app:layout_constraintStart_toEndOf="@id/media_item_iv"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Title" />
+
+            <TextView
+                android:id="@+id/artist_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="5dp"
+                android:textColor="@color/gray_1"
+                android:textSize="12sp"
+                android:layout_marginEnd="5dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                app:layout_constraintBottom_toTopOf="@id/album_tv"
+                app:layout_constraintEnd_toStartOf="@id/modified_date_tv"
+                app:layout_constraintStart_toEndOf="@id/media_item_iv"
+                app:layout_constraintTop_toBottomOf="@id/title_tv"
+                tools:text="Artist: xxxxx" />
+
+            <TextView
+                android:id="@+id/modified_date_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gray_1"
+                android:textSize="12sp"
+                app:layout_constraintTop_toTopOf="@id/artist_tv"
+                app:layout_constraintBottom_toBottomOf="@id/artist_tv"
+                app:layout_constraintStart_toEndOf="@id/artist_tv"
+                app:layout_constraintEnd_toEndOf="@id/title_tv"
+                tools:text="2023/01/01"/>
+
+            <TextView
+                android:id="@+id/album_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="5dp"
+                android:textColor="@color/gray_1"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/media_size_tv"
+                app:layout_constraintStart_toEndOf="@id/media_item_iv"
+                app:layout_constraintTop_toBottomOf="@id/artist_tv"
+                tools:text="Album: xxxxx" />
+
+            <TextView
+                android:id="@+id/media_size_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gray_1"
+                android:textSize="12sp"
+                app:layout_constraintTop_toTopOf="@id/album_tv"
+                app:layout_constraintBottom_toBottomOf="@id/album_tv"
+                app:layout_constraintStart_toEndOf="@id/album_tv"
+                app:layout_constraintEnd_toEndOf="@id/title_tv"
+                tools:text="5.0 MB"/>
+
+            <CheckBox
+                android:id="@+id/media_cb"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_marginEnd="10dp"
+                android:clickable="false"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </FrameLayout>
+
+</layout>
