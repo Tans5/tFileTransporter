@@ -52,6 +52,9 @@
 -keepclassmembernames class io.netty.buffer.AdvancedLeakAwareByteBuf {*;}
 -keep public class io.netty.util.ReferenceCountUtil {*;}
 
+#Kodein
+-keep class org.kodein.di.** {*;}
+
 -dontwarn com.aayushatharva.brotli4j.Brotli4jLoader
 -dontwarn com.aayushatharva.brotli4j.decoder.DecoderJNI$Status
 -dontwarn com.aayushatharva.brotli4j.decoder.DecoderJNI$Wrapper

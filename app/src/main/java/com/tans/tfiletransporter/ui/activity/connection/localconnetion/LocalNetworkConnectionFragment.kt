@@ -27,7 +27,6 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanClientS
 import com.tans.tfiletransporter.ui.activity.BaseFragment
 import com.tans.tfiletransporter.ui.activity.commomdialog.loadingDialog
 import com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity
-import com.tans.tfiletransporter.ui.activity.filetransport.MyAppsFragment
 import com.tans.tfiletransporter.ui.activity.qrcodescan.ScanQrCodeActivity
 import com.tans.tfiletransporter.utils.fromJson
 import com.tans.tfiletransporter.utils.showToastShort
