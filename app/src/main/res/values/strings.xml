@@ -8,6 +8,8 @@
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_apps">MY APPS</string>
     <string name="file_transport_activity_tab_my_images">MY IMAGES</string>
+    <string name="file_transport_activity_tab_my_videos">MY VIDEOS</string>
+    <string name="file_transport_activity_tab_my_audios">MY AUDIOS</string>
     <string name="file_transport_activity_tab_my_dir">MY FOLDER</string>
     <string name="file_transport_activity_tab_remote_dir">REMOTE FOLDER</string>
     <string name="file_transport_activity_tab_message">MESSAGE</string>

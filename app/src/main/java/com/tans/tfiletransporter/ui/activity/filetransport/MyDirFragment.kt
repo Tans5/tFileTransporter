@@ -104,30 +104,5 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
     companion object {
 
         private const val TAG = "MyDirFragment"
-
-        object FileSelectChange
-
-        enum class FileSortType {
-            SortByDate,
-            SortByName
-        }
-
-        fun List<FileLeaf.CommonFileLeaf>.sortFile(sortType: FileSortType): List<FileLeaf.CommonFileLeaf> = when (sortType) {
-            FileSortType.SortByDate -> {
-                sortedByDescending { it.lastModified }
-            }
-            FileSortType.SortByName -> {
-                sortedBy { it.name }
-            }
-        }
-
-        fun List<FileLeaf.DirectoryFileLeaf>.sortDir(sortType: FileSortType): List<FileLeaf.DirectoryFileLeaf> = when (sortType) {
-            FileSortType.SortByDate -> {
-                sortedByDescending { it.lastModified }
-            }
-            FileSortType.SortByName -> {
-                sortedBy { it.name }
-            }
-        }
     }
 }

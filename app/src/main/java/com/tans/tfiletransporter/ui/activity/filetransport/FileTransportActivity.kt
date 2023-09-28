@@ -125,6 +125,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
     private val fragments: Map<DirTabType, BaseFragment<*, *>> = mapOf(
         DirTabType.MyApps to MyAppsFragment(),
         DirTabType.MyImages to MyImagesFragment(),
+        DirTabType.MyVideos to MyVideosFragment(),
+        DirTabType.MyAudios to MyAudiosFragment(),
         DirTabType.MyDir to MyDirFragment(),
         DirTabType.RemoteDir to RemoteDirFragment(),
         DirTabType.Message to MessageFragment())
@@ -240,6 +242,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 tab.text = when (DirTabType.values()[position]) {
                     DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
                     DirTabType.MyImages -> getString(R.string.file_transport_activity_tab_my_images)
+                    DirTabType.MyVideos -> getString(R.string.file_transport_activity_tab_my_videos)
+                    DirTabType.MyAudios -> getString(R.string.file_transport_activity_tab_my_audios)
                     DirTabType.MyDir -> getString(R.string.file_transport_activity_tab_my_dir)
                     DirTabType.RemoteDir -> getString(R.string.file_transport_activity_tab_remote_dir)
                     DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
@@ -258,6 +262,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     when (tab?.position) {
                         DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
                         DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
+                        DirTabType.MyVideos.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyVideos) }.bindLife()
+                        DirTabType.MyAudios.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyAudios) }.bindLife()
                         DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
                         DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
                         DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
@@ -274,7 +280,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             render({ it.selectedTabType }) {
 
                 when (it) {
-                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir, DirTabType.RemoteDir -> {
+                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyVideos, DirTabType.MyAudios, DirTabType.MyDir, DirTabType.RemoteDir -> {
                         val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
                         lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
                         binding.collapsingLayout.layoutParams = lpCollapsing
@@ -287,7 +293,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 }
 
                 when (it) {
-                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyDir -> {
+                    DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyVideos, DirTabType.MyAudios, DirTabType.MyDir -> {
                         binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
                         binding.floatingActionBt.visibility = View.VISIBLE
                     }
@@ -416,6 +422,8 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         enum class DirTabType {
             MyApps,
             MyImages,
+            MyVideos,
+            MyAudios,
             MyDir,
             RemoteDir,
             Message

@@ -129,7 +129,7 @@ dependencies {
     implementation files("libs/tadapter-release.aar")
     implementation "com.jakewharton.threetenabp:threetenabp:1.4.6"
     implementation 'net.yslibrary.keyboardvisibilityevent:keyboardvisibilityevent:3.0.0-RC2'
-    implementation "com.github.Tans5:RxUtils:0.3.2"
+    implementation "com.github.Tans5:RxUtils:0.3.4"
     implementation "com.github.bumptech.glide:glide:4.15.1"
 
     implementation project(":net")

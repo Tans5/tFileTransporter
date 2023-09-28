@@ -10,12 +10,12 @@
         android:background="@color/white">
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/images_refresh_layout"
+            android:id="@+id/media_items_refresh_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/my_images_rv"
+                android:id="@+id/my_media_items_rv"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"

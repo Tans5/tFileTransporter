@@ -7,6 +7,8 @@
     <!-- File Transport Activity Start -->
     <string name="file_transport_activity_tab_my_apps">APPS</string>
     <string name="file_transport_activity_tab_my_images">IMAGENS</string>
+    <string name="file_transport_activity_tab_my_videos">MY VIDEOS</string>
+    <string name="file_transport_activity_tab_my_audios">MY AUDIOS</string>
     <string name="file_transport_activity_tab_my_dir">MINHA PASTA</string>
     <string name="file_transport_activity_tab_remote_dir">PASTA REMOTA</string>
     <string name="file_transport_activity_tab_message">CHAT</string>
