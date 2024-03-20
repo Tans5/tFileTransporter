@@ -126,7 +126,7 @@ dependencies {
     implementation 'com.afollestad.inline-activity-result:coroutines:0.2.0'
 
     // Others
-    implementation files("libs/tadapter-release.aar")
+    implementation 'com.github.Tans5:tAdapter:v0.8.2'
     implementation "com.jakewharton.threetenabp:threetenabp:1.4.6"
     implementation 'net.yslibrary.keyboardvisibilityevent:keyboardvisibilityevent:3.0.0-RC2'
     implementation "com.github.Tans5:RxUtils:0.3.4"
