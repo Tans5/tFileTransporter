@@ -1,0 +1,94 @@
+[versions]
+agp = "8.3.1"
+kotlin = "1.9.23"
+coreKtx = "1.12.0"
+junit = "4.13.2"
+junitVersion = "1.1.5"
+espressoCore = "3.5.1"
+appcompat = "1.6.1"
+material = "1.11.0"
+activity = "1.8.2"
+annotaion = "1.7.1"
+constraintlayout = "2.1.4"
+lifecycle = "2.7.0"
+jetbrainsKotlinJvm = "1.9.22"
+googleKsp = "1.9.10-1.0.13"
+flexbox = "3.0.0"
+rxjava3 = "3.1.8"
+rxkotlin3 = "3.0.1"
+rxandroid3 = "3.0.2"
+corouines = "1.8.0"
+moshi = "1.15.0"
+netty = "4.1.86.Final"
+okio = "3.3.0"
+rxpermission = "0.12"
+rxbinding = "4.0.0"
+kodein = "7.2.0"
+camerax = "1.3.2"
+barcodescan = "17.2.0"
+qrcodegen = "3.0.1"
+actresult = "0.2.0"
+tadapter = "v0.8.2"
+rxutils = "v0.3.4"
+threetenabp = "1.4.6"
+glide = "4.16.0"
+keyborad = "3.0.0-RC2"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-annotaion = { group = "androidx.annotation", name = "annotation", version.ref = "annotaion" }
+androidx-lifecycle-rumtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-compiler = { group = "androidx.lifecycle", name = "lifecycle-compiler", version.ref = "lifecycle" }
+flexbox = { group = "com.google.android.flexbox", name = "flexbox", version.ref = "flexbox" }
+rxjava3 = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava3" }
+rxkotlin3 = { group = "io.reactivex.rxjava3", name = "rxkotlin", version.ref = "rxkotlin3" }
+rxandroid3 = { group = "io.reactivex.rxjava3", name = "rxandroid", version.ref = "rxandroid3" }
+coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "corouines" }
+coroutines-core-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core-jvm", version.ref = "corouines" }
+coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "corouines" }
+coroutines-rx3 = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-rx3", version.ref = "corouines" }
+moshi = { group = "com.squareup.moshi", name = "moshi", version.ref = "moshi" }
+moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
+moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
+moshi-adapters = { group = "com.squareup.moshi", name = "moshi-adapters", version.ref = "moshi" }
+netty = { group = "io.netty", name = "netty-all", version.ref = "netty" }
+okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
+rxpermission = { group = "com.github.tbruyelle", name = "rxpermissions", version.ref = "rxpermission" }
+rxbinding-core = { group = "com.jakewharton.rxbinding4", name = "rxbinding-core", version.ref = "rxbinding" }
+rxbinding-appcompat = { group = "com.jakewharton.rxbinding4", name = "rxbinding-appcompat", version.ref = "rxbinding" }
+rxbinding-swiperefreshlayout = { group = "com.jakewharton.rxbinding4", name = "rxbinding-swiperefreshlayout", version.ref = "rxbinding" }
+kodein-core = { group = "org.kodein.di", name = "kodein-di-framework-android-core", version.ref = "kodein" }
+kodein-androidx = { group = "org.kodein.di", name = "kodein-di-framework-android-x", version.ref = "kodein" }
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+camerax-extensions = { group = "androidx.camera", name = "camera-extensions", version.ref = "camerax" }
+barcodescan = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "barcodescan" }
+qrcodegen = { group = "com.github.kenglxn.QRGen", name = "android", version.ref = "qrcodegen" }
+actresult-core = { group = "com.afollestad.inline-activity-result", name = "core", version.ref = "actresult" }
+actresult-coroutines = { group = "com.afollestad.inline-activity-result", name = "coroutines", version.ref = "actresult" }
+tadapter = { group = "com.github.Tans5", name = "tadapter", version.ref = "tadapter" }
+rxutils = { group = "com.github.Tans5", name = "RxUtils", version.ref = "rxutils" }
+threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenabp" }
+glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide"}
+keyboard = { group = "net.yslibrary.keyboardvisibilityevent", name = "keyboardvisibilityevent", version.ref = "keyborad" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+jetbrainsKotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
+googleKsp = { id = "com.google.devtools.ksp", version.ref = "googleKsp" }
+
+
+

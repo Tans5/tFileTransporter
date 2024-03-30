@@ -1,7 +1,12 @@
-
 pluginManagement {
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
     }
@@ -12,10 +17,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven {
-            url "https://www.jitpack.io"
+            url = uri("https://www.jitpack.io")
         }
     }
 }
+
 rootProject.name = "tFileTransporter"
-include ':app'
-include ':net'
+include(":app")
+include(":net")
