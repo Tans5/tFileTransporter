@@ -36,8 +36,8 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * FileDownloader could download multiple files one times, single file download see [SingleFileDownloader], single file contains multiple fragments,
- * one fragment use a TCP connection to download file's fragment see [SingleFileDownloader.SingleFileFragmentDownloader]
+ * FileDownloader could download multiple files one time, single file downloads see [SingleFileDownloader], single file contains multiple fragments,
+ * one fragment uses a TCP connection to downloads file's fragment see [SingleFileDownloader.SingleFileFragmentDownloader]
  */
 class FileDownloader(
     val downloadDir: File,
