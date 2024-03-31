@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Scan QRCode to get server's information[com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare], and create UDP connection to server.
- * After connection create, client send [QrScanDataType.TransferFileReq][QRCodeTransferFileReq] request to create FileExplore connection.
+ * Scan QRCode to get server's information [com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare], and [QRCodeScanClient] creates connection with [QRCodeScanServer].
+ * After connection create, [QRCodeScanClient] sends [QrScanDataType.TransferFileReq] [QRCodeTransferFileReq] request to create FileExplore connection.
  *
  */
 class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>, SimpleObservable<QRCodeScanObserver> {

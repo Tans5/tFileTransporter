@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 
 /**
- * BroadcastSender send UDP broadcast on port [TransferProtoConstant.BROADCAST_SCANNER_PORT] to notify [BroadcastMsg] to [BroadcastReceiver].
+ * [BroadcastSender] send UDP broadcast message ([BroadcastMsg]) on port [TransferProtoConstant.BROADCAST_SCANNER_PORT], [BroadcastReceiver] could receive this message when [BroadcastReceiver] and [BroadcastSender] in the same network.
  * And BroadcastSender will listen BroadcastReceiver request to create FileExplore connection, listen use UDP [TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT] port.
  */
 class BroadcastSender(
