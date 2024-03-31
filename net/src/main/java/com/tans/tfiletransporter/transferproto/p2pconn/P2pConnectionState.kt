@@ -4,9 +4,9 @@ import java.net.InetSocketAddress
 
 sealed class P2pConnectionState {
 
-    object NoConnection : P2pConnectionState()
+    data object NoConnection : P2pConnectionState()
 
-    object Requesting : P2pConnectionState()
+    data object Requesting : P2pConnectionState()
 
     class Active(
         val localAddress: InetSocketAddress?,

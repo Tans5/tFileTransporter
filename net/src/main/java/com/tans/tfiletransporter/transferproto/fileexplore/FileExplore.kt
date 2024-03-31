@@ -41,6 +41,12 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * FileExplore could use QRCode, Udp broadcast and Wifi p2p create connection.
+ * Server bind TCP [TransferProtoConstant.FILE_EXPLORE_PORT] port wait Client to connect.
+ * After connect is created, client will send request [FileExploreDataType.HandshakeReq] [HandshakeReq] to server create Handshake.
+ * When Handshake is ok, client and server could send request etch other, include [FileExploreDataType.DownloadFilesReq], [FileExploreDataType.SendFilesReq], [FileExploreDataType.SendFilesReq], [FileExploreDataType.SendMsgReq]
+ */
 class FileExplore(
     private val log: ILog,
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp>,

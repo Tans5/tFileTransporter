@@ -35,6 +35,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 
+/**
+ * BroadcastSender send UDP broadcast on port [TransferProtoConstant.BROADCAST_SCANNER_PORT] to notify [BroadcastMsg] to [BroadcastReceiver].
+ * And BroadcastSender will listen BroadcastReceiver request to create FileExplore connection, listen use UDP [TransferProtoConstant.BROADCAST_TRANSFER_SERVER_PORT] port.
+ */
 class BroadcastSender(
     private val deviceName: String,
     private val log: ILog,

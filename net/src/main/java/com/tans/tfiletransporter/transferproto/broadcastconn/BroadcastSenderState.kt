@@ -6,8 +6,8 @@ import java.net.InetAddress
 import java.util.concurrent.ScheduledFuture
 
 sealed class BroadcastSenderState {
-    object NoConnection : BroadcastSenderState()
-    object Requesting : BroadcastSenderState()
+    data object NoConnection : BroadcastSenderState()
+    data object Requesting : BroadcastSenderState()
     data class Active(
         val broadcastAddress: InetAddress
     ) : BroadcastSenderState()

@@ -23,6 +23,13 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Wifi p2p connection.
+ * P2P group owner as Server, after p2p connection created, server bind TCP [TransferProtoConstant.P2P_GROUP_OWNER_PORT], waiting client connect.
+ * Only one client can connect to server.
+ * After connection created, client will send [HandshakeReq] [P2pHandshakeReq] to server, server will check handshake information
+ * When handshake is ok, client and server both could send [P2pHandshakeReq] to other side and create FileExplore connection.
+ */
 class P2pConnection(
     private val currentDeviceName: String,
     private val log: ILog

@@ -7,7 +7,7 @@ sealed class NettyTaskState {
     /**
      * 未执行
      */
-    object NotExecute : NettyTaskState()
+    data object NotExecute : NettyTaskState()
 
     /**
      * 连接可用
@@ -19,7 +19,7 @@ sealed class NettyTaskState {
     /**
      * 连接关闭
      */
-    object ConnectionClosed : NettyTaskState()
+    data object ConnectionClosed : NettyTaskState()
 
     /**
      * 错误

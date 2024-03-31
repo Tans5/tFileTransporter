@@ -25,6 +25,12 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Server create a QRCode Image, contains Server's IP address, version and device name([com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare]).
+ * And server bind UDP port [TransferProtoConstant.QR_CODE_SCAN_SERVER_PORT], waiting client connect.
+ * After connection created, Server waits client send [QrScanDataType.TransferFileReq] request, body is [QRCodeTransferFileReq], to create FileExplore connection.
+ *
+ */
 class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServerObserver>, SimpleStateable<QRCodeScanState> {
 
     override val observers: LinkedBlockingDeque<QRCodeScanServerObserver> = LinkedBlockingDeque()

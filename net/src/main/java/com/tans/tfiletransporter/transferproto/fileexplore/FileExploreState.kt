@@ -5,8 +5,8 @@ data class Handshake(
 )
 
 sealed class FileExploreState {
-    object NoConnection : FileExploreState()
-    object Requesting : FileExploreState()
-    object Connected : FileExploreState()
+    data object NoConnection : FileExploreState()
+    data object Requesting : FileExploreState()
+    data object Connected : FileExploreState()
     data class Active(val handshake: Handshake) : FileExploreState()
 }

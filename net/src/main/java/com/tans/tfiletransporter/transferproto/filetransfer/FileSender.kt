@@ -34,6 +34,10 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * FileSender could send multiple files one times, single file send see [SingleFileSender], single file contains multiple fragments,
+ * one fragment use a TCP connection to send file's fragment see [SingleFileSender.SingleFileFragmentSender]
+ */
 class FileSender(
     private val files: List<SenderFile>,
     private val bindAddress: InetAddress,
