@@ -32,13 +32,14 @@ import com.tans.tfiletransporter.transferproto.fileexplore.waitClose
 import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
 import com.tans.tfiletransporter.ui.BaseActivity
 import com.tans.tfiletransporter.ui.BaseFragment
-import com.tans.tfiletransporter.ui.commomdialog.showLoadingDialog
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.commomdialog.LoadingDialog
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
+import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
@@ -58,6 +59,7 @@ import java.io.File
 import kotlin.math.min
 
 
+@SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
 class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivity.Companion.FileTransportActivityState>(
     R.layout.file_transport_activity, FileTransportActivityState()
 ) {
@@ -141,7 +143,9 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
         launch(Dispatchers.IO) {
             val loadingDialog = withContext(Dispatchers.Main) {
-                showLoadingDialog(cancelable = false)
+                LoadingDialog().apply {
+                    show(this@FileTransportActivity.supportFragmentManager, "LoadingDialog#${System.currentTimeMillis()}")
+                }
             }
             val connectResult = if (isServer) {
                 AndroidLog.d(TAG, "Start bind address: $localAddress")
@@ -178,7 +182,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
                 }
                 if (handshakeResult.isSuccess) {
-                    withContext(Dispatchers.Main) { loadingDialog.dismiss() }
+                    withContext(Dispatchers.Main) { loadingDialog.dismissSafe() }
                     AndroidLog.d(TAG, "Handshake success!!")
                     updateState { it.copy(handshake = Optional.ofNullable(handshakeResult.getOrNull())) }.await()
                     fileExplore.addObserver(object : FileExploreObserver {
@@ -206,7 +210,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 } else {
                     AndroidLog.e(TAG, "Handshake fail: $handshakeResult", handshakeResult.exceptionOrNull())
                     withContext(Dispatchers.Main) {
-                        loadingDialog.dismiss()
+                        loadingDialog.dismissSafe()
                         this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                             title = getString(R.string.connection_error_title),
                             message = getString(R.string.connection_handshake_error, handshakeResult.exceptionOrNull()?.message ?: "")
@@ -217,7 +221,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             } else {
                 AndroidLog.e(TAG, "Create connection fail: $connectResult", connectResult.exceptionOrNull())
                 withContext(Dispatchers.Main) {
-                    loadingDialog.dismiss()
+                    loadingDialog.dismissSafe()
                     this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                         title = getString(R.string.connection_error_title),
                         message = getString(R.string.connection_connect_error, connectResult.exceptionOrNull()?.message ?: "")

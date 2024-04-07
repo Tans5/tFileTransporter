@@ -1,28 +1,41 @@
 package com.tans.tfiletransporter.ui.commomdialog
 
-import android.app.Activity
 import android.app.Dialog
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
-import com.tans.tfiletransporter.databinding.LoadingDialogLayoutBinding
-import com.tans.tfiletransporter.ui.BaseCustomDialog
-import io.reactivex.rxjava3.core.Single
+import com.tans.tuiutils.dialog.BaseDialogFragment
+import com.tans.tuiutils.dialog.createDefaultDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-fun Activity.showLoadingDialog(cancelable: Boolean = false): Dialog {
-    return object : BaseCustomDialog<LoadingDialogLayoutBinding, Unit>(
-        context = this,
-        layoutId = R.layout.loading_dialog_layout,
-        defaultState = Unit,
-        clearBackground = true,
-        outSizeCancelable = false
-    ) {}.apply { setCancelable(cancelable); show() }
+class LoadingDialog : BaseDialogFragment() {
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context).inflate(R.layout.loading_dialog_layout, parent, false)
+    }
+    override fun firstLaunchInitData() {}
+    override fun bindContentView(view: View) {}
+    override fun createDialog(contentView: View): Dialog {
+        isCancelable = false
+        return requireActivity().createDefaultDialog(
+            contentView = contentView,
+            isCancelable = false,
+            dimAmount = 0.0f
+        )
+    }
 }
 
-fun <T : Any> Single<T>.loadingDialog(context: Activity): Single<T> {
-    var dialog: Dialog? = null
-    return this.doOnSubscribe {
-        dialog = context.showLoadingDialog(false)
-    }.doFinally {
-        val dialogInternal = dialog
-        if (dialogInternal?.isShowing == true) { dialogInternal.cancel() }
+suspend fun <T> FragmentManager.loadingDialogSuspend(job: suspend () -> T): T {
+    val loadingDialog = LoadingDialog()
+    withContext(Dispatchers.Main.immediate) {
+        loadingDialog.show(this@loadingDialogSuspend, "LoadingDialog#${System.currentTimeMillis()}")
     }
+    val result = job()
+    withContext(Dispatchers.Main.immediate) {
+        loadingDialog.dismiss()
+    }
+    return result
 }

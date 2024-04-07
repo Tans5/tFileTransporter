@@ -24,6 +24,7 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ScanQrcodeActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.ui.BaseActivity
+import com.tans.tuiutils.systembar.annotation.FullScreenStyle
 import com.tbruyelle.rxpermissions3.RxPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 
+@FullScreenStyle
 class ScanQrCodeActivity : BaseActivity<ScanQrcodeActivityBinding, Unit>(
     layoutId = R.layout.scan_qrcode_activity,
     defaultState = Unit

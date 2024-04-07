@@ -16,6 +16,7 @@ import com.tans.tfiletransporter.ui.FileTreeUI
 import com.tans.tfiletransporter.ui.commomdialog.TextInputDialog
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialog
+import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import java.io.File
 
+@SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
 class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
     layoutId = R.layout.folder_select_activity,
     defaultState = Unit

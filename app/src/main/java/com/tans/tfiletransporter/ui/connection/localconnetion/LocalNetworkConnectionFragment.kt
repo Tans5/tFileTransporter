@@ -25,7 +25,7 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.requestFileTransferSuspend
 import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanClientSuspend
 import com.tans.tfiletransporter.ui.BaseFragment
-import com.tans.tfiletransporter.ui.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
 import com.tans.tfiletransporter.ui.qrcodescan.ScanQrCodeActivity
 import com.tans.tfiletransporter.utils.fromJson
@@ -159,40 +159,42 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             .flatMapSingle { (localAddress, scanResult) ->
                 if (scanResult.success) {
                     rxSingle(Dispatchers.Main) {
-                        val scanResultStrings = ScanQrCodeActivity.getResult(scanResult.data)
-                        val qrcodeShare = scanResultStrings.map { it.fromJson<QRCodeShare>() }.firstOrNull()
-                        if (qrcodeShare != null) {
-                            val scanClient = QRCodeScanClient(AndroidLog)
-                            runCatching {
-                                val serverAddress = qrcodeShare.address.toInetAddress()
-                                scanClient.startQRCodeScanClientSuspend(serverAddress)
-                                AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
-                                scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
-                                serverAddress
-                            }.onSuccess { serverAddress ->
-                                withContext(Dispatchers.Main) {
-                                    requireActivity().startActivity(
-                                        FileTransportActivity.getIntent(
-                                        context = requireContext(),
-                                        localAddress = localAddress,
-                                        remoteAddress = serverAddress,
-                                        remoteDeviceInfo = qrcodeShare.deviceName,
-                                        isServer = false
-                                    ))
+                        this@LocalNetworkConnectionFragment.childFragmentManager.loadingDialogSuspend {
+                            val scanResultStrings = ScanQrCodeActivity.getResult(scanResult.data)
+                            val qrcodeShare = scanResultStrings.map { it.fromJson<QRCodeShare>() }.firstOrNull()
+                            if (qrcodeShare != null) {
+                                val scanClient = QRCodeScanClient(AndroidLog)
+                                runCatching {
+                                    val serverAddress = qrcodeShare.address.toInetAddress()
+                                    scanClient.startQRCodeScanClientSuspend(serverAddress)
+                                    AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
+                                    scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
+                                    serverAddress
+                                }.onSuccess { serverAddress ->
+                                    withContext(Dispatchers.Main) {
+                                        requireActivity().startActivity(
+                                            FileTransportActivity.getIntent(
+                                                context = requireContext(),
+                                                localAddress = localAddress,
+                                                remoteAddress = serverAddress,
+                                                remoteDeviceInfo = qrcodeShare.deviceName,
+                                                isServer = false
+                                            ))
+                                    }
+                                }.onFailure {
+                                    withContext(Dispatchers.Main) {
+                                        requireActivity().showToastShort(getString(R.string.error_toast, it.message))
+                                    }
                                 }
-                            }.onFailure {
+                            } else {
+                                val msg = "Don't find any qrcode share: $scanResultStrings"
                                 withContext(Dispatchers.Main) {
-                                    requireActivity().showToastShort(getString(R.string.error_toast, it.message))
+                                    requireActivity().showToastShort(getString(R.string.error_toast, msg))
                                 }
+                                AndroidLog.e(TAG, msg)
                             }
-                        } else {
-                            val msg = "Don't find any qrcode share: $scanResultStrings"
-                            withContext(Dispatchers.Main) {
-                                requireActivity().showToastShort(getString(R.string.error_toast, msg))
-                            }
-                            AndroidLog.e(TAG, msg)
                         }
-                    }.loadingDialog(requireActivity())
+                    }
                 } else {
                     Single.just(Unit)
                 }

@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui
 
 import android.app.Activity
 import androidx.appcompat.widget.PopupMenu
+import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.jakewharton.rxbinding4.appcompat.itemClicks
 import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
@@ -20,7 +21,7 @@ import com.tans.tfiletransporter.databinding.FolderItemLayoutBinding
 import com.tans.tfiletransporter.file.FileLeaf
 import com.tans.tfiletransporter.file.FileTree
 import com.tans.tfiletransporter.file.isRootFileTree
-import com.tans.tfiletransporter.ui.commomdialog.loadingDialog
+import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.utils.dp2px
 import com.tans.tfiletransporter.utils.firstVisibleItemPosition
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -82,19 +83,21 @@ class FileTreeUI(
                 itemClicks = listOf { binding, _ ->
                     binding.root to { _, data ->
                         rxSingle(Dispatchers.IO) {
-                            val i = withContext(Dispatchers.Main) {
-                                this@FileTreeUI.binding.fileFolderRv.firstVisibleItemPosition()
+                            (binding.root.context as? FragmentActivity)?.let {
+                                it.supportFragmentManager.loadingDialogSuspend {
+                                    val i = withContext(Dispatchers.Main) {
+                                        this@FileTreeUI.binding.fileFolderRv.firstVisibleItemPosition()
+                                    }
+                                    folderPositionDeque.push(i)
+                                    val parentTree = bindState().firstOrError().await().fileTree
+                                    val newTree = subTreeUpdater(parentTree, data).await()
+                                    updateState { oldState ->
+                                        oldState.copy(fileTree = newTree, selectedFiles = emptyList())
+                                    }.await()
+                                }
                             }
-                            folderPositionDeque.push(i)
-                            val parentTree = bindState().firstOrError().await().fileTree
-                            val newTree = subTreeUpdater(parentTree, data).await()
-                            updateState { oldState ->
-                                oldState.copy(fileTree = newTree, selectedFiles = emptyList())
-                            }.await()
                             Unit
                         }
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .loadingDialog(context)
                     }
                 }
             ) + SimpleAdapterSpec<Pair<FileLeaf.CommonFileLeaf, Boolean>, FileItemLayoutBinding>(
