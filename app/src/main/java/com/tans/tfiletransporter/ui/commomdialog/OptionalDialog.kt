@@ -50,7 +50,7 @@ class OptionalDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, Bo
     override fun bindContentView(view: View) {
         val viewBinding = OptionalDialogLayoutBinding.bind(view)
         viewBinding.titleTv.text = title ?: ""
-        viewBinding.messageTv.text = title ?: ""
+        viewBinding.messageTv.text = message ?: ""
         viewBinding.positiveButton.text = positiveButtonText ?: ""
         viewBinding.negativeButton.text = negativeButtonText ?: ""
 
