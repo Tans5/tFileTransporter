@@ -7,12 +7,6 @@
         <item name="colorPrimaryDark">@color/teal_700</item>
 
         <item name="android:windowBackground">@color/white</item>
-        <!-- Status bar color. -->
-<!--        <item name="android:statusBarColor">@color/white</item>-->
-        <!-- Customize your theme here. -->
-
-        <item name="android:windowLightStatusBar">true</item>
-
         <item name="android:splitMotionEvents">false</item>
         <item name="android:windowEnableSplitTouch">false</item>
     </style>

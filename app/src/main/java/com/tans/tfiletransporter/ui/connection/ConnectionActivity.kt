@@ -22,7 +22,7 @@ import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 
-@SystemBarStyle
+@SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
 class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
     defaultState = Unit
 ) {
