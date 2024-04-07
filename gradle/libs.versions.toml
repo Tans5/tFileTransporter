@@ -12,7 +12,7 @@ annotaion = "1.7.1"
 constraintlayout = "2.1.4"
 lifecycle = "2.7.0"
 jetbrainsKotlinJvm = "1.9.22"
-googleKsp = "1.9.10-1.0.13"
+googleKsp = "1.9.23-1.0.19"
 flexbox = "3.0.0"
 rxjava3 = "3.1.8"
 rxkotlin3 = "3.0.1"
@@ -20,7 +20,7 @@ rxandroid3 = "3.0.2"
 corouines = "1.8.0"
 moshi = "1.15.0"
 netty = "4.1.86.Final"
-okio = "3.3.0"
+okio = "3.6.0"
 rxpermission = "0.12"
 rxbinding = "4.0.0"
 kodein = "7.2.0"
@@ -33,6 +33,7 @@ rxutils = "v0.3.4"
 threetenabp = "1.4.6"
 glide = "4.16.0"
 keyborad = "3.0.0-RC2"
+tuiutils = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -82,6 +83,7 @@ rxutils = { group = "com.github.Tans5", name = "RxUtils", version.ref = "rxutils
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenabp" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide"}
 keyboard = { group = "net.yslibrary.keyboardvisibilityevent", name = "keyboardvisibilityevent", version.ref = "keyborad" }
+tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
