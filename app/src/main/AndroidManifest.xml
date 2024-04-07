@@ -44,8 +44,9 @@
         <activity android:name=".ui.activity.connection.ConnectionActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
-            android:configChanges="orientation|screenSize"
-            android:exported="true">
+            android:configChanges="orientation|screenSize|uiMode"
+            android:exported="true"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -57,19 +58,22 @@
             android:windowSoftInputMode="adjustResize|stateHidden"
             android:launchMode="singleTask"
             android:taskAffinity=".transfer"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|uiMode"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
 
         <activity
             android:name=".ui.activity.qrcodescan.ScanQrCodeActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|uiMode"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
 
         <activity
             android:name=".ui.activity.folderselect.FolderSelectActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
-            android:configChanges="orientation|screenSize"/>
+            android:configChanges="orientation|screenSize|uiMode"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
 
     </application>
 

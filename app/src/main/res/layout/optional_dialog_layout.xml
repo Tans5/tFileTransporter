@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_gravity="center"
+    android:background="@drawable/common_dialog_bg"
+    android:layout_marginStart="?attr/dialogPreferredPadding"
+    android:layout_marginEnd="?attr/dialogPreferredPadding">
+
+    <TextView
+        android:id="@+id/title_tv"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/md_dialog_title_top_margin"
+        android:textSize="@dimen/md_dialog_title_text_size"
+        android:textColor="@color/md_dialog_title_color"
+        android:layout_marginStart="?attr/dialogPreferredPadding"
+        android:layout_marginEnd="?attr/dialogPreferredPadding"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Title" />
+
+    <TextView
+        android:id="@+id/message_tv"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/md_dialog_message_min_height"
+        android:textSize="@dimen/md_dialog_message_text_size"
+        android:textColor="@color/md_dialog_title_color"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginStart="?attr/dialogPreferredPadding"
+        android:layout_marginEnd="?attr/dialogPreferredPadding"
+        android:layout_marginTop="@dimen/md_dialog_message_top_margin"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/title_tv"
+        tools:text="xxxxxxxxxxxxxxxxxx1231313131312313123131"/>
+
+    <LinearLayout
+        android:id="@+id/action_button_layout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/md_dialog_button_layout_padding_horizontal"
+        android:layout_marginEnd="@dimen/md_dialog_button_layout_padding_horizontal"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:paddingTop="@dimen/md_dialog_button_layout_padding_vertical"
+        android:paddingBottom="@dimen/md_dialog_button_layout_padding_vertical"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/message_tv">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/negative_button"
+            style="?attr/buttonBarNegativeButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="NO" />
+
+        <Button
+            android:id="@+id/positive_button"
+            style="?attr/buttonBarNegativeButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="YES" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
