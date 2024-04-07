@@ -6,6 +6,7 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.JsonReader
 import com.squareup.moshi.JsonWriter
 import com.squareup.moshi.Moshi
+import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.android.androidCoreModule
@@ -27,6 +28,7 @@ class App : Application(), DIAware {
 
     override fun onCreate() {
         super.onCreate()
+        AutoApplySystemBarAnnotation.init(this)
         AndroidThreeTen.init(this)
         Settings.init(this)
     }

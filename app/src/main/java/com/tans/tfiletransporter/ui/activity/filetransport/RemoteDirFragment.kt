@@ -136,7 +136,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
                         fileExplore.requestDownloadFilesSuspend(exploreFiles)
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request download fails success.")
-                        val mineMax = Settings.transferFileMaxConnection().await()
+                        val mineMax = Settings.transferFileMaxConnection()
                         (requireActivity() as FileTransportActivity)
                             .downloadFiles(files = exploreFiles, Settings.fixTransferFileConnectionSize(min(it.maxConnection, mineMax)))
                     }.onFailure {

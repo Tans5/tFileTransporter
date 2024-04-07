@@ -3,22 +3,17 @@ package com.tans.tfiletransporter
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Environment
-import com.tans.tfiletransporter.core.Stateable
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.subjects.BehaviorSubject
-import io.reactivex.rxjava3.subjects.Subject
+import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tuiutils.state.CoroutineState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import java.io.File
-import java.io.IOException
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.max
+import kotlin.math.min
 
-object Settings : Stateable<Settings.SettingsData> {
-
-    override val stateStore: Subject<SettingsData> by lazy {
-        BehaviorSubject.createDefault(SettingsData()).toSerialized()
-    }
+object Settings : CoroutineState<Settings.SettingsData> by CoroutineState(SettingsData()) {
 
     private val ioExecutor: Executor by lazy {
         Dispatchers.IO.asExecutor()
@@ -32,46 +27,42 @@ object Settings : Stateable<Settings.SettingsData> {
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "tFileTransfer").canonicalPath
     }
 
-    private const val defaultConnectionSize = 6
-
-
-    const val minConnectionSize = 1
-    const val maxConnectionSize = 8
     fun init(context: Context) {
         ioExecutor.execute {
             val sp = context.getSharedPreferences(SP_FILE_NAME, Context.MODE_PRIVATE)
             this.sp.set(sp)
-            val s = updateState {
-                val storedDownloadDir = sp.getString(DOWNLOAD_DIR_KEY, defaultDownloadDir)?.let {
-                    if (isDirWriteable(it)) {
-                        it
-                    } else {
-                        sp.edit().let { et ->
-                            et.putString(DOWNLOAD_DIR_KEY, defaultDownloadDir)
-                            et.apply()
-                        }
-                        defaultDownloadDir
+
+            val storedDownloadDir = sp.getString(DOWNLOAD_DIR_KEY, defaultDownloadDir)?.let {
+                if (isDirWriteable(it)) {
+                    it
+                } else {
+                    sp.edit().let { et ->
+                        et.putString(DOWNLOAD_DIR_KEY, defaultDownloadDir)
+                        et.apply()
                     }
+                    defaultDownloadDir
                 }
-                SettingsData(
-                    downloadDir =  storedDownloadDir ?: defaultDownloadDir,
-                    shareMyDir = sp.getBoolean(SHARE_MY_DIR_KEY, true),
-                    transferFileMaxConnection = sp.getInt(MAX_CONNECTION_KEY, defaultConnectionSize),
+            } ?: defaultDownloadDir
+
+            val storedShareMyDir = sp.getBoolean(SHARE_MY_DIR_KEY, true)
+            val storedTransferFileMaxConnection = sp.getInt(MAX_CONNECTION_KEY, DEFAULT_CONNECTION_SIZE)
+            updateState { oldState ->
+                oldState.copy(
+                    downloadDir = storedDownloadDir,
+                    shareMyDir = storedShareMyDir,
+                    transferFileMaxConnection = storedTransferFileMaxConnection
                 )
-            }.blockingGet()
+            }
         }
     }
 
-    fun getSettings(): Single<SettingsData> = stateStore.firstOrError()
+    fun getDownloadDir(): String = stateFlow.value.downloadDir
 
-    fun getDownloadDir(): Single<String> = stateStore.firstOrError().map { it.downloadDir }
+    fun isShareMyDir(): Boolean = stateFlow.value.shareMyDir
 
-    fun isShareMyDir(): Single<Boolean> = stateStore.firstOrError().map { it.shareMyDir }
+    fun transferFileMaxConnection(): Int = stateFlow.value.transferFileMaxConnection
 
-    fun transferFileMaxConnection(): Single<Int> = stateStore.firstOrError()
-        .map { fixTransferFileConnectionSize(it.transferFileMaxConnection) }
-
-    fun updateDownloadDir(dir: String): Single<Unit>  {
+    fun updateDownloadDir(dir: String): Boolean  {
         return if (isDirWriteable(dir)) {
             updateState { s ->
                 if (dir != s.downloadDir) {
@@ -83,33 +74,48 @@ object Settings : Stateable<Settings.SettingsData> {
                 } else {
                     s
                 }
-            }.map { }
+            }
+            true
         } else {
-            Single.error(IOException("$dir is not writeable dir."))
+            AndroidLog.e(TAG, "$dir is not writeable dir.")
+            false
         }
     }
 
-    fun updateShareDir(shareDir: Boolean): Single<Unit> = updateState { s ->
-        sp.get()?.edit()?.let {
-            it.putBoolean(SHARE_MY_DIR_KEY, shareDir)
-            it.apply()
+    fun updateShareDir(shareDir: Boolean)  {
+        updateState { s ->
+            if (shareDir != s.shareMyDir) {
+                sp.get()?.edit()?.let {
+                    it.putBoolean(SHARE_MY_DIR_KEY, shareDir)
+                    it.apply()
+                }
+                s.copy(shareMyDir = shareDir)
+            } else {
+                s
+            }
         }
-        s.copy(shareMyDir = shareDir)
-    }.map {  }
+    }
 
-    fun updateTransferFileMaxConnection(maxConnection: Int): Single<Unit> = updateState { s ->
-        sp.get()?.edit()?.let {
-            it.putInt(MAX_CONNECTION_KEY, maxConnection)
-            it.apply()
+    fun updateTransferFileMaxConnection(maxConnection: Int) {
+        val fixedMaxConnection = max(MIN_CONNECTION_SIZE, min(MAX_CONNECTION_SIZE, maxConnection))
+        updateState { s ->
+            if (s.transferFileMaxConnection != fixedMaxConnection) {
+                sp.get()?.edit()?.let {
+                    it.putInt(MAX_CONNECTION_KEY, fixedMaxConnection)
+                    it.apply()
+                }
+                s.copy(transferFileMaxConnection = fixedMaxConnection)
+            } else {
+                s
+            }
         }
-        s.copy(transferFileMaxConnection = maxConnection)
-    }.map { }
+    }
 
     fun fixTransferFileConnectionSize(needToFix: Int): Int {
-        return if (needToFix in minConnectionSize .. maxConnectionSize) {
+        return if (needToFix in MIN_CONNECTION_SIZE .. MAX_CONNECTION_SIZE) {
             needToFix
         } else {
-            defaultConnectionSize
+            DEFAULT_CONNECTION_SIZE
         }
     }
 
@@ -119,14 +125,20 @@ object Settings : Stateable<Settings.SettingsData> {
     }
 
     data class SettingsData(
-        val downloadDir: String = defaultDownloadDir,
+        val downloadDir: String = "",
         val shareMyDir: Boolean = true,
-        val transferFileMaxConnection: Int = defaultConnectionSize,
+        val transferFileMaxConnection: Int = DEFAULT_CONNECTION_SIZE,
     )
+
+    const val DEFAULT_CONNECTION_SIZE = 6
+    const val MIN_CONNECTION_SIZE = 1
+    const val MAX_CONNECTION_SIZE = 8
 
     private const val SP_FILE_NAME = "settings"
 
     private const val DOWNLOAD_DIR_KEY = "download_dir"
     private const val SHARE_MY_DIR_KEY = "share_my_dir"
     private const val MAX_CONNECTION_KEY = "max_connection"
+
+    private const val TAG = "Settings"
 }

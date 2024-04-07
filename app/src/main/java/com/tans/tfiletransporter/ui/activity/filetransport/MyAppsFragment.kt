@@ -130,7 +130,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
                                 sendFiles = senderFiles.map { it.exploreFile },
-                                maxConnection = Settings.transferFileMaxConnection().await()
+                                maxConnection = Settings.transferFileMaxConnection()
                             )
                         }.onFailure {
                             AndroidLog.e(TAG, "Request send apps fail: $it", it)

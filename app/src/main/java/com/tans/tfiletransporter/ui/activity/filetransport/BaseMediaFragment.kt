@@ -206,7 +206,7 @@ abstract class BaseMediaFragment(
                         runCatching {
                             fileExplore.requestSendFilesSuspend(
                                 sendFiles = senderFiles.map { it.exploreFile },
-                                maxConnection = Settings.transferFileMaxConnection().await()
+                                maxConnection = Settings.transferFileMaxConnection()
                             )
                         }.onSuccess {
                             AndroidLog.d(TAG, "Request send image success")

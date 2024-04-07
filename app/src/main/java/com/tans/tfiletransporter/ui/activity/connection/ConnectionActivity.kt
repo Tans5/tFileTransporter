@@ -12,6 +12,7 @@ import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.ui.activity.BaseActivity
 import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
 import com.tans.tfiletransporter.ui.activity.commomdialog.showOptionalDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showSettingsDialog
 import kotlinx.coroutines.launch
 import kotlin.jvm.optionals.getOrNull
 import com.tbruyelle.rxpermissions3.RxPermissions
@@ -66,7 +67,7 @@ class ConnectionActivity : BaseActivity<ConnectionActivityBinding, Unit>(
 
         binding.toolBar.menu.findItem(R.id.settings).clicks()
             .doOnNext {
-                SettingsDialog(this).show()
+                this.supportFragmentManager.showSettingsDialog()
             }
             .bindLife()
 

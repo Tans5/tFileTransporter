@@ -1,98 +1,93 @@
 package com.tans.tfiletransporter.ui.activity.commomdialog
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import androidx.fragment.app.FragmentActivity
-import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
-import com.jakewharton.rxbinding4.view.clicks
-import com.jakewharton.rxbinding4.widget.checkedChanges
-import com.jakewharton.rxbinding4.widget.userChanges
+import android.content.Context
+import android.content.Intent
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.SeekBar
+import android.widget.SeekBar.OnSeekBarChangeListener
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.SettingsDialogBinding
-import com.tans.tfiletransporter.ui.activity.BaseCustomDialog
 import com.tans.tfiletransporter.ui.activity.folderselect.FolderSelectActivity
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.Single
+import com.tans.tuiutils.actresult.startActivityResultSuspend
+import com.tans.tuiutils.dialog.BaseCoroutineStateDialogFragment
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SettingsDialog(private val context: Activity) : BaseCustomDialog<SettingsDialogBinding, Unit>(
-    context = context,
-    layoutId = R.layout.settings_dialog,
-    defaultState = Unit,
+class SettingsDialog : BaseCoroutineStateDialogFragment<Settings.SettingsData>(
+    defaultState = Settings.currentState(),
 ) {
-    @SuppressLint("ClickableViewAccessibility")
-    override fun bindingStart(binding: SettingsDialogBinding) {
-        // To solve seekbar in dialog ui problem.
-        binding.root.setOnTouchListener { _, _ -> true }
-        binding.maxConnectionSb.min = Settings.minConnectionSize
-        binding.maxConnectionSb.max = Settings.maxConnectionSize
 
-        fun <T : Any> observeSingleFromUI(map: (Settings.SettingsData) -> T): Observable<T> {
-            return Settings.bindState()
-                .map(map)
-                .distinctUntilChanged()
-                .observeOn(AndroidSchedulers.mainThread())
+    override fun firstLaunchInitData() {
+        launch {
+            Settings.stateFlow()
+                .collect { newState -> updateState { newState } }
+        }
+    }
+
+    override fun bindContentView(view: View) {
+        val viewBinding = SettingsDialogBinding.bind(view)
+        viewBinding.maxConnectionSb.min = Settings.MIN_CONNECTION_SIZE
+        viewBinding.maxConnectionSb.max = Settings.MAX_CONNECTION_SIZE
+
+        renderStateNewCoroutine({ it.downloadDir }) { downloadDir ->
+            viewBinding.downloadDirTv.text = downloadDir
         }
 
-        observeSingleFromUI { it.downloadDir }
-            .doOnNext { binding.downloadDirTv.text = it }
-            .bindLife()
+        renderStateNewCoroutine({ it.shareMyDir }) { shareMyDir ->
+            viewBinding.shareMyDirSt.isChecked = shareMyDir
+        }
 
-        observeSingleFromUI { it.shareMyDir }
-            .doOnNext { binding.shareMyDirSt.isChecked = it }
-            .bindLife()
+        renderStateNewCoroutine({ it.transferFileMaxConnection }) { maxConnection ->
+            viewBinding.maxConnectionSb.progress = maxConnection
+            viewBinding.maxConnectionTv.text = maxConnection.toString()
+        }
 
-        observeSingleFromUI { it.transferFileMaxConnection }
-            .doOnNext {
-                binding.maxConnectionSb.progress = it
-                binding.maxConnectionTv.text = it.toString()
-            }
-            .bindLife()
-
-        binding.downloadDirEditIv.clicks()
-            .flatMapSingle {
-                rxSingle(Dispatchers.Main) {
-                    val result = (this@SettingsDialog.context as FragmentActivity)
-                        .startActivityAwaitResult<FolderSelectActivity>()
-                    val selectedFolder = FolderSelectActivity.getResult(result.data)
-                    if (!selectedFolder.isNullOrBlank()) {
-                        withContext(Dispatchers.IO) {
-                            runCatching {
-                                Settings.updateDownloadDir(selectedFolder).await()
-                            }
-                        }
+        viewBinding.downloadDirEditIv.clicks(this) {
+            val (_, resultData) = this@SettingsDialog.startActivityResultSuspend(Intent(this.context, FolderSelectActivity::class.java))
+            if (resultData != null) {
+                val selectedFolder = FolderSelectActivity.getResult(resultData)
+                if (!selectedFolder.isNullOrBlank()) {
+                    withContext(Dispatchers.IO) {
+                        Settings.updateDownloadDir(selectedFolder)
                     }
                 }
             }
-            .bindLife()
+        }
 
-        binding.downloadDirResetIv.clicks()
-            .flatMapSingle {
-                Settings.updateDownloadDir(Settings.defaultDownloadDir)
-                    .onErrorResumeNext { Single.just(Unit) }
+        viewBinding.downloadDirResetIv.clicks(coroutineScope = this, clickWorkOn = Dispatchers.IO) {
+            Settings.updateDownloadDir(Settings.defaultDownloadDir)
+        }
+
+        viewBinding.shareMyDirSt.setOnCheckedChangeListener { _, isChecked ->
+            Settings.updateShareDir(isChecked)
+        }
+        viewBinding.maxConnectionSb.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    Settings.updateTransferFileMaxConnection(progress)
+                }
             }
-            .bindLife()
 
-        binding.shareMyDirSt.checkedChanges()
-            .skipInitialValue()
-            .switchMapSingle {
-                Settings.updateShareDir(it)
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
             }
-            .bindLife()
 
-        binding.maxConnectionSb.userChanges()
-            .distinctUntilChanged()
-            .skip(1)
-            .switchMapSingle {
-                binding.maxConnectionTv.text = it.toString()
-                Settings.updateTransferFileMaxConnection(it)
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
             }
-            .bindLife()
-
+        })
     }
+
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context).inflate(R.layout.settings_dialog, parent, false)
+    }
+}
+
+fun FragmentManager.showSettingsDialog() {
+    val d = SettingsDialog()
+    d.show(this, "SettingsDialog#${System.currentTimeMillis()}")
 }

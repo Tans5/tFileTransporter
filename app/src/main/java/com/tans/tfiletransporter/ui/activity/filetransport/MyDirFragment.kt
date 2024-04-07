@@ -81,7 +81,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
                 rxSingle(Dispatchers.IO) {
                     val exploreFiles = selectedFiles.toList().toExploreFiles()
                     runCatching {
-                        fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles, maxConnection = Settings.transferFileMaxConnection().await())
+                        fileExplore.requestSendFilesSuspend(sendFiles = exploreFiles, maxConnection = Settings.transferFileMaxConnection())
                     }.onSuccess {
                         AndroidLog.d(TAG, "Request send files success: $it")
                         (requireActivity() as FileTransportActivity)

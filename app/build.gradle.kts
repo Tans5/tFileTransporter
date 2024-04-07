@@ -133,6 +133,7 @@ dependencies {
     // tans5
     implementation(libs.tadapter)
     implementation(libs.rxutils)
+    implementation(libs.tuiutils)
 
     // threetenabp
     implementation(libs.threetenabp)

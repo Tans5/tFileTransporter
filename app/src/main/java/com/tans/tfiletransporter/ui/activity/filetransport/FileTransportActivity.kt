@@ -38,6 +38,7 @@ import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.activity.commomdialog.SettingsDialog
+import com.tans.tfiletransporter.ui.activity.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
@@ -69,7 +70,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
-                return if (Settings.isShareMyDir().blockingGet()) {
+                return if (Settings.isShareMyDir()) {
                     request.scanChildren(this@FileTransportActivity)
                 } else {
                     ScanDirResp(
@@ -87,7 +88,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             override fun onRequest(isNew: Boolean, request: SendFilesReq): SendFilesResp {
                 if (isNew) {
                     launch {
-                        val mineMax = Settings.transferFileMaxConnection().await()
+                        val mineMax = Settings.transferFileMaxConnection()
                         downloadFiles(
                             request.sendFiles,
                             Settings.fixTransferFileConnectionSize(min(request.maxConnection, mineMax))
@@ -107,7 +108,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                         sendFiles(request.downloadFiles)
                     }
                 }
-                return DownloadFilesResp(maxConnection = Settings.transferFileMaxConnection().blockingGet())
+                return DownloadFilesResp(maxConnection = Settings.transferFileMaxConnection())
             }
         }
     }
@@ -252,7 +253,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
 
             binding.toolBar.menu.findItem(R.id.settings).clicks()
                 .doOnNext {
-                    SettingsDialog(this@FileTransportActivity).show()
+                    this@FileTransportActivity.supportFragmentManager.showSettingsDialog()
                 }
                 .bindLife()
 
@@ -371,7 +372,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             showFileDownloaderDialog(
                 senderAddress = intent.getRemoteAddress(),
                 files = fixedFiles,
-                downloadDir = File(Settings.getDownloadDir().await()),
+                downloadDir = File(Settings.getDownloadDir()),
                 maxConnectionSize = maxConnection
             )
         }
