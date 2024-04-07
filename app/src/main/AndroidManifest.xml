@@ -41,7 +41,7 @@
         android:theme="@style/Theme.TFileTransporter"
         tools:ignore="DataExtractionRules">
 
-        <activity android:name=".ui.activity.connection.ConnectionActivity"
+        <activity android:name=".ui.connection.ConnectionActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize|uiMode"
@@ -53,7 +53,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.tans.tfiletransporter.ui.activity.filetransport.FileTransportActivity"
+        <activity android:name="com.tans.tfiletransporter.ui.filetransport.FileTransportActivity"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize|stateHidden"
             android:launchMode="singleTask"
@@ -62,14 +62,14 @@
             tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
 
         <activity
-            android:name=".ui.activity.qrcodescan.ScanQrCodeActivity"
+            android:name=".ui.qrcodescan.ScanQrCodeActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize|uiMode"
             tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
 
         <activity
-            android:name=".ui.activity.folderselect.FolderSelectActivity"
+            android:name=".ui.folderselect.FolderSelectActivity"
             android:screenOrientation="portrait"
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize|uiMode"
