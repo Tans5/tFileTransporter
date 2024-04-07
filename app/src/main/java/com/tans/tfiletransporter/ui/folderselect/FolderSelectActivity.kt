@@ -14,7 +14,7 @@ import com.tans.tfiletransporter.file.newLocalSubTree
 import com.tans.tfiletransporter.ui.BaseActivity
 import com.tans.tfiletransporter.ui.FileTreeUI
 import com.tans.tfiletransporter.ui.commomdialog.TextInputDialog
-import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialog
+import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialog
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
@@ -72,10 +72,10 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                     if (inputResult is TextInputDialog.Companion.Result.Success) {
                         val tree = fileTreeUI.bindState().firstOrError().await().fileTree
                         if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
-                            this@FolderSelectActivity.showNoOptionalDialog(
+                            this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                                 title = getString(R.string.folder_select_create_folder_error),
                                 message = getString(R.string.folder_select_error_body, "Can't create new folder.")
-                            ).await()
+                            )
                         } else {
                             val createFolderResult = withContext(Dispatchers.IO) {
                                 try {
@@ -111,10 +111,11 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
             .flatMapSingle { (_, tree) ->
                 rxSingle(Dispatchers.Main) {
                     if (tree.isRootFileTree()) {
-                        this@FolderSelectActivity.showNoOptionalDialog(
+                        this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                             title = getString(R.string.folder_select_error_title),
                             message = getString(R.string.folder_select_error_body, "Root folder can't be selected.")
-                        ).await()
+                        )
+                        Unit
                     } else {
                         if (withContext(Dispatchers.IO) { Settings.isDirWriteable(tree.path) }) {
                             val i = Intent()
@@ -122,10 +123,11 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                             this@FolderSelectActivity.setResult(Activity.RESULT_OK, i)
                             finish()
                         } else {
-                            this@FolderSelectActivity.showNoOptionalDialog(
+                            this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                                 title = getString(R.string.folder_select_error_title),
                                 message = getString(R.string.folder_select_error_body, "Can't write in ${tree.path}")
-                            ).await()
+                            )
+                            Unit
                         }
                     }
                 }

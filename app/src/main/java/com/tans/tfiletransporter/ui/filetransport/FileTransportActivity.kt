@@ -33,10 +33,10 @@ import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
 import com.tans.tfiletransporter.ui.BaseActivity
 import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.ui.commomdialog.showLoadingDialog
-import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialog
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import io.reactivex.rxjava3.core.Observable
@@ -197,20 +197,20 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     })
                     fileExplore.waitClose()
                     withContext(Dispatchers.Main) {
-                        showNoOptionalDialog(
+                        this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                             title = getString(R.string.connection_error_title),
                             message = getString(R.string.connection_error_message)
-                        ).await()
+                        )
                         finish()
                     }
                 } else {
                     AndroidLog.e(TAG, "Handshake fail: $handshakeResult", handshakeResult.exceptionOrNull())
                     withContext(Dispatchers.Main) {
                         loadingDialog.dismiss()
-                        showNoOptionalDialog(
+                        this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                             title = getString(R.string.connection_error_title),
                             message = getString(R.string.connection_handshake_error, handshakeResult.exceptionOrNull()?.message ?: "")
-                        ).await()
+                        )
                         finish()
                     }
                 }
@@ -218,10 +218,10 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 AndroidLog.e(TAG, "Create connection fail: $connectResult", connectResult.exceptionOrNull())
                 withContext(Dispatchers.Main) {
                     loadingDialog.dismiss()
-                    showNoOptionalDialog(
+                    this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                         title = getString(R.string.connection_error_title),
                         message = getString(R.string.connection_connect_error, connectResult.exceptionOrNull()?.message ?: "")
-                    ).await()
+                    )
                     finish()
                 }
             }
@@ -353,10 +353,10 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
         if (result is FileTransferResult.Error) {
             withContext(Dispatchers.Main) {
-                showNoOptionalDialog(
+                this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                     title = getString(R.string.file_transfer_error_title),
                     message = result.msg
-                ).await()
+                )
             }
         }
         fileTransferMutex.unlock()
@@ -378,10 +378,10 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
         if (result is FileTransferResult.Error) {
             withContext(Dispatchers.Main) {
-                showNoOptionalDialog(
+                this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                     title = getString(R.string.file_transfer_error_title),
                     message = result.msg
-                ).await()
+                )
             }
         }
         fileTransferMutex.unlock()
