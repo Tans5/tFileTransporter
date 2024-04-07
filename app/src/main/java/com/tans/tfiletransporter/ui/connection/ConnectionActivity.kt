@@ -8,6 +8,8 @@ import android.os.Environment
 import android.provider.Settings
 import android.view.View
 import androidx.activity.addCallback
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
@@ -111,6 +113,12 @@ class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
         }
         tcLocalNetwork.setMaxLifecycle(localNetworkFragment, Lifecycle.State.RESUMED)
         tcLocalNetwork.commitAllowingStateLoss()
+
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.nestedScrollView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(0, 0, 0, systemBars.bottom)
+            insets
+        }
     }
 
     companion object {
