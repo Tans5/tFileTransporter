@@ -1,16 +1,15 @@
 package com.tans.tfiletransporter.ui.connection.localconnetion
 
-import android.app.Activity
-import android.os.Bundle
-import com.jakewharton.rxbinding4.view.clicks
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.QrCodeServerDialogBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.netty.toInt
-import com.tans.tfiletransporter.resumeExceptionIfActive
-import com.tans.tfiletransporter.resumeIfActive
-import com.tans.tfiletransporter.transferproto.SimpleCallback
 import com.tans.tfiletransporter.transferproto.TransferProtoConstant
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanServer
@@ -18,55 +17,54 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanServerObserv
 import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanState
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanServerSuspend
-import com.tans.tfiletransporter.ui.BaseCustomDialog
 import com.tans.tfiletransporter.utils.toJson
+import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
+import com.tans.tuiutils.dialog.DialogCancelableResultCallback
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.glxn.qrgen.android.QRCode
+import java.lang.ref.WeakReference
 import java.net.InetAddress
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
 
-class QRCodeServerDialog(
-    private val context: Activity,
-    private val localAddress: InetAddress,
-    private val simpleCallback: SimpleCallback<RemoteDevice>
-) : BaseCustomDialog<QrCodeServerDialogBinding, Unit>(
-    context = context,
-    layoutId = R.layout.qr_code_server_dialog,
-    defaultState = Unit,
-    outSizeCancelable = false
-) {
-
-    private val hasInvokeCallback: AtomicBoolean = AtomicBoolean(false)
+class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, RemoteDevice> {
 
     private val qrcodeServer: QRCodeScanServer by lazy {
         QRCodeScanServer(log = AndroidLog)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setCancelable(false)
+    private val localAddress: InetAddress?
+    constructor() : super(Unit, null) {
+        localAddress = null
     }
 
-    override fun bindingStart(binding: QrCodeServerDialogBinding) {
-        binding.cancelButton.clicks()
-            .doOnNext {
-                errorCallback("User cancel.")
-                cancel()
-            }
-            .bindLife()
+    constructor(localAddress: InetAddress, callback: DialogCancelableResultCallback<RemoteDevice>) : super(Unit, callback) {
+        this.localAddress = localAddress
+    }
+
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context).inflate(R.layout.qr_code_server_dialog, parent, false)
+    }
+
+    override fun firstLaunchInitData() {}
+
+    override fun bindContentView(view: View) {
+        val localAddress = this.localAddress ?: return
+        val viewBinding = QrCodeServerDialogBinding.bind(view)
+
+        viewBinding.cancelButton.clicks(this) {
+            onCancel()
+        }
 
         launch(Dispatchers.IO) {
             qrcodeServer.addObserver(object : QRCodeScanServerObserver {
                 override fun requestTransferFile(remoteDevice: RemoteDevice) {
                     AndroidLog.d(TAG, "Receive request: $remoteDevice")
-                    successCallback(remoteDevice)
-                    context.runOnUiThread {
-                        cancel()
-                    }
+                    onResult(remoteDevice)
                 }
 
                 override fun onNewState(state: QRCodeScanState) {
@@ -86,64 +84,51 @@ class QRCodeServerDialog(
                     QRCode.from(qrcodeContent).withSize(320, 320).bitmap()
                 }.onSuccess {
                     withContext(Dispatchers.Main) {
-                        binding.qrCodeIv.setImageBitmap(it)
+                        viewBinding.qrCodeIv.setImageBitmap(it)
                     }
                 }.onFailure {
                     AndroidLog.e(TAG, "Create qrcode fail: ${it.message}", it)
-                    errorCallback("Create qrcode bitmap fail.")
-                    withContext(Dispatchers.Main) {
-                        cancel()
-                    }
+                    onCancel()
                 }
             }.onFailure {
-                val eMsg = "Bind address: $localAddress fail"
-                AndroidLog.e(TAG, eMsg)
-                errorCallback(eMsg)
-                withContext(Dispatchers.Main) {
-                    cancel()
-                }
+                AndroidLog.e(TAG, "Bind address: $localAddress fail.")
+                onCancel()
             }
         }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        errorCallback("Dialog destroyed.")
+    override fun onDestroy() {
+        super.onDestroy()
         Dispatchers.IO.asExecutor().execute {
             Thread.sleep(1000)
             qrcodeServer.closeConnectionIfActive()
         }
     }
 
-    private fun errorCallback(msg: String) {
-        if (hasInvokeCallback.compareAndSet(false, true)) {
-            simpleCallback.onError(msg)
-        }
-    }
-
-    private fun successCallback(remoteDevice: RemoteDevice) {
-        if (hasInvokeCallback.compareAndSet(false, true)) {
-            simpleCallback.onSuccess(remoteDevice)
-        }
-    }
-
     companion object {
         private const val TAG = "QRCodeServerDialog"
     }
-
 }
 
-suspend fun Activity.showQRCodeServerDialogSuspend(localAddress: InetAddress): RemoteDevice = suspendCancellableCoroutine { cont ->
-    QRCodeServerDialog(
-        context = this,
-        localAddress = localAddress,
-        simpleCallback = object : SimpleCallback<RemoteDevice> {
-            override fun onSuccess(data: RemoteDevice) {
-                cont.resumeIfActive(data)
+suspend fun FragmentManager.showQRCodeServerDialogSuspend(localAddress: InetAddress): RemoteDevice? {
+    return suspendCancellableCoroutine { cont ->
+        val d = QRCodeServerDialog(localAddress, object : DialogCancelableResultCallback<RemoteDevice> {
+            override fun onCancel() {
+                if (cont.isActive) {
+                    cont.resume(null)
+                }
             }
-            override fun onError(errorMsg: String) {
-                cont.resumeExceptionIfActive(Throwable(errorMsg))
+
+            override fun onResult(t: RemoteDevice) {
+                if (cont.isActive) {
+                    cont.resume(t)
+                }
             }
+        })
+        d.show(this, "QRCodeServerDialog#${System.currentTimeMillis()}")
+        val wd = WeakReference(d)
+        cont.invokeOnCancellation {
+            wd.get()?.dismissSafe()
         }
-    ).show()
+    }
 }

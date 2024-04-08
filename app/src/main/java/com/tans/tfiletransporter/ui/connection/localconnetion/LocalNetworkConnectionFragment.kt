@@ -209,17 +209,18 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             .map { it.get() }
             .flatMapSingle { localAddress ->
                 rxSingle(Dispatchers.Main) {
-                    runCatching {
-                        requireActivity().showQRCodeServerDialogSuspend(localAddress)
-                    }.onSuccess { remoteAddress ->
-                        requireActivity().startActivity(
-                            FileTransportActivity.getIntent(
-                            context = requireContext(),
-                            localAddress = localAddress,
-                            remoteAddress = remoteAddress.remoteAddress.address,
-                            remoteDeviceInfo = remoteAddress.deviceName,
-                            isServer = true
-                        ))
+                    val remoteAddress = childFragmentManager.showQRCodeServerDialogSuspend(localAddress)
+                    if (remoteAddress != null) {
+                        withContext(Dispatchers.Main.immediate) {
+                            requireActivity().startActivity(
+                                FileTransportActivity.getIntent(
+                                    context = requireContext(),
+                                    localAddress = localAddress,
+                                    remoteAddress = remoteAddress.remoteAddress.address,
+                                    remoteDeviceInfo = remoteAddress.deviceName,
+                                    isServer = true
+                                ))
+                        }
                     }
                 }
             }
