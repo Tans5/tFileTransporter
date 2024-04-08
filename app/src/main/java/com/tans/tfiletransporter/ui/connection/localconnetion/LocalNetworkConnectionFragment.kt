@@ -264,23 +264,20 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             .map { it.get() }
             .switchMapSingle { localAddress ->
                 rxSingle {
-                    runCatching {
-                        withContext(Dispatchers.Main) {
-                            requireActivity().showSenderDialog(localAddress)
-                        }
-                    }.onSuccess {
-                        withContext(Dispatchers.Main) {
+                    val remoteDevice = withContext(Dispatchers.Main) {
+                        childFragmentManager.showBroadcastSenderDialogSuspend(localAddress)
+                    }
+                    if (remoteDevice != null) {
+                        withContext(Dispatchers.Main.immediate) {
                             startActivity(
                                 FileTransportActivity.getIntent(
-                                context = requireContext(),
-                                localAddress = localAddress,
-                                remoteAddress = it.remoteAddress.address,
-                                remoteDeviceInfo = it.deviceName,
-                                isServer = true
-                            ))
+                                    context = requireContext(),
+                                    localAddress = localAddress,
+                                    remoteAddress = remoteDevice.remoteAddress.address,
+                                    remoteDeviceInfo = remoteDevice.deviceName,
+                                    isServer = true
+                                ))
                         }
-                    }.onFailure {
-                        AndroidLog.e(TAG, "Wait client error: ${it.message}")
                     }
                     Unit
                 }
