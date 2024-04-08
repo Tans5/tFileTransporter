@@ -334,11 +334,11 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
                 val itemViewBinding = RemoteServerItemLayoutBinding.bind(view)
                 itemViewBinding.remoteDeviceTv.text = data.deviceName
                 itemViewBinding.ipAddressTv.text = "Mac address: ${data.macAddress}"
-                itemViewBinding.root.clicks(this) {
+                itemViewBinding.root.clicks(coroutineScope = this, clickWorkOn = Dispatchers.IO) {
                     if (connectionMutex.isLocked) { return@clicks }
                     connectionMutex.lock()
                     val connection = currentState().wifiP2PConnection.getOrNull()
-                    if (connection != null) {
+                    if (connection == null) {
                         val config = WifiP2pConfig()
                         config.deviceAddress = data.macAddress
                         updateState { it.copy(connectionStatus = ConnectionStatus.Connecting) }
