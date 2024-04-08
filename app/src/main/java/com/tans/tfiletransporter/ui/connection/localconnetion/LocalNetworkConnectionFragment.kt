@@ -7,12 +7,7 @@ import android.content.IntentFilter
 import android.net.*
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
-import com.afollestad.inlineactivityresult.coroutines.startActivityAwaitResult
-import com.jakewharton.rxbinding4.view.clicks
-import com.tans.rxutils.ignoreSeveralClicks
-import com.tans.tadapter.adapter.DifferHandler
-import com.tans.tadapter.spec.SimpleAdapterSpec
-import com.tans.tadapter.spec.toAdapter
+import android.view.View
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.LocalAddressItemLayoutBinding
 import com.tans.tfiletransporter.databinding.LocalNetworkConnectionFragmentBinding
@@ -24,29 +19,33 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanClient
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.requestFileTransferSuspend
 import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanClientSuspend
-import com.tans.tfiletransporter.ui.BaseFragment
-import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
 import com.tans.tfiletransporter.ui.qrcodescan.ScanQrCodeActivity
 import com.tans.tfiletransporter.utils.fromJson
 import com.tans.tfiletransporter.utils.showToastShort
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.kotlin.withLatestFrom
+import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
-import org.kodein.di.instance
 import java.net.InetAddress
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
+import androidx.core.content.getSystemService
+import com.tans.tuiutils.actresult.startActivityResultSuspend
+import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
+import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
+import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
+import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
+import com.tans.tuiutils.view.clicks
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
 
-class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragmentBinding, LocalNetworkConnectionFragment.Companion.LocalNetworkState>(
-    layoutId = R.layout.local_network_connection_fragment,
-    default = LocalNetworkState()
+class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkConnectionFragment.Companion.LocalNetworkState>(
+    defaultState = LocalNetworkState()
 ) {
 
-    private val connectivityManager: ConnectivityManager by instance()
+    private val connectivityManager: ConnectivityManager? by lazy {
+        requireActivity().getSystemService()
+    }
 
     private val networkRequest: NetworkRequest by lazy {
         NetworkRequest.Builder()
@@ -85,206 +84,162 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             }
         }
     }
+    override val layoutId: Int = R.layout.local_network_connection_fragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        connectivityManager.registerNetworkCallback(networkRequest, netWorkerCallback)
+        connectivityManager?.registerNetworkCallback(networkRequest, netWorkerCallback)
         val wifiApIf = IntentFilter()
         // wifiApIf.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
         wifiApIf.addAction("android.net.conn.TETHER_STATE_CHANGED")
         requireContext().registerReceiver(wifiApChangeBroadcastReceiver, wifiApIf)
-
         val wifiP2pConnFilter = IntentFilter()
         wifiP2pConnFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         requireContext().registerReceiver(wifiP2pConnectionBroadcastReceiver, wifiP2pConnFilter)
     }
 
-    override fun initViews(binding: LocalNetworkConnectionFragmentBinding) {
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
-        render({ it.availableAddresses }) {
-            AndroidLog.d(TAG, "Available addresses: $it")
-        }.bindLife()
+    override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        val viewBinding = LocalNetworkConnectionFragmentBinding.bind(contentView)
 
-        val selectAddressChangePayload = Any()
-        binding.localAddressesRv.adapter = SimpleAdapterSpec<Pair<InetAddress, Boolean>, LocalAddressItemLayoutBinding>(
-            layoutId = R.layout.local_address_item_layout,
-            bindData = { _, data, lBinding ->
-                lBinding.addressRb.isChecked = data.second
-                lBinding.addressTv.text = data.first.toString().removePrefix("/")
-            },
-            itemClicks = listOf { lBinding, _ ->
-                lBinding.root to { _, data ->
-                    rxSingle {
-                        updateState { oldState ->
-                            oldState.copy(selectedAddress = Optional.of(data.first))
-                        }.await()
-                        Unit
+        val addressAdapterBuilder = SimpleAdapterBuilderImpl<Pair<InetAddress, Boolean>>(
+            itemViewCreator = SingleItemViewCreatorImpl(R.layout.local_address_item_layout),
+            dataSource = FlowDataSourceImpl(
+                dataFlow = stateFlow
+                    .map {
+                        val selected = it.selectedAddress.getOrNull()
+                        val available = it.availableAddresses
+                        available.map { address ->
+                            address to (address == selected)
+                        }
+                    },
+                areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first },
+                getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
+            ),
+            dataBinder = DataBinderImpl<Pair<InetAddress, Boolean>> { data, view, _ ->
+                val itemViewBinding = LocalAddressItemLayoutBinding.bind(view)
+                itemViewBinding.addressTv.text = data.first.toString().removePrefix("/")
+                itemViewBinding.root.clicks(this@bindContentViewCoroutine) {
+                    updateState { s ->
+                        s.copy(selectedAddress = Optional.of(data.first))
                     }
                 }
-            },
-            differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first == d2.first },
-                contentTheSame = { d1, d2 -> d1 == d2 },
-                changePayLoad = { d1, d2 ->
-                    if (d1.first == d2.first && d1.second != d2.second) {
-                        selectAddressChangePayload
-                    } else {
-                        null
-                    }
-                }),
-            bindDataPayload = { _, data, lBinding, payloads ->
-                if (payloads.contains(selectAddressChangePayload)) {
-                    lBinding.addressRb.isChecked = data.second
-                    true
-                } else {
-                    false
-                }
-            },
-            dataUpdater = bindState()
-                .map { it.selectedAddress to it.availableAddresses }
-                .distinctUntilChanged()
-                .map { it.second.map { address -> address to (address == it.first.getOrNull()) } }
-        ).toAdapter()
-
-        binding.scanQrCodeLayout.clicks()
-            .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.selectedAddress })
-            .map { it.second }
-            .filter { it.isPresent }
-            .map { it.get() }
-            .flatMapSingle {
-                rxSingle(Dispatchers.Main) {
-                    it to startActivityAwaitResult<ScanQrCodeActivity>()
-                }
+            }.addPayloadDataBinder(Unit) { data, view, _ ->
+                val itemViewBinding = LocalAddressItemLayoutBinding.bind(view)
+                itemViewBinding.addressRb.isChecked = data.second
             }
-            .flatMapSingle { (localAddress, scanResult) ->
-                if (scanResult.success) {
-                    rxSingle(Dispatchers.Main) {
-                        this@LocalNetworkConnectionFragment.childFragmentManager.loadingDialogSuspend {
-                            val scanResultStrings = ScanQrCodeActivity.getResult(scanResult.data)
-                            val qrcodeShare = scanResultStrings.map { it.fromJson<QRCodeShare>() }.firstOrNull()
-                            if (qrcodeShare != null) {
-                                val scanClient = QRCodeScanClient(AndroidLog)
-                                runCatching {
-                                    val serverAddress = qrcodeShare.address.toInetAddress()
-                                    scanClient.startQRCodeScanClientSuspend(serverAddress)
-                                    AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
-                                    scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
-                                    serverAddress
-                                }.onSuccess { serverAddress ->
-                                    withContext(Dispatchers.Main) {
-                                        requireActivity().startActivity(
-                                            FileTransportActivity.getIntent(
-                                                context = requireContext(),
-                                                localAddress = localAddress,
-                                                remoteAddress = serverAddress,
-                                                remoteDeviceInfo = qrcodeShare.deviceName,
-                                                isServer = false
-                                            ))
-                                    }
-                                }.onFailure {
-                                    withContext(Dispatchers.Main) {
-                                        requireActivity().showToastShort(getString(R.string.error_toast, it.message))
-                                    }
-                                }
-                            } else {
-                                val msg = "Don't find any qrcode share: $scanResultStrings"
-                                withContext(Dispatchers.Main) {
-                                    requireActivity().showToastShort(getString(R.string.error_toast, msg))
-                                }
-                                AndroidLog.e(TAG, msg)
+        )
+        viewBinding.localAddressesRv.adapter = addressAdapterBuilder.build()
+
+        // Scan QrCode
+        viewBinding.scanQrCodeLayout.clicks(this) {
+            val selectedAddress = currentState().selectedAddress.getOrNull()
+            if (selectedAddress != null) {
+                val (_, resultData) = startActivityResultSuspend(Intent(requireActivity(), ScanQrCodeActivity::class.java))
+                if (resultData != null) {
+                    val scanResultStrings = ScanQrCodeActivity.getResult(resultData)
+                    val qrcodeShare = scanResultStrings.map { it.fromJson<QRCodeShare>() }.firstOrNull()
+                    if (qrcodeShare != null) {
+                        val scanClient = QRCodeScanClient(AndroidLog)
+                        runCatching {
+                            val serverAddress = qrcodeShare.address.toInetAddress()
+                            scanClient.startQRCodeScanClientSuspend(serverAddress)
+                            AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
+                            withContext(Dispatchers.IO) {
+                                scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
+                            }
+                            serverAddress
+                        }.onSuccess { serverAddress ->
+                            withContext(Dispatchers.Main) {
+                                requireActivity().startActivity(
+                                    FileTransportActivity.getIntent(
+                                        context = requireContext(),
+                                        localAddress = selectedAddress,
+                                        remoteAddress = serverAddress,
+                                        remoteDeviceInfo = qrcodeShare.deviceName,
+                                        isServer = false
+                                    ))
+                            }
+                        }.onFailure {
+                            withContext(Dispatchers.Main) {
+                                requireActivity().showToastShort(getString(R.string.error_toast, it.message))
                             }
                         }
                     }
-                } else {
-                    Single.just(Unit)
                 }
             }
-            .bindLife()
+        }
 
-        binding.showQrCodeLayout.clicks()
-            .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.selectedAddress })
-            .map { it.second }
-            .filter { it.isPresent }
-            .map { it.get() }
-            .flatMapSingle { localAddress ->
-                rxSingle(Dispatchers.Main) {
-                    val remoteAddress = childFragmentManager.showQRCodeServerDialogSuspend(localAddress)
-                    if (remoteAddress != null) {
-                        withContext(Dispatchers.Main.immediate) {
-                            requireActivity().startActivity(
-                                FileTransportActivity.getIntent(
-                                    context = requireContext(),
-                                    localAddress = localAddress,
-                                    remoteAddress = remoteAddress.remoteAddress.address,
-                                    remoteDeviceInfo = remoteAddress.deviceName,
-                                    isServer = true
-                                ))
-                        }
+        // Show QrCode
+        viewBinding.showQrCodeLayout.clicks(this) {
+            val selectedAddress = currentState().selectedAddress.getOrNull()
+            if (selectedAddress != null) {
+                val remoteAddress = childFragmentManager.showQRCodeServerDialogSuspend(selectedAddress)
+                if (remoteAddress != null) {
+                    withContext(Dispatchers.Main.immediate) {
+                        requireActivity().startActivity(
+                            FileTransportActivity.getIntent(
+                                context = requireContext(),
+                                localAddress = selectedAddress,
+                                remoteAddress = remoteAddress.remoteAddress.address,
+                                remoteDeviceInfo = remoteAddress.deviceName,
+                                isServer = true
+                            ))
                     }
                 }
             }
-            .bindLife()
+        }
 
-        binding.searchServerLayout.clicks()
-            .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.selectedAddress })
-            .map { it.second }
-            .filter { it.isPresent }
-            .map { it.get() }
-            .switchMapSingle { localAddress ->
-                rxSingle {
-                    val remoteDevice =
-                        childFragmentManager.showBroadcastReceiverDialogSuspend(localAddress)
-                    if (remoteDevice != null) {
-                        withContext(Dispatchers.Main.immediate) {
-                            startActivity(
-                                FileTransportActivity.getIntent(
-                                    context = requireContext(),
-                                    localAddress = localAddress,
-                                    remoteAddress = remoteDevice.remoteAddress.address,
-                                    remoteDeviceInfo = remoteDevice.deviceName,
-                                    isServer = false
-                                )
+        // Search Servers
+        viewBinding.searchServerLayout.clicks(this) {
+            val selectedAddress = currentState().selectedAddress.getOrNull()
+            if (selectedAddress != null) {
+                val remoteDevice =
+                    childFragmentManager.showBroadcastReceiverDialogSuspend(selectedAddress)
+                if (remoteDevice != null) {
+                    withContext(Dispatchers.Main.immediate) {
+                        startActivity(
+                            FileTransportActivity.getIntent(
+                                context = requireContext(),
+                                localAddress = selectedAddress,
+                                remoteAddress = remoteDevice.remoteAddress.address,
+                                remoteDeviceInfo = remoteDevice.deviceName,
+                                isServer = false
                             )
-                        }
+                        )
                     }
                 }
             }
-            .bindLife()
+        }
 
-        binding.asServerLayout.clicks()
-            .ignoreSeveralClicks()
-            .withLatestFrom(bindState().map { it.selectedAddress })
-            .map { it.second }
-            .filter { it.isPresent }
-            .map { it.get() }
-            .switchMapSingle { localAddress ->
-                rxSingle {
-                    val remoteDevice = withContext(Dispatchers.Main) {
-                        childFragmentManager.showBroadcastSenderDialogSuspend(localAddress)
+        // As Server
+        viewBinding.asServerLayout.clicks(this) {
+            val selectedAddress = currentState().selectedAddress.getOrNull()
+            if (selectedAddress != null) {
+                val remoteDevice = withContext(Dispatchers.Main) {
+                    childFragmentManager.showBroadcastSenderDialogSuspend(selectedAddress)
+                }
+                if (remoteDevice != null) {
+                    withContext(Dispatchers.Main.immediate) {
+                        startActivity(
+                            FileTransportActivity.getIntent(
+                                context = requireContext(),
+                                localAddress = selectedAddress,
+                                remoteAddress = remoteDevice.remoteAddress.address,
+                                remoteDeviceInfo = remoteDevice.deviceName,
+                                isServer = true
+                            ))
                     }
-                    if (remoteDevice != null) {
-                        withContext(Dispatchers.Main.immediate) {
-                            startActivity(
-                                FileTransportActivity.getIntent(
-                                    context = requireContext(),
-                                    localAddress = localAddress,
-                                    remoteAddress = remoteDevice.remoteAddress.address,
-                                    remoteDeviceInfo = remoteDevice.deviceName,
-                                    isServer = true
-                                ))
-                        }
-                    }
-                    Unit
                 }
             }
-            .bindLife()
+        }
     }
 
     private fun updateAddress() {
+        val availableAddresses = findLocalAddressV4()
+        AndroidLog.d(TAG, "AvailableAddress: $availableAddresses")
         updateState { oldState ->
-            val availableAddresses = findLocalAddressV4()
             if (availableAddresses.isEmpty()) {
                 oldState.copy(selectedAddress = Optional.empty(), availableAddresses = emptyList())
             } else {
@@ -303,12 +258,12 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
                     availableAddresses = availableAddresses
                 )
             }
-        }.bindLife()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        connectivityManager.unregisterNetworkCallback(netWorkerCallback)
+        connectivityManager?.unregisterNetworkCallback(netWorkerCallback)
         requireContext().unregisterReceiver(wifiApChangeBroadcastReceiver)
         requireContext().unregisterReceiver(wifiP2pConnectionBroadcastReceiver)
     }
