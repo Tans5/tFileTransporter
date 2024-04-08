@@ -94,7 +94,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                                     val dirLeaf = parentTree?.dirLeafs?.find { it.path == oldTree.path }
                                     if (parentTree != null && dirLeaf != null) {
                                         oldState.copy(
-                                            fileTree = parentTree.newLocalSubTree(dirLeaf)
+                                            fileTree = parentTree.newLocalSubTree(dirLeaf).copy(fileLeafs = emptyList())
                                         )
                                     } else {
                                         oldState
