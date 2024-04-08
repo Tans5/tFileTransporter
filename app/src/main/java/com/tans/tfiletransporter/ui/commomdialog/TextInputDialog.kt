@@ -1,74 +1,94 @@
 package com.tans.tfiletransporter.ui.commomdialog
 
-import android.app.Activity
+import android.content.Context
+import android.os.IBinder
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.getSystemService
-import com.jakewharton.rxbinding4.view.clicks
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.TextInputDialogBinding
-import com.tans.tfiletransporter.resumeIfActive
-import com.tans.tfiletransporter.ui.BaseCustomDialog
+import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
+import com.tans.tuiutils.dialog.DialogCancelableResultCallback
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.concurrent.atomic.AtomicBoolean
+import java.lang.ref.WeakReference
+import kotlin.coroutines.resume
 
-class TextInputDialog(
-    private val context: Activity,
-    private val hintText: String,
-    private val callback: (r: Result) -> Unit) : BaseCustomDialog<TextInputDialogBinding, Unit>(
-    context = context,
-    layoutId = R.layout.text_input_dialog,
-    defaultState = Unit
-) {
+class TextInputDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, String> {
 
-    private val hasInvokeCallback: AtomicBoolean = AtomicBoolean(false)
+    private val hintText: String?
 
-    override fun bindingStart(binding: TextInputDialogBinding) {
-        super.bindingStart(binding)
-        setOnCancelListener {
-            if (hasInvokeCallback.compareAndSet(false, true)) {
-                callback(Result.Canceled)
-            }
-            val inputMethodManager = context.getSystemService<InputMethodManager>()
-            inputMethodManager?.hideSoftInputFromWindow(binding.textEt.windowToken, 0)
-        }
-        binding.textEt.hint = hintText
-
-        binding.cancelBt.clicks()
-            .doOnNext {
-                cancel()
-            }
-            .bindLife()
-
-        binding.okBt.clicks()
-            .doOnNext {
-                val text = binding.textEt.text?.toString()
-                if (!text.isNullOrBlank()) {
-                    if (hasInvokeCallback.compareAndSet(false, true)) {
-                        callback(Result.Success(text))
-                    }
-                }
-                binding.textEt.clearFocus()
-                cancel()
-            }
-            .bindLife()
+    constructor() : super(Unit , null) {
+        hintText = null
+    }
+    constructor(hintText: String, callback: DialogCancelableResultCallback<String>) : super(Unit, callback) {
+        this.hintText = hintText
     }
 
-    companion object {
-        sealed class Result {
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context).inflate(R.layout.text_input_dialog, parent, false)
+    }
 
-            data class Success(val text: String) : Result()
+    override fun firstLaunchInitData() {
 
-            object Canceled : Result()
+    }
+
+    private var editWindowToken: IBinder? = null
+    override fun bindContentView(view: View) {
+        val viewBinding = TextInputDialogBinding.bind(view)
+        viewBinding.textEt.hint = hintText ?: ""
+        viewBinding.cancelBt.clicks(this) {
+            onCancel()
+            viewBinding.textEt.clearFocus()
+        }
+        viewBinding.okBt.clicks(this) {
+            val text = viewBinding.textEt.text?.toString()
+            if (!text.isNullOrBlank()) {
+                onResult(text)
+            } else {
+                onCancel()
+            }
+            viewBinding.textEt.clearFocus()
+        }
+        editWindowToken = viewBinding.textEt.windowToken
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val ctx = context
+        val windowToken = this.editWindowToken
+        if (ctx != null && windowToken != null) {
+            val inputMethodManager = ctx.getSystemService<InputMethodManager>()
+            inputMethodManager?.hideSoftInputFromWindow(windowToken, 0)
         }
     }
 }
 
-suspend fun Activity.showTextInputDialog(hintText: String): TextInputDialog.Companion.Result = suspendCancellableCoroutine { cont ->
-    TextInputDialog(
-        context = this,
-        hintText = hintText,
-        callback = { r ->
-            cont.resumeIfActive(r)
+suspend fun FragmentManager.showTextInputDialogSuspend(hintText: String): String? {
+    return suspendCancellableCoroutine { cont ->
+        val d = TextInputDialog(
+            hintText = hintText,
+            callback = object : DialogCancelableResultCallback<String> {
+                override fun onResult(t: String) {
+                    if (cont.isActive) {
+                        cont.resume(t)
+                    }
+                }
+
+                override fun onCancel() {
+                    if (cont.isActive) {
+                        cont.resume(null)
+                    }
+                }
+            }
+        )
+        d.show(this, "TextInputDialog#${System.currentTimeMillis()}")
+        val wd = WeakReference(d)
+        cont.invokeOnCancellation {
+            wd.get()?.dismissSafe()
         }
-    ).show()
+    }
 }

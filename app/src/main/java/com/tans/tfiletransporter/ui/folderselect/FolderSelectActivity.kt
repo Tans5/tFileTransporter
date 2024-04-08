@@ -13,9 +13,8 @@ import com.tans.tfiletransporter.file.isRootFileTree
 import com.tans.tfiletransporter.file.newLocalSubTree
 import com.tans.tfiletransporter.ui.BaseActivity
 import com.tans.tfiletransporter.ui.FileTreeUI
-import com.tans.tfiletransporter.ui.commomdialog.TextInputDialog
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
-import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialog
+import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialogSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
@@ -70,8 +69,8 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
         binding.toolBar.menu.findItem(R.id.create_new_folder).clicks()
             .flatMapSingle {
                 rxSingle(Dispatchers.Main) {
-                    val inputResult = this@FolderSelectActivity.showTextInputDialog(getString(R.string.folder_select_create_new_folder_hint))
-                    if (inputResult is TextInputDialog.Companion.Result.Success) {
+                    val inputResult = this@FolderSelectActivity.supportFragmentManager.showTextInputDialogSuspend(getString(R.string.folder_select_create_new_folder_hint))
+                    if (inputResult != null) {
                         val tree = fileTreeUI.bindState().firstOrError().await().fileTree
                         if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
                             this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
@@ -81,7 +80,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                         } else {
                             val createFolderResult = withContext(Dispatchers.IO) {
                                 try {
-                                    val f = File(tree.path, inputResult.text)
+                                    val f = File(tree.path, inputResult)
                                     f.mkdirs()
                                 } catch (e: Throwable) {
                                     e.printStackTrace()
