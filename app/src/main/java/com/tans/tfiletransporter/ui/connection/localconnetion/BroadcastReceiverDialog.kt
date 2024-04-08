@@ -77,7 +77,7 @@ class BroadcastReceiverDialog : BaseCoroutineStateCancelableResultDialogFragment
                     override fun onNewBroadcast(
                         remoteDevice: RemoteDevice
                     ) {
-                        onResult(remoteDevice)
+                        // onResult(remoteDevice)
                     }
                     override fun onNewState(state: BroadcastReceiverState) {
                         AndroidLog.d(TAG, "BroadcastReceiver State: $state")
