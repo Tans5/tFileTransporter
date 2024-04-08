@@ -26,7 +26,7 @@ suspend fun WifiP2pManager.discoverPeersSuspend(channel: WifiP2pManager.Channel)
 
         override fun onFailure(reason: Int) {
             if (cont.isActive) {
-                cont.resume(WifiActionResult.values().first { it.code == reason })
+                cont.resume(WifiActionResult.entries.first { it.code == reason })
             }
         }
 
@@ -49,7 +49,7 @@ suspend fun WifiP2pManager.connectSuspend(channel: WifiP2pManager.Channel, confi
 
         override fun onFailure(reason: Int) {
             if (cont.isActive) {
-                cont.resume(WifiActionResult.values().first { it.code == reason })
+                cont.resume(WifiActionResult.entries.first { it.code == reason })
             }
         }
 
@@ -81,7 +81,7 @@ suspend fun WifiP2pManager.cancelConnectionSuspend(channel: WifiP2pManager.Chann
 
         override fun onFailure(reason: Int) {
             if (cont.isActive) {
-                cont.resume(WifiActionResult.values().first { it.code == reason })
+                cont.resume(WifiActionResult.entries.first { it.code == reason })
             }
         }
 
@@ -98,7 +98,7 @@ suspend fun WifiP2pManager.removeGroupSuspend(channel: WifiP2pManager.Channel) =
 
         override fun onFailure(reason: Int) {
             if (cont.isActive) {
-                cont.resume(WifiActionResult.values().first { it.code == reason })
+                cont.resume(WifiActionResult.entries.first { it.code == reason })
             }
         }
 
