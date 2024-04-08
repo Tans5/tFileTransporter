@@ -234,23 +234,20 @@ class LocalNetworkConnectionFragment : BaseFragment<LocalNetworkConnectionFragme
             .map { it.get() }
             .switchMapSingle { localAddress ->
                 rxSingle {
-                    runCatching {
-                        withContext(Dispatchers.Main) {
-                            requireActivity().showReceiverDialog(localAddress)
-                        }
-                    }.onSuccess {
-                        withContext(Dispatchers.Main) {
+                    val remoteDevice =
+                        childFragmentManager.showBroadcastReceiverDialogSuspend(localAddress)
+                    if (remoteDevice != null) {
+                        withContext(Dispatchers.Main.immediate) {
                             startActivity(
                                 FileTransportActivity.getIntent(
-                                context = requireContext(),
-                                localAddress = localAddress,
-                                remoteAddress = it.remoteAddress.address,
-                                remoteDeviceInfo = it.deviceName,
-                                isServer = false
-                            ))
+                                    context = requireContext(),
+                                    localAddress = localAddress,
+                                    remoteAddress = remoteDevice.remoteAddress.address,
+                                    remoteDeviceInfo = remoteDevice.deviceName,
+                                    isServer = false
+                                )
+                            )
                         }
-                    }.onFailure {
-                        AndroidLog.e(TAG, "Search server error: ${it.message}")
                     }
                 }
             }
