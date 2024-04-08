@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.connection.wifip2pconnection
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,8 +11,6 @@ import android.os.Bundle
 import android.view.View
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.rxutils.ignoreSeveralClicks
-import com.tans.tadapter.spec.SimpleAdapterSpec
-import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
@@ -28,6 +27,12 @@ import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
+import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
+import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
+import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
+import com.tans.tuiutils.adapter.impl.datasources.ObservableDataSourceImpl
+import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
+import com.tans.tuiutils.view.clicks
 import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -104,6 +109,7 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
         requireActivity().registerReceiver(wifiReceiver, intentFilter)
     }
 
+    @SuppressLint("SetTextI18n")
     override fun initViews(binding: WifiP2pConnectionFragmentBinding) {
         launch {
             launch {
@@ -210,39 +216,37 @@ class WifiP2pConnectionFragment : BaseFragment<WifiP2pConnectionFragmentBinding,
                 .bindLife()
 
             val connectionMutex = Mutex()
-            binding.remoteDevicesRv.adapter =
-                SimpleAdapterSpec<P2pPeer, RemoteServerItemLayoutBinding>(
-                    layoutId = R.layout.remote_server_item_layout,
-                    bindData = { _, device, lBinding ->
-                        lBinding.device = device.deviceName
-                        lBinding.ipAddress = "Mac address: ${device.macAddress}"
-                    },
-                    dataUpdater = bindState().map { it.peers }.distinctUntilChanged(),
-                    itemClicks = listOf { binding, _ ->
-                        binding.root to { _, data ->
-                            rxSingle(Dispatchers.IO) {
-                                if (connectionMutex.isLocked) { return@rxSingle }
-                                connectionMutex.lock()
-                                val connection = bindState().map { it.wifiP2PConnection }.firstOrError().await()
-                                if (!connection.isPresent) {
-                                    val config = WifiP2pConfig()
-                                    config.deviceAddress = data.macAddress
-                                    updateState { it.copy(connectionStatus = ConnectionStatus.Connecting) }.await()
-                                    val state = wifiP2pManager.connectSuspend(wifiChannel, config)
-                                    if (state == WifiActionResult.Success) {
-                                        AndroidLog.d(TAG, "Request P2P connection success !!!")
-                                        val connectionInfo = wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()
-                                        AndroidLog.d(TAG, "Connection group address: ${connectionInfo?.groupOwnerAddress}, is group owner: ${connectionInfo?.isGroupOwner}")
-                                    } else {
-                                        updateState { it.copy(connectionStatus = ConnectionStatus.NoConnection) }.await()
-                                        AndroidLog.e(TAG, "Request P2P connection fail: $state !!!")
-                                    }
-                                }
-                                connectionMutex.unlock()
+
+            val remoteDevicesAdapterBuilder = SimpleAdapterBuilderImpl<P2pPeer>(
+                itemViewCreator = SingleItemViewCreatorImpl(R.layout.remote_server_item_layout),
+                dataSource = ObservableDataSourceImpl(bindState().map { it.peers }),
+                dataBinder = DataBinderImpl { data, view, _ ->
+                    val itemViewBinding = RemoteServerItemLayoutBinding.bind(view)
+                    itemViewBinding.remoteDeviceTv.text = data.deviceName
+                    itemViewBinding.ipAddressTv.text = "Mac address: ${data.macAddress}"
+                    itemViewBinding.root.clicks(this) {
+                        if (connectionMutex.isLocked) { return@clicks }
+                        connectionMutex.lock()
+                        val connection = bindState().map { it.wifiP2PConnection }.firstOrError().await()
+                        if (!connection.isPresent) {
+                            val config = WifiP2pConfig()
+                            config.deviceAddress = data.macAddress
+                            updateState { it.copy(connectionStatus = ConnectionStatus.Connecting) }.await()
+                            val state = wifiP2pManager.connectSuspend(wifiChannel, config)
+                            if (state == WifiActionResult.Success) {
+                                AndroidLog.d(TAG, "Request P2P connection success !!!")
+                                val connectionInfo = wifiP2pManager.requestConnectionInfoSuspend(wifiChannel).getOrNull()
+                                AndroidLog.d(TAG, "Connection group address: ${connectionInfo?.groupOwnerAddress}, is group owner: ${connectionInfo?.isGroupOwner}")
+                            } else {
+                                updateState { it.copy(connectionStatus = ConnectionStatus.NoConnection) }.await()
+                                AndroidLog.e(TAG, "Request P2P connection fail: $state !!!")
                             }
                         }
+                        connectionMutex.unlock()
                     }
-                ).toAdapter()
+                }
+            )
+            binding.remoteDevicesRv.adapter = remoteDevicesAdapterBuilder.build()
 
             bindState()
                 .map { it.wifiP2PConnection }
