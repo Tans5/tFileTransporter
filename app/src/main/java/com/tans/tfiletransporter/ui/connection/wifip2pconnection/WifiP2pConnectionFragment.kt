@@ -321,7 +321,9 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
         }
 
         viewBinding.closeCurrentConnectionLayout.clicks(coroutineScope = this, clickWorkOn = Dispatchers.IO) {
-            currentState().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
+            runCatching {
+                currentState().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
+            }
             closeCurrentWifiConnection()
         }
 
