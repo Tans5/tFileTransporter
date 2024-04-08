@@ -28,11 +28,9 @@ import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
 import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
-import com.tans.tuiutils.adapter.impl.datasources.ObservableDataSourceImpl
 import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
 import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import com.tans.tuiutils.view.clicks
-import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -41,10 +39,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.net.InetAddress
 import java.util.*
