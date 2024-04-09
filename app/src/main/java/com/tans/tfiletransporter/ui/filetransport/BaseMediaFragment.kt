@@ -4,6 +4,7 @@ import android.os.Environment
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
 import com.tans.rxutils.QueryMediaItem
 import com.tans.rxutils.QueryMediaType
@@ -60,7 +61,10 @@ abstract class BaseMediaFragment(
                 SimpleAdapterSpec<Pair<QueryMediaItem.Image, Boolean>, ImageItemLayoutBinding>(
                     layoutId = R.layout.image_item_layout,
                     bindData = { _, (image, select), lBinding ->
-                        lBinding.image = image; lBinding.select = select
+                        lBinding.select = select
+                        Glide.with(lBinding.root)
+                            .load(image.uri)
+                            .into(lBinding.photoIv)
                     },
                     itemClicks = listOf { lBinding, _ ->
                         lBinding.root to { _, (image, lastSelectStatus) ->

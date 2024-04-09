@@ -13,11 +13,11 @@ import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
 import com.tans.tfiletransporter.databinding.MyAppsFragmentLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
+import com.tans.tfiletransporter.toSizeString
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.DataBindingAdapter
 import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.utils.dp2px
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -60,7 +60,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                 bindData = { _, (app, select), lBinding ->
                     lBinding.appNameTv.text = app.name
                     lBinding.appIdTv.text = app.packageName
-                    DataBindingAdapter.fileSizeText(lBinding.appSizeTv, app.appSize)
+                    lBinding.appSizeTv.text = app.appSize.toSizeString()
                     lBinding.appCb.isChecked = select
                     lBinding.appIconIv.background = app.icon
                 },

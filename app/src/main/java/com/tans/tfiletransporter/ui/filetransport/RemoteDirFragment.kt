@@ -14,7 +14,8 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestScanDirSuspend
 import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.ui.FileTreeUI
 import kotlinx.coroutines.Dispatchers
-import io.reactivex.rxjava3.kotlin.withLatestFrom
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
@@ -31,19 +32,21 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
         onBackPressedDispatcher.addCallback {
-            launch {
-                fileTreeUI?.backPress()?.await()
-            }
+            fileTreeUI?.backPress()
         }
     }
 
     private val fileExplore: FileExplore by instance()
 
+    private val fileTreeStateFlow by lazy {
+        MutableStateFlow(FileTreeUI.Companion.FileTreeState())
+    }
+
     override fun initViews(binding: RemoteDirFragmentBinding) {
 
         val fileTreeUI = FileTreeUI(
             viewBinding = binding.fileTreeLayout,
-            rootTreeUpdater = { rxSingle {
+            rootTreeUpdater = {
                 val handshake = (requireActivity() as FileTransportActivity).bindState()
                     .filter { it.handshake.getOrNull() != null }
                     .map { it.handshake.get() }
@@ -55,7 +58,6 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
                     AndroidLog.d(TAG, "Request scan root dir success")
                 }.onFailure {
                     AndroidLog.e(TAG, "Request scan root dir fail: $it", it)
-
                 }
                 result.getOrNull()?.let {
                     createRemoteRootTree(it)
@@ -65,32 +67,34 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
                     path = handshake.remoteFileSeparator,
                     parentTree = null
                 )
-            } },
+             },
             subTreeUpdater = { parentTree, dir ->
-                rxSingle {
-                    val result = runCatching {
-                        fileExplore.requestScanDirSuspend(dir.path)
-                    }.onSuccess {
-                        AndroidLog.d(TAG, "Request dir success")
-                    }.onFailure {
-                        AndroidLog.e(TAG, "Request dir fail: $it", it)
-                    }
-                    result.getOrNull()?.let {
-                        parentTree.newRemoteSubTree(it)
-                    } ?: parentTree
+                val result = runCatching {
+                    fileExplore.requestScanDirSuspend(dir.path)
+                }.onSuccess {
+                    AndroidLog.d(TAG, "Request dir success")
+                }.onFailure {
+                    AndroidLog.e(TAG, "Request dir fail: $it", it)
                 }
-            }
+                result.getOrNull()?.let {
+                    parentTree.newRemoteSubTree(it)
+                } ?: parentTree
+            },
+            coroutineScope = this,
+            stateFlow = fileTreeStateFlow
         )
-        fileTreeUI.start()
+
+
         this.fileTreeUI = fileTreeUI
 
-        fileTreeUI.bindState()
-            .map { it.fileTree }
-            .distinctUntilChanged()
-            .doOnNext {
-                onBackPressedCallback.isEnabled = it.parentTree != null
-            }
-            .bindLife()
+        launch {
+            fileTreeUI.stateFlow()
+                .map { it.fileTree }
+                .collect { tree ->
+                    val tab = (requireActivity() as FileTransportActivity).bindState().map { it.selectedTabType }.firstOrError().await()
+                    onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
+                }
+        }
 
         (requireActivity() as FileTransportActivity).bindState()
             .map { it.selectedTabType }
@@ -100,31 +104,14 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
             }
             .bindLife()
 
-        fileTreeUI.bindState()
-            .map { it.fileTree }
-            .distinctUntilChanged()
-            .withLatestFrom((requireActivity() as FileTransportActivity).bindState().map { it.selectedTabType })
-            .doOnNext { (tree, tab) ->
-                onBackPressedCallback.isEnabled = tree.parentTree != null && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
-            }
-            .bindLife()
 
-        (requireActivity() as FileTransportActivity).bindState()
-            .map { it.selectedTabType }
-            .withLatestFrom(fileTreeUI.bindState().map { it.fileTree })
-            .distinctUntilChanged()
-            .doOnNext { (tab, tree) ->
-                onBackPressedCallback.isEnabled = tree.parentTree != null && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
-            }
-            .bindLife()
 
         (requireActivity() as FileTransportActivity).observeFloatBtnClick()
             .flatMapSingle {
                 (activity as FileTransportActivity).bindState().map { it.selectedTabType }
                     .firstOrError()
-                    .flatMap { tabType ->
-                        fileTreeUI.getSelectedFiles()
-                            .map { tabType to it }
+                    .map { tabType ->
+                        tabType to fileTreeUI.getSelectedFiles()
                     }
             }
             .filter { it.first == FileTransportActivity.Companion.DirTabType.RemoteDir && it.second.isNotEmpty() }
@@ -142,15 +129,10 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
                     }.onFailure {
                         AndroidLog.e(TAG, "Request download files fail: $it", it)
                     }
-                    fileTreeUI.clearSelectedFiles().await()
+                    fileTreeUI.clearSelectedFiles()
                 }
             }
             .bindLife()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        fileTreeUI?.stop()
     }
 
     companion object {
