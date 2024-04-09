@@ -45,7 +45,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
 
     override fun initViews(binding: FolderSelectActivityBinding) {
         val fileTreeUI = FileTreeUI(
-            viewBinding = FileTreeLayoutBinding.bind(findViewById(R.id.file_tree_layout)),
+            viewBinding = binding.fileTreeLayout,
             rootTreeUpdater = {
                 withContext(Dispatchers.IO) {
                     createLocalRootTree(this@FolderSelectActivity).copy(fileLeafs = emptyList())

@@ -126,17 +126,10 @@ dependencies {
     // qrcode gen
     implementation(libs.qrcodegen)
 
-    // act result
-    implementation(libs.actresult.core)
-    implementation(libs.actresult.coroutines)
-
     // tans5
     implementation(libs.tadapter)
     implementation(libs.rxutils)
     implementation(libs.tuiutils)
-
-    // threetenabp
-    implementation(libs.threetenabp)
 
     // glide
     implementation(libs.glide)

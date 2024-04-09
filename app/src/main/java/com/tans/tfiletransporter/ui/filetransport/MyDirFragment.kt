@@ -47,7 +47,7 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
 
     override fun initViews(binding: MyDirFragmentBinding) {
         val fileTreeUI = FileTreeUI(
-            viewBinding = FileTreeLayoutBinding.bind(binding.root.findViewById(R.id.file_tree_layout)),
+            viewBinding = binding.fileTreeLayout,
             rootTreeUpdater = {
                 withContext(Dispatchers.IO) {
                     createLocalRootTree(requireContext())
