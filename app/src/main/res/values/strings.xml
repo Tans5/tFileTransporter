@@ -24,7 +24,6 @@
 
     <string name="downloading_files_dialog_title">Downloading Files (%d/%d)</string>
     <string name="sending_files_dialog_title">Sending Files (%d/%d)</string>
-    <string name="file_deal_progress">%s/%s</string>
     <string name="app_version">Ver: %s</string>
     <!-- File Transport Activity End -->
 
@@ -43,7 +42,6 @@
     <string name="broadcast_waiting_cancel">Cancel</string>
 
     <string name="broadcast_request_connect">Request Connect</string>
-    <string name="broadcast_remote_info">%s: %s</string>
     <string name="broadcast_request_accept">Accept</string>
     <string name="broadcast_request_deny">Deny</string>
 

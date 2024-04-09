@@ -23,7 +23,6 @@
 
     <string name="downloading_files_dialog_title">Baixando arquivo(s) (%d/%d)</string>
     <string name="sending_files_dialog_title">Enviando arquivo(s) (%d/%d)</string>
-    <string name="file_deal_progress">%s/%s</string>
     <string name="app_version">Versão: %s</string>
     <!-- File Transport Activity End -->
 
@@ -42,7 +41,6 @@
     <string name="broadcast_waiting_cancel">Cancelar</string>
 
     <string name="broadcast_request_connect">Solicitação da conexão</string>
-    <string name="broadcast_remote_info">%s: %s</string>
     <string name="broadcast_request_accept">Aceitar</string>
     <string name="broadcast_request_deny">Recusar</string>
 
