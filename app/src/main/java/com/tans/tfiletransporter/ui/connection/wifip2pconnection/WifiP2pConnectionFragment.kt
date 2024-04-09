@@ -45,7 +45,6 @@ import java.net.InetAddress
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
-@Suppress("DEPRECATION")
 class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFragment.Companion.WifiP2pConnectionState>(
         defaultState = WifiP2pConnectionState()
 ) {
@@ -58,6 +57,7 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
 
     private val wifiReceiver: BroadcastReceiver = object : BroadcastReceiver() {
 
+        @Suppress("DEPRECATION")
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
 

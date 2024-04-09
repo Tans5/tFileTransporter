@@ -84,7 +84,6 @@ dependencies {
     implementation(libs.rxjava3)
     implementation(libs.rxkotlin3)
     implementation(libs.rxandroid3)
-    implementation(libs.rxpermission)
 
     // rxbinding
     implementation(libs.rxbinding.core)
