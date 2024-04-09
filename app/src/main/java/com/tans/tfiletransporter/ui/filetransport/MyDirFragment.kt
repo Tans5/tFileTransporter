@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import org.kodein.di.instance
 import androidx.activity.addCallback
 import com.tans.tfiletransporter.Settings
+import com.tans.tfiletransporter.databinding.FileTreeLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
@@ -19,6 +20,7 @@ import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
+import kotlinx.coroutines.withContext
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_fragment, Unit) {
 
@@ -38,12 +40,16 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
 
     override fun initViews(binding: MyDirFragmentBinding) {
         val fileTreeUI = FileTreeUI(
-            binding = binding.fileTreeLayout,
+            viewBinding = FileTreeLayoutBinding.bind(binding.root.findViewById(R.id.file_tree_layout)),
             rootTreeUpdater = {
-                Single.fromCallable { createLocalRootTree(requireContext()) }
+                withContext(Dispatchers.IO) {
+                    createLocalRootTree(requireContext())
+                }
             },
             subTreeUpdater = { parentTree, dir ->
-                Single.fromCallable { parentTree.newLocalSubTree(dir) }
+                withContext(Dispatchers.IO) {
+                    parentTree.newLocalSubTree(dir)
+                }
             }
         )
         this.fileTreeUI = fileTreeUI

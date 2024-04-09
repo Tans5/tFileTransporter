@@ -7,6 +7,7 @@ import androidx.activity.addCallback
 import com.jakewharton.rxbinding4.view.clicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
+import com.tans.tfiletransporter.databinding.FileTreeLayoutBinding
 import com.tans.tfiletransporter.databinding.FolderSelectActivityBinding
 import com.tans.tfiletransporter.file.createLocalRootTree
 import com.tans.tfiletransporter.file.isRootFileTree
@@ -16,11 +17,10 @@ import com.tans.tfiletransporter.ui.FileTreeUI
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialogSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.kotlin.withLatestFrom
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -35,43 +35,47 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
         onBackPressedDispatcher.addCallback {
-            launch {
-                fileTreeUI?.backPress()?.await()
-            }
+            fileTreeUI?.backPress()
         }
     }
 
-    override fun initViews(binding: FolderSelectActivityBinding) {
+    private val fileTreeStateFlow by lazy {
+        MutableStateFlow(FileTreeUI.Companion.FileTreeState())
+    }
 
+    override fun initViews(binding: FolderSelectActivityBinding) {
         val fileTreeUI = FileTreeUI(
-            binding = binding.fileTreeLayout,
+            viewBinding = FileTreeLayoutBinding.bind(findViewById(R.id.file_tree_layout)),
             rootTreeUpdater = {
-                Single.fromCallable {
+                withContext(Dispatchers.IO) {
                     createLocalRootTree(this@FolderSelectActivity).copy(fileLeafs = emptyList())
                 }
             },
             subTreeUpdater = { parentTree, dir ->
-                Single.fromCallable {
+                withContext(Dispatchers.IO) {
                     parentTree.newLocalSubTree(dir).copy(fileLeafs = emptyList())
                 }
-            }
+            },
+            coroutineScope = this,
+            stateFlow = fileTreeStateFlow
         )
         this.fileTreeUI = fileTreeUI
-        fileTreeUI.start()
 
-        fileTreeUI.bindState()
-            .distinctUntilChanged()
-            .doOnNext {
-                onBackPressedCallback.isEnabled = !it.fileTree.isRootFileTree()
-            }
-            .bindLife()
+        launch {
+            fileTreeUI.stateFlow()
+                .map { it.fileTree }
+                .collect {
+                    onBackPressedCallback.isEnabled = !it.isRootFileTree()
+                }
+        }
+
 
         binding.toolBar.menu.findItem(R.id.create_new_folder).clicks()
             .flatMapSingle {
                 rxSingle(Dispatchers.Main) {
                     val inputResult = this@FolderSelectActivity.supportFragmentManager.showTextInputDialogSuspend(getString(R.string.folder_select_create_new_folder_hint))
                     if (inputResult != null) {
-                        val tree = fileTreeUI.bindState().firstOrError().await().fileTree
+                        val tree = fileTreeUI.currentState().fileTree
                         if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
                             this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
                                 title = getString(R.string.folder_select_create_folder_error),
@@ -99,7 +103,7 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                                     } else {
                                         oldState
                                     }
-                                }.await()
+                                }
                             }
                         }
                     }
@@ -108,8 +112,8 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
             .bindLife()
 
         binding.doneActionBt.clicks()
-            .withLatestFrom(fileTreeUI.bindState().map { it.fileTree })
-            .flatMapSingle { (_, tree) ->
+            .flatMapSingle {
+                val tree = fileTreeUI.currentState().fileTree
                 rxSingle(Dispatchers.Main) {
                     if (tree.isRootFileTree()) {
                         this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
@@ -134,11 +138,6 @@ class FolderSelectActivity : BaseActivity<FolderSelectActivityBinding, Unit>(
                 }
             }
             .bindLife()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        fileTreeUI?.stop()
     }
 
     companion object {

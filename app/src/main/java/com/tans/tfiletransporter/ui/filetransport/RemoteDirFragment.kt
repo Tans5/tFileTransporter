@@ -42,7 +42,7 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
     override fun initViews(binding: RemoteDirFragmentBinding) {
 
         val fileTreeUI = FileTreeUI(
-            binding = binding.fileTreeLayout,
+            viewBinding = binding.fileTreeLayout,
             rootTreeUpdater = { rxSingle {
                 val handshake = (requireActivity() as FileTransportActivity).bindState()
                     .filter { it.handshake.getOrNull() != null }

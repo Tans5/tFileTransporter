@@ -8,6 +8,11 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirReq
 import com.tans.tfiletransporter.transferproto.fileexplore.model.ScanDirResp
 import java.io.File
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.Period
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 val LOCAL_DEVICE = "${Build.BRAND} ${Build.MODEL}"
 
@@ -119,5 +124,27 @@ fun File.hasTargetParent(targetParent: File): Boolean {
                 parent.hasTargetParent(targetParent)
             }
         }
+    }
+}
+
+private val fileDateFormatter by lazy {
+    DateTimeFormatter.ofPattern("yyyy/MM/dd")
+}
+
+private val fileTimeFormatter by lazy {
+    DateTimeFormatter.ofPattern("HH:mm:ss")
+}
+
+
+fun fileDateText(targetTimeMillis: Long): String {
+    val targetOffsetDateTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(targetTimeMillis), ZoneId.systemDefault())
+    val targetLocalDate = targetOffsetDateTime.toLocalDate()
+
+    val nowLocalDate = OffsetDateTime.now(ZoneId.systemDefault()).toLocalDate()
+    val p = Period.between(targetLocalDate, nowLocalDate)
+    return if (p.days < 1) {
+        targetOffsetDateTime.format(fileTimeFormatter)
+    } else {
+        targetOffsetDateTime.format(fileDateFormatter)
     }
 }
