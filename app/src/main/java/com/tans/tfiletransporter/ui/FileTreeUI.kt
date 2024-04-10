@@ -55,8 +55,8 @@ class FileTreeUI(
     private val fileDataSource: DataSourceImpl<Pair<FileLeaf.CommonFileLeaf, Boolean>> by lazy {
         DataSourceImpl(
             areDataItemsTheSameParam = { d1, d2 -> d1.first.path == d2.first.path },
-            areDataItemsContentTheSameParam = {d1, d2 -> d1.first.path == d2.first.path},
-            getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
+            areDataItemsContentTheSameParam = {d1, d2 -> d1.first.path == d2.first.path && d1.second == d2.second},
+            getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.path == d2.first.path && d1.second != d2.second) Unit else null }
         )
     }
 
