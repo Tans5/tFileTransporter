@@ -3,8 +3,11 @@ package com.tans.tfiletransporter.ui.folderselect
 import android.app.Activity
 import android.content.Intent
 import android.view.View
+import android.view.ViewGroup.MarginLayoutParams
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.FolderSelectActivityBinding
@@ -148,6 +151,19 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
                 }
             }
         }
+
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.fileTreeLayout.fileFolderRv) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+
+//            viewBinding.doneActionBt.apply {
+//                val lp = layoutParams as MarginLayoutParams
+//                lp.bottomMargin += systemBars.bottom
+//                layoutParams = lp
+//            }
+            insets
+        }
+
     }
 
     companion object {
