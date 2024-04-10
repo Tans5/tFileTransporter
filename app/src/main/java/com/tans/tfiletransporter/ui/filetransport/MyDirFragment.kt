@@ -17,6 +17,8 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspe
 import com.tans.tfiletransporter.ui.FileTreeUI
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.withLatestFrom
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.withContext
+import java.util.concurrent.LinkedBlockingDeque
 
 class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_fragment, Unit) {
 
@@ -45,6 +48,14 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
         MutableStateFlow(FileTreeUI.Companion.FileTreeState())
     }
 
+    private val fileTreeRecyclerViewScrollChannel: Channel<Int> by lazy {
+        Channel<Int>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    }
+
+    private val fileTreeFolderPositionDeque: LinkedBlockingDeque<Int> by lazy {
+        LinkedBlockingDeque()
+    }
+
     override fun initViews(binding: MyDirFragmentBinding) {
         val fileTreeUI = FileTreeUI(
             viewBinding = binding.fileTreeLayout,
@@ -59,7 +70,9 @@ class MyDirFragment : BaseFragment<MyDirFragmentBinding, Unit>(R.layout.my_dir_f
                 }
             },
             coroutineScope = this,
-            stateFlow = fileTreeStateFlow
+            stateFlow = fileTreeStateFlow,
+            recyclerViewScrollChannel = fileTreeRecyclerViewScrollChannel,
+            folderPositionDeque = fileTreeFolderPositionDeque
         )
         this.fileTreeUI = fileTreeUI
 

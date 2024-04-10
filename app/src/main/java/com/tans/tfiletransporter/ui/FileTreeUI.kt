@@ -26,8 +26,8 @@ import com.tans.tuiutils.view.clicks
 import com.tans.tuiutils.view.refreshes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,19 +40,20 @@ class FileTreeUI(
     private val rootTreeUpdater: suspend () -> FileTree,
     private val subTreeUpdater: suspend (parentTree: FileTree, dir: FileLeaf.DirectoryFileLeaf) -> FileTree,
     private val coroutineScope: CoroutineScope,
-    override val stateFlow: MutableStateFlow<FileTreeState>
+    override val stateFlow: MutableStateFlow<FileTreeState>,
+    private val recyclerViewScrollChannel: Channel<Int>,
+    private val folderPositionDeque: LinkedBlockingDeque<Int>
 ) : CoroutineScope by coroutineScope, CoroutineState<FileTreeUI.Companion.FileTreeState> {
 
-    private val recyclerViewScrollChannel = Channel<Int>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    private val folderPositionDeque: LinkedBlockingDeque<Int> = LinkedBlockingDeque()
-
     private val dirDataSource: DataSourceImpl<FileLeaf.DirectoryFileLeaf> by lazy {
-        DataSourceImpl()
+        DataSourceImpl(
+            areDataItemsTheSameParam = { d1, d2 -> d1.path == d2.path }
+        )
     }
 
     private val fileDataSource: DataSourceImpl<Pair<FileLeaf.CommonFileLeaf, Boolean>> by lazy {
         DataSourceImpl(
-            areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first },
+            areDataItemsTheSameParam = { d1, d2 -> d1.first.path == d2.first.path },
             getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
         )
     }
@@ -73,25 +74,6 @@ class FileTreeUI(
 
         renderStateNewCoroutine({ it.fileTree.path }) {
             viewBinding.pathTv.text = it
-        }
-
-        renderStateNewCoroutine({ state ->
-            val fileTree = state.fileTree
-            val sortType = state.sortType
-            val selectedFiles = state.selectedFiles
-            fileTree.dirLeafs.sortDir(sortType) to fileTree.fileLeafs.sortFile(sortType).map { it to selectedFiles.contains(it) }
-        }) { (dirs, files) ->
-            var position = recyclerViewScrollChannel.tryReceive().getOrNull()
-            val allSize = dirs.size + files.size
-            fun positionFix() {
-                val p = position
-                position = null
-                if (p != null && p < allSize) {
-                    (viewBinding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(p, 0)
-                }
-            }
-            dirDataSource.submitDataList(dirs) { positionFix() }
-            fileDataSource.submitDataList(files) { positionFix() }
         }
 
         val directoryAdapterBuilder = SimpleAdapterBuilderImpl<FileLeaf.DirectoryFileLeaf> (
@@ -145,6 +127,25 @@ class FileTreeUI(
 
 
         viewBinding.fileFolderRv.adapter = (directoryAdapterBuilder + fileAdapterBuilder).build()
+
+        renderStateNewCoroutine({ state ->
+            val fileTree = state.fileTree
+            val sortType = state.sortType
+            val selectedFiles = state.selectedFiles
+            fileTree.dirLeafs.sortDir(sortType) to fileTree.fileLeafs.sortFile(sortType).map { it to selectedFiles.contains(it) }
+        }) { (dirs, files) ->
+            var position = recyclerViewScrollChannel.tryReceive().getOrNull()
+            val allSize = dirs.size + files.size
+            fun positionFix() {
+                val p = position
+                position = null
+                if (p != null && p < allSize) {
+                    (viewBinding.fileFolderRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(p, 0)
+                }
+            }
+            dirDataSource.submitDataList(dirs) { positionFix() }
+            fileDataSource.submitDataList(files) { positionFix() }
+        }
 
         viewBinding.fileFolderRv.addItemDecoration(
             MarginDividerItemDecoration.Companion.Builder()
