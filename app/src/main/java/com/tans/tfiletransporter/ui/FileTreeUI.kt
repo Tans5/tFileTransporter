@@ -47,13 +47,15 @@ class FileTreeUI(
 
     private val dirDataSource: DataSourceImpl<FileLeaf.DirectoryFileLeaf> by lazy {
         DataSourceImpl(
-            areDataItemsTheSameParam = { d1, d2 -> d1.path == d2.path }
+            areDataItemsTheSameParam = { d1, d2 -> d1.path == d2.path },
+            areDataItemsContentTheSameParam = { d1, d2 -> d1.path == d2.path }
         )
     }
 
     private val fileDataSource: DataSourceImpl<Pair<FileLeaf.CommonFileLeaf, Boolean>> by lazy {
         DataSourceImpl(
             areDataItemsTheSameParam = { d1, d2 -> d1.first.path == d2.first.path },
+            areDataItemsContentTheSameParam = {d1, d2 -> d1.first.path == d2.first.path},
             getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
         )
     }

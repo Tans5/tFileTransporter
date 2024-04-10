@@ -29,6 +29,13 @@ object Settings : CoroutineState<Settings.SettingsData> by CoroutineState(Settin
 
     fun init(context: Context) {
         ioExecutor.execute {
+
+            File(defaultDownloadDir).apply {
+                if (!this.exists()) {
+                    this.mkdirs()
+                }
+            }
+
             val sp = context.getSharedPreferences(SP_FILE_NAME, Context.MODE_PRIVATE)
             this.sp.set(sp)
 
