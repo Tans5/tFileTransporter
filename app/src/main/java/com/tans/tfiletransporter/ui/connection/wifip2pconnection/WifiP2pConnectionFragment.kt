@@ -172,8 +172,9 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
                         val (isGroupOwner, groupOwnerAddress) = wifiConnection
                         val connection = P2pConnection(currentDeviceName = LOCAL_DEVICE, log = AndroidLog)
 
-                        // Create tcp connection, Client will retry 3 times.
+                        // Create tcp connection, Client will retry 3 times, GroupOwner as server.
                         if (isGroupOwner) {
+                            // Server
                             val connectionResult = runCatching {
                                 withTimeout(5000) {
                                     connection.bindSuspend(address = groupOwnerAddress)
@@ -187,6 +188,7 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
                             }
                             connectionResult
                         } else {
+                            // Client
                             var tryTimes = 3
                             var connectionResult: Result<Unit>
                             do {

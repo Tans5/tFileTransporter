@@ -47,6 +47,7 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
             return
         }
         newState(QRCodeScanState.Requesting)
+        // Client request transfer file task.
         val connectionTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Connect(
                 address = serverAddress,
@@ -59,6 +60,7 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
         connectionTask.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
+                    // Client request transfer file task connect fail.
                     val eMsg = "Connection error: $nettyState"
                     log.e(TAG, eMsg)
                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -67,6 +69,7 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
                     closeConnectionIfActive()
                 }
                 if (nettyState is NettyTaskState.ConnectionActive) {
+                    // Client request transfer file task connection success.
                     val currentState = getCurrentState()
                     if (currentState == QRCodeScanState.Requesting) {
                         newState(QRCodeScanState.Active)
@@ -91,6 +94,9 @@ class QRCodeScanClient(private val log: ILog) : SimpleStateable<QRCodeScanState>
                 task: INettyConnectionTask
             ) {}
         })
+        /**
+         * Step1: Start request transfer file task.
+         */
         connectionTask.startTask()
     }
 

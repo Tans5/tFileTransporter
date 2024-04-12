@@ -49,6 +49,9 @@ class BroadcastSender(
 
     override val observers: LinkedBlockingDeque<BroadcastSenderObserver> = LinkedBlockingDeque()
 
+    /**
+     * Client transfer request server.
+     */
     private val transferServer: IServer<BroadcastTransferFileReq, BroadcastTransferFileResp> by lazy {
         simplifyServer(
             requestType = BroadcastDataType.TransferFileReq.type,
@@ -96,6 +99,9 @@ class BroadcastSender(
         }
     }
 
+    /**
+     * Broadcast send task.
+     */
     private val senderBroadcastTask: Runnable by lazy {
         Runnable {
             val state = getCurrentState()
@@ -142,6 +148,7 @@ class BroadcastSender(
         }
         newState(BroadcastSenderState.Requesting)
         val hasInvokeCallback = AtomicBoolean(false)
+        // Broadcast send task.
         val senderTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Connect(
                 address = broadcastAddress,
@@ -152,6 +159,7 @@ class BroadcastSender(
         this.broadcastSenderTask.get()?.stopTask()
         this.broadcastSenderTask.set(senderTask)
 
+        // Receive client transfer file request task.
         val requestReceiverTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Bind(
                 address = localAddress,
@@ -174,6 +182,7 @@ class BroadcastSender(
                     || senderState is NettyTaskState.Error
                     || getCurrentState() !is BroadcastSenderState.Requesting
                 ) {
+                    // Broadcast sender task fail.
                     log.e(TAG, "Sender task error: $senderState, ${getCurrentState()}")
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(senderState.toString())
@@ -182,6 +191,7 @@ class BroadcastSender(
                     senderTask.removeObserver(this)
                     senderTask.stopTask()
                 } else {
+                    // Broadcast sender task success.
                     if (senderState is NettyTaskState.ConnectionActive) {
                         log.d(TAG, "Sender task connect success")
                         requestReceiverTask.addObserver(object : NettyConnectionObserver {
@@ -202,6 +212,7 @@ class BroadcastSender(
                                     || senderTask.getCurrentState() !is NettyTaskState.ConnectionActive
                                     || getCurrentState() !is BroadcastSenderState.Requesting
                                 ) {
+                                    // Receive client request task fail.
                                     log.d(TAG, "Request task bind fail: $receiverState, ${senderTask.getCurrentState()}, ${getCurrentState()}")
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
                                         simpleCallback.onError(receiverState.toString())
@@ -211,11 +222,13 @@ class BroadcastSender(
                                     requestReceiverTask.stopTask()
                                     senderTask.stopTask()
                                 } else {
+                                    // Receive client request task success.
                                     if (receiverState is NettyTaskState.ConnectionActive) {
                                         log.d(TAG, "Request task bind success")
                                         if (hasInvokeCallback.compareAndSet(false, true)) {
                                             simpleCallback.onSuccess(Unit)
                                         }
+                                        // Send one broadcast each second (default)
                                         val senderFuture = taskScheduleExecutor.scheduleAtFixedRate(
                                             senderBroadcastTask,
                                             500,
@@ -233,12 +246,18 @@ class BroadcastSender(
                                 }
                             }
                         })
+                        /**
+                         * Step2: Start Receive client transfer file request task.
+                         */
                         requestReceiverTask.startTask()
                         senderTask.removeObserver(this)
                     }
                 }
             }
         })
+        /**
+         * Step1: Start broadcast sender task.
+         */
         senderTask.startTask()
     }
 

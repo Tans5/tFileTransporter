@@ -62,6 +62,8 @@ class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit
 
         launch(Dispatchers.IO) {
             qrcodeServer.addObserver(object : QRCodeScanServerObserver {
+
+                // Client request transfer file.
                 override fun requestTransferFile(remoteDevice: RemoteDevice) {
                     AndroidLog.d(TAG, "Receive request: $remoteDevice")
                     onResult(remoteDevice)
@@ -72,10 +74,12 @@ class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit
                 }
             })
             runCatching {
+                // Start QR code server connection.
                 qrcodeServer.startQRCodeScanServerSuspend(localAddress = localAddress)
             }.onSuccess {
                 AndroidLog.d(TAG, "Bind address success.")
                 runCatching {
+                    // Create QRCode bitmap and display.
                     val qrcodeContent = QRCodeShare(
                         version = TransferProtoConstant.VERSION,
                         deviceName = LOCAL_DEVICE,

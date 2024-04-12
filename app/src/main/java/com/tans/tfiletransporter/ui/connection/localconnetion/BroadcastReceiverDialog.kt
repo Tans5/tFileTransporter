@@ -69,6 +69,7 @@ class BroadcastReceiverDialog : BaseCoroutineStateCancelableResultDialogFragment
 
         launch {
             runCatching {
+                // Start search broadcast server task.
                 withContext(Dispatchers.IO) {
                     receiver.startReceiverSuspend(localAddress, localAddress.getBroadcastAddress().first)
                 }
@@ -82,11 +83,14 @@ class BroadcastReceiverDialog : BaseCoroutineStateCancelableResultDialogFragment
                     override fun onNewState(state: BroadcastReceiverState) {
                         AndroidLog.d(TAG, "BroadcastReceiver State: $state")
                     }
+
+                    // Broadcast server update.
                     override fun onActiveRemoteDevicesUpdate(remoteDevices: List<RemoteDevice>) {
                         AndroidLog.d(TAG, "RemoteDevices update: $remoteDevices")
                         updateState { it.copy(remoteDevices = remoteDevices) }
                     }
                 })
+                // Waiting search broadcast server task closed or error.
                 receiver.waitCloseSuspend()
                 onCancel()
                 withContext(Dispatchers.Main.immediate) {
@@ -110,6 +114,7 @@ class BroadcastReceiverDialog : BaseCoroutineStateCancelableResultDialogFragment
                     coroutineScope = this,
                     clickWorkOn = Dispatchers.IO) {
                     runCatching {
+                        // Request transfer files with broadcast server.
                         receiver.requestFileTransferSuspend(data.remoteAddress.address)
                     }.onSuccess {
                         onResult(data)

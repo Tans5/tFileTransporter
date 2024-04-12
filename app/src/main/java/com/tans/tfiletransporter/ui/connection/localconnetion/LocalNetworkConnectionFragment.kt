@@ -136,6 +136,7 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
         viewBinding.scanQrCodeLayout.clicks(this) {
             val selectedAddress = currentState().selectedAddress.getOrNull()
             if (selectedAddress != null) {
+                // Scan QRCode.
                 val (_, resultData) = startActivityResultSuspend(Intent(requireActivity(), ScanQrCodeActivity::class.java))
                 if (resultData != null) {
                     val scanResultStrings = ScanQrCodeActivity.getResult(resultData)
@@ -144,9 +145,11 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
                         val scanClient = QRCodeScanClient(AndroidLog)
                         runCatching {
                             val serverAddress = qrcodeShare.address.toInetAddress()
+                            // Create request transfer file to QRCodeServer connection.
                             scanClient.startQRCodeScanClientSuspend(serverAddress)
                             AndroidLog.d(TAG, "Client connect address: $serverAddress success.")
                             withContext(Dispatchers.IO) {
+                                // Request transfer file.
                                 scanClient.requestFileTransferSuspend(targetAddress = serverAddress, deviceName = LOCAL_DEVICE)
                             }
                             serverAddress

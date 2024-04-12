@@ -61,12 +61,15 @@ class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<U
         }
         launch {
             runCatching {
+                // Start broadcast server.
                 withContext(Dispatchers.IO) {
                     sender.startSenderSuspend(localAddress, localAddress.getBroadcastAddress().first)
                 }
             }.onSuccess {
                 AndroidLog.d(TAG, "Start sender success.")
                 sender.addObserver(object : BroadcastSenderObserver {
+
+                    // new client transfer file request.
                     override fun requestTransferFile(remoteDevice: RemoteDevice) {
                         onResult(remoteDevice)
                     }
@@ -76,6 +79,7 @@ class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<U
                     }
                 })
 
+                // Waiting broadcast server error or closed.
                 sender.waitClose()
                 onCancel()
                 requireActivity().showToastShort("Connection closed")

@@ -44,6 +44,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
             requestType = QrScanDataType.TransferFileReq.type,
             responseType = QrScanDataType.TransferFileResp.type,
             log = log,
+            // New client request coming.
             onRequest = { _, ra, r, isNew ->
                 if (ra != null && isNew) {
                     val currentState = getCurrentState()
@@ -77,6 +78,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
             return
         }
         newState(QRCodeScanState.Requesting)
+        // Wait client request transfer file task.
         val connectionTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = localAddress,
@@ -90,6 +92,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         connectionTask.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
+                    // Wait client task connection fail.
                     val eMsg = "Connection error: $nettyState"
                     log.e(TAG, eMsg)
                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -98,6 +101,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
                     closeConnectionIfActive()
                 }
                 if (nettyState is NettyTaskState.ConnectionActive) {
+                    // Wait client task connection success.
                     val currentState = getCurrentState()
                     if (currentState == QRCodeScanState.Requesting) {
                         log.d(TAG, "Connection is active.")
@@ -123,6 +127,9 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
                 task: INettyConnectionTask
             ) {}
         })
+        /**
+         * Step1: Start wait client request transfer file task.
+         */
         connectionTask.startTask()
     }
 

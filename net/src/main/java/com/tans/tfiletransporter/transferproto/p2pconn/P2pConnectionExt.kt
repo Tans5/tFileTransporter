@@ -42,6 +42,9 @@ suspend fun P2pConnection.closeSuspend()  = suspendCancellableCoroutine { cont -
     })
 }
 
+/**
+ * Request handshake, Client and Server both can request.
+ */
 suspend fun P2pConnection.transferFileSuspend() = suspendCancellableCoroutine<Unit> { cont ->
     requestTransferFile(object : SimpleCallback<P2pConnectionState.Handshake> {
 

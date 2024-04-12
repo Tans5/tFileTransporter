@@ -77,6 +77,9 @@ class BroadcastReceiver(
         }
     }
 
+    /**
+     * Receive broadcast server.
+     */
     private val receiveBroadcastServer: IServer<BroadcastMsg, Unit> by lazy {
         simplifyServer(
             requestType = BroadcastDataType.BroadcastMsg.type,
@@ -107,6 +110,7 @@ class BroadcastReceiver(
             simpleCallback.onError("Wrong state: $currentState")
         }
         newState(BroadcastReceiverState.Requesting)
+        // Receive server broadcast information task.
         val receiverTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = broadcastAddress,
@@ -116,6 +120,7 @@ class BroadcastReceiver(
         ).withServer<ConnectionServerImpl>(log = log)
         this.receiverTask.get()?.stopTask()
         this.receiverTask.set(receiverTask)
+        // Request server to transfer file task.
         val transferRequestTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = localAddress,
@@ -138,6 +143,7 @@ class BroadcastReceiver(
                 if (receiverTaskState is NettyTaskState.Error
                     || receiverTaskState is NettyTaskState.ConnectionClosed
                     || getCurrentState() !is BroadcastReceiverState.Requesting) {
+                    // Receive broadcast task fail.
                     log.e(TAG, "Bind receiver task error: $receiverTaskState, ${getCurrentState()}")
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(receiverTaskState.toString())
@@ -147,6 +153,7 @@ class BroadcastReceiver(
                     onNewState(BroadcastReceiverState.NoConnection)
                 } else {
                     if (receiverTaskState is NettyTaskState.ConnectionActive) {
+                        // Receive broadcast task start success.
                         log.d(TAG, "Bind receiver task success")
                         receiverTask.removeObserver(this)
                         transferRequestTask.addObserver(
@@ -165,6 +172,7 @@ class BroadcastReceiver(
                                         || transferTaskState is NettyTaskState.ConnectionClosed
                                         || receiverTask.getCurrentState() !is NettyTaskState.ConnectionActive
                                         || getCurrentState() !is BroadcastReceiverState.Requesting) {
+                                        // Request server task fail.
                                         log.e(TAG, "Bind transfer req task error: $transferTaskState, ${receiverTask.getCurrentState()}, ${getCurrentState()}")
                                         if (hasInvokeCallback.compareAndSet(false, true)) {
                                             simpleCallback.onError(transferTaskState.toString())
@@ -175,6 +183,7 @@ class BroadcastReceiver(
                                         onNewState(BroadcastReceiverState.NoConnection)
                                     } else {
                                         if (transferTaskState is NettyTaskState.ConnectionActive) {
+                                            // Request server task success.
                                             log.d(TAG, "Bind transfer req task success")
                                             if (hasInvokeCallback.compareAndSet(false, true)) {
                                                 simpleCallback.onSuccess(Unit)
@@ -189,12 +198,18 @@ class BroadcastReceiver(
                                 }
                             }
                         )
+                        /**
+                         * Step2: Start request server task.
+                         */
                         transferRequestTask.startTask()
                     }
                 }
             }
         })
 
+        /**
+         * Step1: Start receive server broadcast task.
+         */
         receiverTask.startTask()
     }
 

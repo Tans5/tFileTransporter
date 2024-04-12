@@ -47,6 +47,7 @@ class P2pConnection(
             responseType = P2pDataType.HandshakeResp.type,
             log = log,
             onRequest = { ld, rd, r, isNewRequest ->
+                // Client request handshake, check handshake information and update state.
                 if (getCurrentState() is P2pConnectionState.Active
                     && r.version == TransferProtoConstant.VERSION) {
                     if (isNewRequest) {
@@ -79,6 +80,7 @@ class P2pConnection(
             responseType = P2pDataType.TransferFileResp.type,
             log = log,
             onRequest = { _, _, _, isNewRequest ->
+                // Request transfer file, Server and Client both can request.
                 if (isNewRequest) {
                     log.d(TAG, "Receive transfer file request.")
                     dispatchTransferFile(true)
@@ -143,7 +145,9 @@ class P2pConnection(
         }
         newState(P2pConnectionState.Requesting)
         val hasInvokeCallback = AtomicBoolean(false)
+        // TCP Server task, waiting client to connect，only one client can connect.
         var serverTask: NettyTcpServerConnectionTask? = null
+        // TCP connection task， communicat with client.
         var communicationTask: ConnectionServerClientImpl? = null
         val stateCallback = object : NettyConnectionObserver {
             override fun onNewMessage(
@@ -157,6 +161,7 @@ class P2pConnection(
                     || nettyState is NettyTaskState.ConnectionClosed
                     || getCurrentState() !is P2pConnectionState.Requesting
                 ) {
+                    // Create server connection or client connection fail.
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(nettyState.toString())
                     }
@@ -167,6 +172,7 @@ class P2pConnection(
                     newState(P2pConnectionState.NoConnection)
                 } else {
                     if (task !is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
+                        // Client connection create success.
                         task.addObserver(activeCommunicationTaskObserver)
                         activeCommunicationNettyTask.set(communicationTask)
                         if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -182,6 +188,7 @@ class P2pConnection(
                         task.removeObserver(this)
                     }
                     if (task is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
+                        // Server connection create success.
                         activeServerNettyTask.set(serverTask)
                         log.d(TAG, "Server is active.")
                         task.removeObserver(this)
@@ -194,7 +201,11 @@ class P2pConnection(
             bindAddress = address,
             bindPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT,
             newClientTaskCallback = { client ->
+                // New client coming.
                 if (hasClientConnection.compareAndSet(false, true)) {
+                    /**
+                     * Step2: Handle client connection.
+                     */
                     val fixedClientConnection = client.withServer<ConnectionServerImpl>(log = log)
                         .withClient<ConnectionServerClientImpl>(log = log)
                     fixedClientConnection.registerServer(handShakeServer)
@@ -208,6 +219,10 @@ class P2pConnection(
             }
         )
         serverTask.addObserver(stateCallback)
+
+        /**
+         * Step1: Start server task.
+         */
         serverTask.startTask()
     }
 
@@ -218,6 +233,7 @@ class P2pConnection(
             return
         }
         newState(P2pConnectionState.Requesting)
+        // Connect to server task.
         val clientTask = NettyTcpClientConnectionTask(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT
@@ -238,6 +254,7 @@ class P2pConnection(
                     if (nettyState is NettyTaskState.Error
                         || nettyState is NettyTaskState.ConnectionClosed
                         || getCurrentState() !is P2pConnectionState.Requesting) {
+                        // Connect to server fail.
                         if (hasInvokeCallback.compareAndSet(false, true)) {
                             simpleCallback.onError(nettyState.toString())
                         }
@@ -246,6 +263,7 @@ class P2pConnection(
                         log.e(TAG, "Connect $serverAddress fail: $nettyState, ${getCurrentState()}")
                         newState(P2pConnectionState.NoConnection)
                     } else {
+                        // Connect to server success.
                         if (nettyState is NettyTaskState.ConnectionActive) {
                             task.addObserver(activeCommunicationTaskObserver)
                             activeCommunicationNettyTask.set(clientTask)
@@ -260,12 +278,18 @@ class P2pConnection(
                             )
                             task.removeObserver(this)
                             log.d(TAG, "Connection $serverAddress success.")
+                            /**
+                             * Step2: Request handshake
+                             */
                             requestHandshake(clientTask)
                         }
                     }
                 }
             }
         )
+        /**
+         * Step1: Request connect to server task.
+         */
         clientTask.startTask()
     }
 
@@ -362,6 +386,9 @@ class P2pConnection(
         onSuccess(activeConnection, state)
     }
 
+    /**
+     * Client request hand shake.
+     */
     private fun requestHandshake(client: ConnectionServerClientImpl) {
         client.requestSimplify(
             type = P2pDataType.HandshakeReq.type,
@@ -381,12 +408,14 @@ class P2pConnection(
                     if (localAddress is InetSocketAddress
                         && remoteAddress is InetSocketAddress
                         && getCurrentState() is P2pConnectionState.Active) {
+                        // Client request handshake success.
                         newState(P2pConnectionState.Handshake(
                             localAddress = localAddress,
                             remoteAddress = remoteAddress,
                             remoteDeviceName = d.deviceName
                         ))
                     } else {
+                        // Client request handshake fail.
                         closeConnectionIfActive()
                     }
                 }
