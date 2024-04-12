@@ -50,7 +50,9 @@ import java.util.concurrent.atomic.AtomicReference
 class FileExplore(
     private val log: ILog,
     private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp>,
+    // Download files from remote.
     private val sendFilesRequest: FileExploreRequestHandler<SendFilesReq, SendFilesResp>,
+    // Send current device's files to remote.
     private val downloadFileRequest: FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp>,
     private val heartbeatInterval: Long = 8000,
 ) : SimpleStateable<FileExploreState>, SimpleObservable<FileExploreObserver> {
@@ -92,6 +94,7 @@ class FileExplore(
             responseType = FileExploreDataType.HandshakeResp.type,
             log = log,
             onRequest = { _, _, r, isNew ->
+                // Server receive client handshake.
                 if (r.version == TransferProtoConstant.VERSION) {
                     val currentState = getCurrentState()
                     if (isNew && currentState is FileExploreState.Connected) {
@@ -111,6 +114,7 @@ class FileExplore(
             responseType = FileExploreDataType.ScanDirResp.type,
             log = log,
             onRequest = { _, _, r, isNew ->
+                // Client or server handle scan current devices dir request. （Send current dirs' children file to remote）
                 scanDirRequest.onRequest(isNew, r)
             }
         )
@@ -122,6 +126,7 @@ class FileExplore(
             responseType = FileExploreDataType.SendFilesResp.type,
             log = log,
             onRequest = { _, _, r, isNew ->
+                // Client or server handle download files from remote.
                 sendFilesRequest.onRequest(isNew, r)
             }
         )
@@ -133,6 +138,7 @@ class FileExplore(
             responseType = FileExploreDataType.DownloadFilesResp.type,
             log = log,
             onRequest = { _, _, r, isNew ->
+                // Client or server handle sending current devices' files to remote.
                 downloadFileRequest.onRequest(isNew, r)
             }
         )
@@ -144,6 +150,7 @@ class FileExplore(
             responseType = FileExploreDataType.SendMsgResp.type,
             log = log,
             onRequest = { _, _, r, isNew ->
+                // Client or server receive text message from remote.
                 if (isNew) {
                     dispatchNewMsg(r)
                 }
@@ -156,6 +163,9 @@ class FileExplore(
         o.onNewState(state.get())
     }
 
+    /**
+     * Server create connection.
+     */
     fun bind(address: InetAddress, simpleCallback: SimpleCallback<Unit>) {
         if (getCurrentState() !is FileExploreState.NoConnection) {
             simpleCallback.onError("Error state: ${getCurrentState()}")
@@ -167,12 +177,17 @@ class FileExplore(
         this.exploreTask.get()?.stopTask()
         newState(FileExploreState.Requesting)
         val hasChildConnection = AtomicBoolean(false)
+        // Server task.
         val serverTask = NettyTcpServerConnectionTask(
             bindAddress = address,
             bindPort = TransferProtoConstant.FILE_EXPLORE_PORT,
             idleLimitDuration = heartbeatInterval * 3,
             newClientTaskCallback = { task ->
+                // Client coming, only one client would be accepted.
                 if (hasChildConnection.compareAndSet(false, true)) {
+                    /**
+                     * Step2: handle client connection.
+                     */
                     val exploreTask = task.withClient<ConnectionClientImpl>(log = log).withServer<ConnectionServerClientImpl>(log = log)
                     this@FileExplore.exploreTask.get()?.stopTask()
                     this@FileExplore.exploreTask.set(exploreTask)
@@ -185,6 +200,7 @@ class FileExplore(
                             if (nettyState is NettyTaskState.Error ||
                                 nettyState is NettyTaskState.ConnectionClosed ||
                                 getCurrentState() !is FileExploreState.Requesting) {
+                                // Client connection fail.
                                 val errorMsg = "Connect error: $nettyState, ${getCurrentState()}"
                                 log.e(TAG, errorMsg)
                                 if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -196,6 +212,7 @@ class FileExplore(
                                 serverTask.set(null)
                                 newState(FileExploreState.NoConnection)
                             } else {
+                                // Client connection success.
                                 if (nettyState is NettyTaskState.ConnectionActive) {
                                     newState(FileExploreState.Connected)
                                     log.d(TAG, "Connect success.")
@@ -233,6 +250,7 @@ class FileExplore(
                 if (nettyState is NettyTaskState.Error ||
                         nettyState is NettyTaskState.ConnectionClosed ||
                         getCurrentState() !is FileExploreState.Requesting) {
+                    // Server task connection create fail.
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError("Server bind error: $nettyState")
                     }
@@ -240,6 +258,7 @@ class FileExplore(
                     serverTask.stopTask()
                     log.e(TAG, "Bind server error: $nettyState")
                 } else if (nettyState is NettyTaskState.ConnectionActive) {
+                    // Server task connection create success.
                     serverTask.addObserver(closeObserver)
                     serverTask.removeObserver(this)
                     log.d(TAG, "Bind server success.")
@@ -253,11 +272,17 @@ class FileExplore(
                 task: INettyConnectionTask
             ) {}
         })
+        /**
+         * Step1: Start server task.
+         */
         serverTask.startTask()
         this.serverTask.get()?.stopTask()
         this.serverTask.set(serverTask)
     }
 
+    /**
+     * Client create connection.
+     */
     fun connect(
         serverAddress: InetAddress,
         simpleCallback: SimpleCallback<Unit>
@@ -270,6 +295,7 @@ class FileExplore(
         heartbeatTaskFuture.get()?.cancel(true)
         heartbeatTaskFuture.set(null)
         newState(FileExploreState.Requesting)
+        // Client connection task.
         val exploreTask = NettyTcpClientConnectionTask(
             serverAddress = serverAddress,
             serverPort = TransferProtoConstant.FILE_EXPLORE_PORT,
@@ -281,6 +307,7 @@ class FileExplore(
                 if (nettyState is NettyTaskState.Error ||
                         nettyState is NettyTaskState.ConnectionClosed ||
                         getCurrentState() !is FileExploreState.Requesting) {
+                    // Create client connection fail.
                     val errorMsg = "Connect error: $nettyState, ${getCurrentState()}"
                     log.e(TAG, errorMsg)
                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -290,6 +317,7 @@ class FileExplore(
                     exploreTask.removeObserver(this)
                     newState(FileExploreState.NoConnection)
                 } else {
+                    // Create client connection success.
                     if (nettyState is NettyTaskState.ConnectionActive) {
                         newState(FileExploreState.Connected)
                         log.d(TAG, "Connect success.")
@@ -304,6 +332,7 @@ class FileExplore(
                         if (hasInvokeCallback.compareAndSet(false, true)) {
                             simpleCallback.onSuccess(Unit)
                         }
+                        // Start heartbeat task, send a heartbeat each 8000 milliseconds default.
                         val future = taskScheduleExecutor.scheduleAtFixedRate(
                             {
                                 sendHeartbeat()
@@ -324,6 +353,9 @@ class FileExplore(
             ) {}
 
         })
+        /**
+         * Step1: Start client connection task.
+         */
         exploreTask.startTask()
     }
 
@@ -338,6 +370,9 @@ class FileExplore(
         clearObserves()
     }
 
+    /**
+     * Client request handshake to server.
+     */
     fun requestHandshake(simpleCallback: SimpleCallback<Handshake>) {
         assertState(false, simpleCallback) { task, _ ->
             task.requestSimplify<HandshakeReq, HandshakeResp>(
@@ -375,6 +410,10 @@ class FileExplore(
         }
     }
 
+
+    /**
+     * Client or server request remote [dirPath]'s children files.
+     */
     fun requestScanDir(dirPath: String, simpleCallback: SimpleCallback<ScanDirResp>) {
         assertState(simpleCallback = simpleCallback) { task, _ ->
             task.requestSimplify(
@@ -401,6 +440,9 @@ class FileExplore(
         }
     }
 
+    /**
+     * Client or server wants to send files to remote.
+     */
     fun requestSendFiles(sendFiles: List<FileExploreFile>, maxConnection: Int,  simpleCallback: SimpleCallback<SendFilesResp>) {
         assertState(simpleCallback = simpleCallback) { task, _ ->
             task.requestSimplify(
@@ -427,6 +469,9 @@ class FileExplore(
         }
     }
 
+    /**
+     * Client or server want download files from remote.
+     */
     fun requestDownloadFiles(downloadFiles: List<FileExploreFile>, bufferSize: Int,  simpleCallback: SimpleCallback<DownloadFilesResp>) {
         assertState(simpleCallback = simpleCallback) { task, _ ->
             task.requestSimplify(
@@ -453,6 +498,9 @@ class FileExplore(
         }
     }
 
+    /**
+     * Client or server send message to remote.
+     */
     fun requestMsg(msg: String,  simpleCallback: SimpleCallback<Unit>) {
         assertState(simpleCallback = simpleCallback) { task, _ ->
             task.requestSimplify(
@@ -485,6 +533,9 @@ class FileExplore(
         }
     }
 
+    /**
+     * Client send heartbeat to server.
+     */
     private fun sendHeartbeat() {
         assertState<Unit>(false, null) { task, _ ->
             task.requestSimplify<Unit, Unit>(
