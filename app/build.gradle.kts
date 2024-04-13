@@ -65,9 +65,6 @@ android {
         viewBinding {
             enable = true
         }
-        dataBinding {
-            enable = true
-        }
     }
     kotlinOptions {
         jvmTarget = "1.8"
@@ -81,26 +78,13 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity)
-
-    // rxjava3
-    implementation(libs.rxjava3)
-    implementation(libs.rxkotlin3)
-    implementation(libs.rxandroid3)
-
-    // rxbinding
-    implementation(libs.rxbinding.core)
-    implementation(libs.rxbinding.appcompat)
-    implementation(libs.rxbinding.swiperefreshlayout)
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.swiperefreshlayout)
 
     // coroutine
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.core.jvm)
     implementation(libs.coroutines.android)
-    implementation(libs.coroutines.rx3)
-
-    // kodein
-    implementation(libs.kodein.core)
-    implementation(libs.kodein.androidx)
 
     // moshi
     implementation(libs.moshi)
@@ -128,8 +112,6 @@ dependencies {
     implementation(libs.qrcodegen)
 
     // tans5
-    implementation(libs.tadapter)
-    implementation(libs.rxutils)
     implementation(libs.tuiutils)
 
     // glide
