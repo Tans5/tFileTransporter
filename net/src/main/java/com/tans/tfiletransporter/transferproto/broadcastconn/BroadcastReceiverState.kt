@@ -4,9 +4,9 @@ import com.tans.tfiletransporter.netty.extensions.ConnectionClientImpl
 import com.tans.tfiletransporter.netty.extensions.ConnectionServerImpl
 
 sealed class BroadcastReceiverState {
-    object NoConnection : BroadcastReceiverState()
+    data object NoConnection : BroadcastReceiverState()
 
-    object Requesting : BroadcastReceiverState()
+    data object Requesting : BroadcastReceiverState()
 
-    object Active : BroadcastReceiverState()
+    data object Active : BroadcastReceiverState()
 }
