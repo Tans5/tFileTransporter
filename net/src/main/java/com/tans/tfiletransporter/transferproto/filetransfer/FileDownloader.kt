@@ -52,8 +52,19 @@ class FileDownloader(
 
     override val state: AtomicReference<FileTransferState> = AtomicReference(FileTransferState.NotExecute)
 
+    /**
+     * Waiting download file tasks.
+     */
     private val waitingDownloader: LinkedBlockingDeque<SingleFileDownloader> = LinkedBlockingDeque()
+
+    /**
+     * Downloading file task.
+     */
     private val workingDownloader: AtomicReference<SingleFileDownloader?> = AtomicReference(null)
+
+    /**
+     * Finished file download tasks.
+     */
     private val finishedDownloader: LinkedBlockingDeque<SingleFileDownloader> = LinkedBlockingDeque()
 
 
@@ -61,14 +72,20 @@ class FileDownloader(
         super.addObserver(o)
         o.onNewState(state.get())
     }
+
+    /**
+     * Start download files, downloader as client.
+     */
     @Synchronized
     fun start() {
         if (getCurrentState() is FileTransferState.NotExecute) {
             newState(FileTransferState.Started)
             waitingDownloader.clear()
+            // Single file download handle by SingleFileDownloader
             for (f in files) {
                 waitingDownloader.add(SingleFileDownloader(f))
             }
+            // Move first file download task to downloading task.
             doNextDownloader(null)
         }
     }
@@ -88,18 +105,22 @@ class FileDownloader(
         assertActive {
             if (finishedDownloader != null) {
                 this.finishedDownloader.add(finishedDownloader)
+                // Notify observers single file download finished.
                 for (o in observers) {
                     o.onEndFile(finishedDownloader.file)
                 }
             }
+            // Move waiting task to working.
             val targetDownloader = waitingDownloader.pollFirst()
             if (targetDownloader != null) {
                 targetDownloader.onActive(finishedDownloader)
                 workingDownloader.set(targetDownloader)
+                // Notify observers single file download start.
                 for (o in observers) {
                     o.onStartFile(targetDownloader.file)
                 }
             } else {
+                // No waiting file task, all files download finished.
                 newState(FileTransferState.Finished)
                 finishedDownloader?.closeFragmentsConnection()
                 closeConnectionIfActive()
@@ -187,19 +208,27 @@ class FileDownloader(
             AtomicReference(null)
         }
 
+
+        /**
+         * SingleFileDownloader move to working task from waiting tasks.
+         */
         fun onActive(lastSingleFileDownloader: SingleFileDownloader?) {
             if (!isSingleFileDownloaderCanceled.get() && !isSingleFileFinished.get() && isSingleFileDownloaderExecuted.compareAndSet(false, true)) {
                 try {
+                    // Create downloading file.
                     val downloadingFile = createDownloadingFile()
                     this.downloadingFile.set(downloadingFile)
                     val randomAccessFile = RandomAccessFile(downloadingFile, "rw")
                     this.randomAccessFile.get()?.close()
                     this.randomAccessFile.set(randomAccessFile)
                     randomAccessFile.setLength(file.size)
+                    // Compute every fragment size.
                     val fragmentsRange = createFragmentsRange()
                     log.d(TAG, "Real download fragment size: ${fragmentsRange.size}")
                     launch {
+                        // Create SingleFileFragmentDownloaders base on fragments.
                         for ((start, end) in fragmentsRange) {
+                            // Fragment connection retry 3 times.
                             var tryTimes = 3
                             var result: Result<SingleFileFragmentDownloader>
                             do {
@@ -209,6 +238,7 @@ class FileDownloader(
                                     end = end
                                 )
                                 result = runCatching {
+                                    // Start fragment connection, connect to server.
                                     fd.connectToServerSuspend()
                                     fd
                                 }
@@ -268,8 +298,10 @@ class FileDownloader(
 
         private fun updateProgress(downloadedSize: Long) {
             val hasDownloadedSize = singleFileHasDownloadSize.addAndGet(downloadedSize)
+            // Notify progress to observers.
             dispatchProgressUpdate(hasDownloadedSize, file)
             if (hasDownloadedSize >= file.size) {
+                // Single file download finished.
                 onFinished()
             }
         }
@@ -278,6 +310,7 @@ class FileDownloader(
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileFinished.compareAndSet(false, true)) {
                 try {
                     recycleResource()
+                    // Rename downloaded file's name.
                     downloadingFile.get()?.let {
                         it.renameTo(getDownloadedFile(file.name))
                         downloadingFile.set(null)
@@ -286,6 +319,7 @@ class FileDownloader(
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
+                // Start next SingleFileDownloader.
                 doNextDownloader(this)
             }
         }
@@ -443,22 +477,26 @@ class FileDownloader(
                     responseType = FileTransferDataType.SendResp.type,
                     log = log,
                     onRequest = { _, _, data, isNew ->
+                        // File's data coming from FileSender.
                         if (isNew) {
                             if (!isFragmentDownloaderClosed.get() && !isFragmentDownloaderFinished.get()) {
                                 try {
                                     if (downloadedSize.get() == 0L) {
                                         log.d(TAG, "Frame: $start download started.")
                                     }
+                                    // Write data to real download file.
                                     randomAccessFile.writeContent(
                                         fileOffset = downloadedSize.get() + start,
                                         byteArray = data,
                                         contentLen = data.size
                                     )
                                     if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
+                                        // Fragment download finished.
                                         log.d(TAG, "Frame: $start download finished(${end - start} bytes).")
                                         isFragmentDownloaderFinished.set(true)
                                         val t = task.get()
                                         if (t != null) {
+                                            // Notify server this fragment download finished, connection need close.
                                             t.requestSimplify(
                                                 type = FileTransferDataType.FinishedReq.type,
                                                 request = Unit,
@@ -486,10 +524,12 @@ class FileDownloader(
                                                 }
                                             )
                                         } else {
+
                                             updateProgress(data.size.toLong())
                                             errorStateIfActive("Task is null")
                                         }
                                     } else {
+                                        // Update download progress.
                                         updateProgress(data.size.toLong())
                                     }
                                 } catch (e: Throwable) {
@@ -529,6 +569,7 @@ class FileDownloader(
             }
 
             fun connectToServer(simpleCallback: SimpleCallback<Unit>) {
+                // Fragment's connection task
                 val task = NettyTcpClientConnectionTask(
                     serverAddress = connectAddress,
                     serverPort = TransferProtoConstant.FILE_TRANSFER_PORT
@@ -542,15 +583,18 @@ class FileDownloader(
                         localTask: INettyConnectionTask
                     ) {
                         if (nettyState is NettyTaskState.ConnectionActive) {
+                            // Connection success.
                             simpleCallback.onSuccess(Unit)
                             task.removeObserver(this)
                             task.addObserver(closeObserver)
                             task.registerServer(errorReqServer)
                             task.registerServer(receiveDataServer)
+                            // Send fragment's information to server.
                             sendDownloadRequest(task)
                         }
                         if (nettyState is NettyTaskState.ConnectionClosed
                             || nettyState is NettyTaskState.Error) {
+                            // Connection fail.
                             simpleCallback.onError("Connect error: $nettyState")
                             task.removeObserver(this)
                         }
@@ -610,8 +654,8 @@ class FileDownloader(
                     type = FileTransferDataType.DownloadReq.type,
                     request = DownloadReq(
                         file = file,
-                        start = start,
-                        end = end
+                        start = start, // Fragment's start.
+                        end = end // Fragment's end.
                     ),
                     callback = object : IClientManager.RequestCallback<Unit> {
                         override fun onSuccess(

@@ -53,10 +53,21 @@ class FileSender(
         AtomicReference(null)
     }
 
+    /**
+     * Waiting send file tasks.
+     */
     private val waitingSenders: LinkedBlockingDeque<SingleFileSender> = LinkedBlockingDeque()
+
+    /**
+     * Sending file task.
+     */
     private val workingSender: AtomicReference<SingleFileSender?> by lazy {
         AtomicReference(null)
     }
+
+    /**
+     * Finished file send tasks.
+     */
     private val finishedSenders: LinkedBlockingDeque<SingleFileSender> = LinkedBlockingDeque()
 
     private val unhandledFragmentSenderRequest: LinkedBlockingDeque<UnhandledFragmentRequest> = LinkedBlockingDeque()
@@ -65,25 +76,34 @@ class FileSender(
         o.onNewState(state.get())
     }
 
+    /**
+     * Start send files, sender as server.
+     */
     @Synchronized
     fun start() {
         if (getCurrentState() is FileTransferState.NotExecute) {
             newState(FileTransferState.Started)
             waitingSenders.clear()
+            // Single file send handle by SingleFileSender
             for (f in files) {
                 waitingSenders.add(SingleFileSender(f))
             }
+            // Move first file send task to sending task.
             doNextSender(null)
+
+            // File sender server, waiting clients request.
             val serverTask = NettyTcpServerConnectionTask(
                 bindAddress = bindAddress,
                 bindPort = TransferProtoConstant.FILE_TRANSFER_PORT,
                 newClientTaskCallback = { clientTask ->
+                    // New client coming.
                     assertActive(
                         notActive = { clientTask.stopTask() }
                     ) {
                         synchronized(this) {
                             val workingSender = workingSender.get()
                             if (workingSender != null) {
+                                // Working file send task handle client connection.
                                 workingSender.newChildTask(clientTask)
                             } else {
                                 clientTask.stopTask()
@@ -101,12 +121,14 @@ class FileSender(
 
                     if (nettyState is NettyTaskState.Error
                         || nettyState is NettyTaskState.ConnectionClosed) {
+                        // Server connect error.
                         if (getCurrentState() is FileTransferState.Started) {
                             val errorMsg = "Bind address fail: $nettyState, ${getCurrentState()}"
                             log.e(TAG, errorMsg)
                             errorStateIfActive(errorMsg)
                         }
                     } else {
+                        // Server connect success.
                         if (nettyState is NettyTaskState.ConnectionActive) {
                             log.d(TAG, "Bind address success: $nettyState")
                         }
@@ -120,6 +142,7 @@ class FileSender(
                     task: INettyConnectionTask
                 ) {}
             })
+            // Start server task.
             serverTask.startTask()
 
         }
@@ -154,19 +177,23 @@ class FileSender(
             assertActive {
                 if (finishedSender != null) {
                     finishedSenders.add(finishedSender)
+                    // Notify observers single file send finished.
                     for (o in observers) {
                         o.onEndFile(finishedSender.file.exploreFile)
                     }
                 }
                 workingSender.set(null)
+                // Move waiting task to working.
                 val targetSender = waitingSenders.pollFirst()
                 if (targetSender != null) {
                     targetSender.onActive()
                     workingSender.set(targetSender)
+                    // Notify observers single file send start.
                     for (o in observers) {
                         o.onStartFile(targetSender.file.exploreFile)
                     }
                 } else {
+                    // No waiting file task, all files send finished.
                     newState(FileTransferState.Finished)
                     closeConnectionIfActive()
                 }
@@ -238,12 +265,17 @@ class FileSender(
             LinkedBlockingDeque()
         }
 
+        /**
+         * SingleFileSender move to working task from waiting tasks.
+         */
         fun onActive() {
             if (!isSingleFileSenderCanceled.get() && !isSingleFileSenderFinished.get() && isSingleFileSenderExecuted.compareAndSet(false, true)) {
                 try {
+                    // Open real files for next sending.
                     randomAccessFile.get()?.close()
                     val randomAccessFile = RandomAccessFile(file.realFile, "r")
                     this.randomAccessFile.set(randomAccessFile)
+                    // Check unhandled fragments task.
                     checkUnhandledFragment()
                 } catch (e: Throwable) {
                     val msg = "Read file: $file error: ${e.message}"
@@ -253,6 +285,11 @@ class FileSender(
             }
         }
 
+        /**
+         * Handle client request.
+         * Each client request download a fragment of single file, single file splits multiple fragments to sending.
+         * File's fragment sending handle by [SingleFileFragmentSender]
+         */
         fun newChildTask(task: NettyTcpServerConnectionTask.ChildConnectionTask) {
             assertSingleFileSenderActive(notActive = {
                 task.stopTask()
@@ -263,6 +300,7 @@ class FileSender(
             ) {
                 val randomAccessFile = this.randomAccessFile.get()
                 if (randomAccessFile != null) {
+                    // Create new SingleFileFragmentSender to handle client's request.
                     fragmentSenders.add(SingleFileFragmentSender(randomAccessFile = randomAccessFile, task = task))
                 } else {
                     task.stopTask()
@@ -299,6 +337,9 @@ class FileSender(
             }
         }
 
+        /**
+         * Find out unhandled fragment requests which need current SingleFileSender handle.
+         */
         private fun checkUnhandledFragment() {
             val randomAccessFile = randomAccessFile.get()
             if (randomAccessFile != null) {
@@ -319,10 +360,15 @@ class FileSender(
             }
         }
 
+        /**
+         * Sending progress update.
+         */
         private fun updateProgress(sentSize: Long) {
             val hasSentSize = singleFileHasSentSize.addAndGet(sentSize)
+            // Notify progress to observers.
             dispatchProgressUpdate(hasSentSize, file)
             if (hasSentSize >= file.exploreFile.size) {
+                // Current SingleFileSender finished.
                 onFinished()
             }
         }
@@ -333,6 +379,7 @@ class FileSender(
                     if (isSingleFileSenderFinished.compareAndSet(false, true)) {
                         log.d(TAG, "File: ${file.exploreFile.name} send success!!!")
                         recycleResource()
+                        // Start next SingleFileSender.
                         doNextSender(this)
                     }
                 }
@@ -409,9 +456,13 @@ class FileSender(
                     responseType = FileTransferDataType.DownloadResp.type,
                     log = log,
                     onRequest = { _, _, r, isNew ->
+                        // Client send needing file's fragment information.
                         if (isNew) {
+                            // Check sending file.
                             if (downloadReq.get() == null && r.file == file.exploreFile) {
+                                // File's fragment start.
                                 val startIndex = r.start
+                                // File's fragment end.
                                 val endIndex = r.end
                                 if (startIndex < 0 || endIndex < 0 || startIndex > endIndex || endIndex > r.file.size) {
                                     val msg = "Wrong file info: $r"
@@ -421,8 +472,10 @@ class FileSender(
                                 }
                                 serverClientTask.get()?.registerServer(finishReqServer)
                                 downloadReq.set(r)
+                                // Start fragment sending.
                                 startSendData(r)
                             } else {
+                                // Not current SingleFileSender handle, move to unhandled connection, waiting next SingleFileSender to handle.
                                 log.e(TAG, "Receive unknown request: $r")
                                 val connectionTask = serverClientTask.get()
                                 connectionTask?.unregisterServer(downloadReqServer)
@@ -546,6 +599,9 @@ class FileSender(
                 ) ?: cont.resumeExceptionIfActive(Throwable("Task is null."))
             }
 
+            /**
+             * Start sending fragment.
+             */
             private fun startSendData(downloadReq: DownloadReq) {
                 log.d(TAG, "Frame: ${downloadReq.start} started")
                 launch {
@@ -560,15 +616,18 @@ class FileSender(
                             } else {
                                 bufferSize
                             }
+                            // Read data from file.
                             randomAccessFile.readContent(
                                 fileOffset = downloadReq.start + hasRead,
                                 byteArray = byteArray,
                                 contentLen = thisTimeRead.toInt()
                             )
                             val startTime = System.currentTimeMillis()
+                            // Send data to client.
                             sendDataSuspend(byteArray.copyOfRange(0, thisTimeRead.toInt()))
                             val endTime = System.currentTimeMillis()
                             updateBufferSize(endTime - startTime)
+                            // Update sending progress.
                             updateProgress(thisTimeRead)
                             hasRead += thisTimeRead
                         }
