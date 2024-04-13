@@ -1,78 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gray_2">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/message_rv"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/gray_2">
+        android:layout_height="0dp"
+        android:overScrollMode="never"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false"
+        app:reverseLayout="true"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/edit_layout"
+        app:layout_constrainedHeight="true"
+        app:layout_constraintVertical_bias="1"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/message_item_layout"
+        tools:itemCount="3"/>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/message_rv"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:overScrollMode="never"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:clipToPadding="false"
-            app:reverseLayout="true"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/edit_layout"
-            app:layout_constrainedHeight="true"
-            app:layout_constraintVertical_bias="1"
-            app:layout_constraintVertical_chainStyle="packed"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/message_item_layout"
-            tools:itemCount="3"/>
+    <LinearLayout
+        android:id="@+id/edit_layout"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:background="@color/white"
+        android:elevation="4dp"
+        android:fitsSystemWindows="true"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/message_rv">
 
-        <LinearLayout
-            android:id="@+id/edit_layout"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:orientation="horizontal"
-            android:background="@color/white"
-            android:elevation="4dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/message_rv">
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/edit_text"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
+            android:layout_marginStart="15dp"
+            android:layout_marginEnd="10dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/edit_text_bg" />
 
-            <androidx.appcompat.widget.AppCompatEditText
-                android:id="@+id/edit_text"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="match_parent"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="5dp"
-                android:layout_marginStart="15dp"
-                android:layout_marginEnd="10dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@drawable/edit_text_bg" />
+        <FrameLayout
+            android:id="@+id/send_layout"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp">
 
-            <FrameLayout
-                android:id="@+id/send_layout"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="8dp">
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/send"
+                android:layout_gravity="center"/>
 
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/send"
-                    android:layout_gravity="center"/>
+        </FrameLayout>
 
-            </FrameLayout>
+    </LinearLayout>
 
-        </LinearLayout>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-</layout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -7,8 +7,6 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import com.jakewharton.rxbinding4.view.clicks
-import com.tans.rxutils.ignoreSeveralClicks
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.FileTransportActivityBinding
@@ -30,45 +28,49 @@ import com.tans.tfiletransporter.transferproto.fileexplore.model.SendFilesResp
 import com.tans.tfiletransporter.transferproto.fileexplore.model.SendMsgReq
 import com.tans.tfiletransporter.transferproto.fileexplore.waitClose
 import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
-import com.tans.tfiletransporter.ui.BaseActivity
-import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.commomdialog.LoadingDialog
+import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
+import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.subjects.PublishSubject
-import io.reactivex.rxjava3.subjects.Subject
+import com.tans.tuiutils.view.clicks
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.singleton
 import java.net.InetAddress
-import java.util.Optional
 import java.io.File
 import kotlin.math.min
 
 
 @SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
-class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTransportActivity.Companion.FileTransportActivityState>(
-    R.layout.file_transport_activity, FileTransportActivityState()
+class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.Companion.FileTransportActivityState>(
+    defaultState = FileTransportActivityState()
 ) {
 
-    private val floatActionBtnClickEvent: Subject<Unit> by lazy {
-        PublishSubject.create<Unit?>().toSerialized()
+    override val layoutId: Int = R.layout.file_transport_activity
+
+    private val floatActionBtnClickEvent: MutableSharedFlow<Unit> by lazyViewModelField("floatActionBtnClickEvent") {
+        MutableSharedFlow(onBufferOverflow = BufferOverflow.DROP_OLDEST)
     }
 
-    private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazy {
+    /**
+     * Remote device request scan current device's dir.
+     */
+    private val scanDirRequest: FileExploreRequestHandler<ScanDirReq, ScanDirResp> by lazyViewModelField("scanDirRequest") {
         object : FileExploreRequestHandler<ScanDirReq, ScanDirResp> {
             override fun onRequest(isNew: Boolean, request: ScanDirReq): ScanDirResp {
                 return if (Settings.isShareMyDir()) {
@@ -84,11 +86,14 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
     }
 
-    private val sendFilesRequest: FileExploreRequestHandler<SendFilesReq, SendFilesResp> by lazy {
+    /**
+     * Remote device notify to download files.
+     */
+    private val sendFilesRequest: FileExploreRequestHandler<SendFilesReq, SendFilesResp> by lazyViewModelField("sendFilesRequest") {
         object : FileExploreRequestHandler<SendFilesReq, SendFilesResp> {
             override fun onRequest(isNew: Boolean, request: SendFilesReq): SendFilesResp {
                 if (isNew) {
-                    launch {
+                    uiCoroutineScope.launch {
                         val mineMax = Settings.transferFileMaxConnection()
                         downloadFiles(
                             request.sendFiles,
@@ -101,11 +106,15 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
     }
 
-    private val downloadFilesRequest: FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp> by lazy {
+
+    /**
+     * Remote device notify to send files.
+     */
+    private val downloadFilesRequest: FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp> by lazyViewModelField("downloadFilesRequest") {
         object : FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp> {
             override fun onRequest(isNew: Boolean, request: DownloadFilesReq): DownloadFilesResp {
                 if (isNew) {
-                    launch {
+                    uiCoroutineScope.launch {
                         sendFiles(request.downloadFiles)
                     }
                 }
@@ -114,7 +123,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         }
     }
 
-    private val fileExplore: FileExplore by lazy {
+    val fileExplore: FileExplore by lazyViewModelField("fileExplore") {
         FileExplore(
             log = AndroidLog,
             scanDirRequest = scanDirRequest,
@@ -124,30 +133,25 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
     }
 
 
-    private val fragments: Map<DirTabType, BaseFragment<*, *>> = mapOf(
-        DirTabType.MyApps to MyAppsFragment(),
-        DirTabType.MyImages to MyImagesFragment(),
-        DirTabType.MyVideos to MyVideosFragment(),
-        DirTabType.MyAudios to MyAudiosFragment(),
-        DirTabType.MyDir to MyDirFragment(),
-        DirTabType.RemoteDir to RemoteDirFragment(),
-        DirTabType.Message to MessageFragment()
-    )
-
-    override fun DI.MainBuilder.addDIInstance() {
-        bind<FileExplore>() with singleton { fileExplore }
+    private val fragments: Map<DirTabType, Fragment> by lazyViewModelField("fragments") {
+        mapOf(
+            DirTabType.MyApps to MyAppsFragment(),
+            DirTabType.MyImages to MyImagesFragment(),
+            DirTabType.MyVideos to MyVideosFragment(),
+            DirTabType.MyAudios to MyAudiosFragment(),
+            DirTabType.MyDir to MyDirFragment(),
+            DirTabType.RemoteDir to RemoteDirFragment(),
+            DirTabType.Message to MessageFragment()
+        )
     }
 
-    override fun firstLaunchInitData() {
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
         val (remoteAddress, isServer, localAddress) = with(intent) { Triple(getRemoteAddress(), getIsServer(), getLocalAddress()) }
 
+
         launch(Dispatchers.IO) {
-            val loadingDialog = withContext(Dispatchers.Main) {
-                LoadingDialog().apply {
-                    show(this@FileTransportActivity.supportFragmentManager, "LoadingDialog#${System.currentTimeMillis()}")
-                }
-            }
-            val connectResult = if (isServer) {
+            if (isServer) {
+                // Server
                 AndroidLog.d(TAG, "Start bind address: $localAddress")
                 runCatching {
                     withTimeout(5000L) {
@@ -155,6 +159,7 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     }
                 }
             } else {
+                // Client, client retry 3 times.
                 AndroidLog.d(TAG, "Start connect address: $remoteAddress")
                 var connectTimes = 3
                 var connectResult: Result<Unit>
@@ -167,84 +172,90 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 } while (--connectTimes > 0)
                 connectResult
             }
-            if (connectResult.isSuccess) {
-                AndroidLog.d(TAG, "Create connection success!!")
-                AndroidLog.d(TAG, "Start handshake.")
-                val handshakeResult = if (isServer) {
-                    runCatching {
-                        withTimeout(3000L) {
-                            fileExplore.waitHandshake()
-                        }
-                    }
-                } else {
-                    runCatching {
-                        fileExplore.handshakeSuspend()
-                    }
-                }
-                if (handshakeResult.isSuccess) {
-                    withContext(Dispatchers.Main) { loadingDialog.dismissSafe() }
-                    AndroidLog.d(TAG, "Handshake success!!")
-                    updateState { it.copy(handshake = Optional.ofNullable(handshakeResult.getOrNull())) }.await()
-                    fileExplore.addObserver(object : FileExploreObserver {
-                        override fun onNewState(state: FileExploreState) {}
-                        override fun onNewMsg(msg: SendMsgReq) {
-                            launch {
-                                updateNewMessage(
-                                    Message(
-                                        time = msg.sendTime,
-                                        msg = msg.msg,
-                                        fromRemote = true
-                                    )
-                                )
+                .onSuccess {
+                    // Create connection success.
+                    AndroidLog.d(TAG, "Create connection success!!")
+                    AndroidLog.d(TAG, "Start handshake.")
+
+                    // Handshake, client request handshake, server wait handshake.
+                    if (isServer) {
+                        runCatching {
+                            withTimeout(3000L) {
+                                fileExplore.waitHandshake()
                             }
                         }
-                    })
-                    fileExplore.waitClose()
-                    withContext(Dispatchers.Main) {
-                        this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
-                            title = getString(R.string.connection_error_title),
-                            message = getString(R.string.connection_error_message)
-                        )
-                        finish()
+                    } else {
+                        runCatching {
+                            fileExplore.handshakeSuspend()
+                        }
                     }
-                } else {
-                    AndroidLog.e(TAG, "Handshake fail: $handshakeResult", handshakeResult.exceptionOrNull())
-                    withContext(Dispatchers.Main) {
-                        loadingDialog.dismissSafe()
-                        this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
-                            title = getString(R.string.connection_error_title),
-                            message = getString(R.string.connection_handshake_error, handshakeResult.exceptionOrNull()?.message ?: "")
-                        )
-                        finish()
-                    }
+                        .onSuccess { handshake ->
+                            AndroidLog.d(TAG, "Handshake success!!")
+                            updateState { s -> s.copy(connectionStatus = ConnectionStatus.Connected(handshake = handshake)) }
+
+                            fileExplore.addObserver(object : FileExploreObserver {
+                                override fun onNewState(state: FileExploreState) {}
+                                // New message coming.
+                                override fun onNewMsg(msg: SendMsgReq) {
+                                    updateNewMessage(
+                                        Message(
+                                            time = msg.sendTime,
+                                            msg = msg.msg,
+                                            fromRemote = true
+                                        )
+                                    )
+                                }
+                            })
+                            // Waiting connection close.
+                            fileExplore.waitClose()
+                            updateState { s -> s.copy(connectionStatus = ConnectionStatus.Closed) }
+                        }
+                        .onFailure {
+                            AndroidLog.e(TAG, "Handshake fail: ${it.message}", it)
+                            updateState { s -> s.copy(connectionStatus = ConnectionStatus.Closed) }
+                        }
                 }
-            } else {
-                AndroidLog.e(TAG, "Create connection fail: $connectResult", connectResult.exceptionOrNull())
-                withContext(Dispatchers.Main) {
-                    loadingDialog.dismissSafe()
-                    this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
-                        title = getString(R.string.connection_error_title),
-                        message = getString(R.string.connection_connect_error, connectResult.exceptionOrNull()?.message ?: "")
-                    )
-                    finish()
+                .onFailure {
+                    // Create connection fail.
+                    AndroidLog.e(TAG, "Create connection fail: ${it.message}", it)
+                    updateState { s -> s.copy(connectionStatus = ConnectionStatus.Closed) }
                 }
-            }
         }
     }
 
-    override fun initViews(binding: FileTransportActivityBinding) {
+    override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        val viewBinding = FileTransportActivityBinding.bind(contentView)
+
+        // Loading dialog.
         launch {
-            val (remoteInfo, remoteAddress) = with(intent) { getRemoteInfo() to getRemoteAddress() }
-            binding.toolBar.title = remoteInfo
-            binding.toolBar.subtitle = remoteAddress.hostAddress
-
-            binding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
-                override fun getItemCount(): Int = fragments.size
-                override fun createFragment(position: Int): Fragment = fragments[DirTabType.values()[position]]!!
+            this@FileTransportActivity.supportFragmentManager.loadingDialogSuspend {
+                stateFlow().map { it.connectionStatus }.first { it != ConnectionStatus.Connecting }
             }
+        }
 
-            TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-                tab.text = when (DirTabType.values()[position]) {
+        // Connection close dialog.
+        launch {
+            stateFlow().map { it.connectionStatus }.first { it == ConnectionStatus.Closed }
+            this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                title = getString(R.string.connection_error_title),
+                message = getString(R.string.connection_error_message)
+            )
+            finish()
+        }
+
+        launch {
+            stateFlow().map { it.connectionStatus }.first { it is ConnectionStatus.Connected }
+
+            // Fragments' ViewPager
+            val (remoteInfo, remoteAddress) = with(intent) { getRemoteInfo() to getRemoteAddress() }
+            viewBinding.toolBar.title = remoteInfo
+            viewBinding.toolBar.subtitle = remoteAddress.hostAddress
+            viewBinding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
+                override fun getItemCount(): Int = fragments.size
+                override fun createFragment(position: Int): Fragment = fragments[DirTabType.entries[position]]!!
+            }
+            TabLayoutMediator(viewBinding.tabLayout, viewBinding.viewPager) { tab, position ->
+                tab.text = when (DirTabType.entries[position]) {
                     DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
                     DirTabType.MyImages -> getString(R.string.file_transport_activity_tab_my_images)
                     DirTabType.MyVideos -> getString(R.string.file_transport_activity_tab_my_videos)
@@ -254,24 +265,17 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                     DirTabType.Message -> getString(R.string.file_transport_activity_tab_message)
                 }
             }.attach()
-
-            binding.toolBar.menu.findItem(R.id.settings).clicks()
-                .doOnNext {
-                    this@FileTransportActivity.supportFragmentManager.showSettingsDialog()
-                }
-                .bindLife()
-
-            binding.tabLayout.addOnTabSelectedListener(object :
+            viewBinding.tabLayout.addOnTabSelectedListener(object :
                 TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     when (tab?.position) {
-                        DirTabType.MyApps.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyApps) }.bindLife()
-                        DirTabType.MyImages.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyImages) }.bindLife()
-                        DirTabType.MyVideos.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyVideos) }.bindLife()
-                        DirTabType.MyAudios.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyAudios) }.bindLife()
-                        DirTabType.MyDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.MyDir) }.bindLife()
-                        DirTabType.RemoteDir.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.RemoteDir) }.bindLife()
-                        DirTabType.Message.ordinal -> updateStateCompletable { it.copy(selectedTabType = DirTabType.Message) }.bindLife()
+                        DirTabType.MyApps.ordinal -> updateState { it.copy(selectedTabType = DirTabType.MyApps) }
+                        DirTabType.MyImages.ordinal -> updateState { it.copy(selectedTabType = DirTabType.MyImages) }
+                        DirTabType.MyVideos.ordinal -> updateState { it.copy(selectedTabType = DirTabType.MyVideos) }
+                        DirTabType.MyAudios.ordinal -> updateState { it.copy(selectedTabType = DirTabType.MyAudios) }
+                        DirTabType.MyDir.ordinal -> updateState { it.copy(selectedTabType = DirTabType.MyDir) }
+                        DirTabType.RemoteDir.ordinal -> updateState { it.copy(selectedTabType = DirTabType.RemoteDir) }
+                        DirTabType.Message.ordinal -> updateState { it.copy(selectedTabType = DirTabType.Message) }
                     }
                 }
 
@@ -282,56 +286,57 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
                 }
             })
 
-            render({ it.selectedTabType }) {
+            // Setting's dialog.
+            viewBinding.toolBar.menu.findItem(R.id.settings).setOnMenuItemClickListener {
+                this@FileTransportActivity.supportFragmentManager.showSettingsDialog()
+                true
+            }
 
+            // Update Appbar UI
+            renderStateNewCoroutine({ it.selectedTabType }) {
                 when (it) {
                     DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyVideos, DirTabType.MyAudios, DirTabType.MyDir, DirTabType.RemoteDir -> {
-                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
-                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS_COLLAPSED
-                        binding.collapsingLayout.layoutParams = lpCollapsing
+                        val lpCollapsing = (viewBinding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                        lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+                        viewBinding.collapsingLayout.layoutParams = lpCollapsing
                     }
                     DirTabType.Message -> {
-                        val lpCollapsing = (binding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
+                        val lpCollapsing = (viewBinding.collapsingLayout.layoutParams as? AppBarLayout.LayoutParams)
                         lpCollapsing?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_NO_SCROLL
-                        binding.collapsingLayout.layoutParams = lpCollapsing
+                        viewBinding.collapsingLayout.layoutParams = lpCollapsing
                     }
                 }
 
                 when (it) {
                     DirTabType.MyApps, DirTabType.MyImages, DirTabType.MyVideos, DirTabType.MyAudios, DirTabType.MyDir -> {
-                        binding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
-                        binding.floatingActionBt.visibility = View.VISIBLE
+                        viewBinding.floatingActionBt.setImageResource(R.drawable.share_variant_outline)
+                        viewBinding.floatingActionBt.visibility = View.VISIBLE
                     }
                     DirTabType.RemoteDir -> {
-                        binding.floatingActionBt.setImageResource(R.drawable.download_outline)
-                        binding.floatingActionBt.visibility = View.VISIBLE
+                        viewBinding.floatingActionBt.setImageResource(R.drawable.download_outline)
+                        viewBinding.floatingActionBt.visibility = View.VISIBLE
                     }
                     DirTabType.Message -> {
-                        binding.floatingActionBt.visibility = View.GONE
+                        viewBinding.floatingActionBt.visibility = View.GONE
                     }
                 }
-                binding.appbarLayout.setExpanded(true, true)
-            }.bindLife()
+                viewBinding.appbarLayout.setExpanded(true, true)
+            }
 
 
-            binding.floatingActionBt.clicks()
-                .ignoreSeveralClicks()
-                .doOnNext { floatActionBtnClickEvent.onNext(Unit) }
-                .bindLife()
+            // FAB clicks.
+            viewBinding.floatingActionBt.clicks(this) {
+                floatActionBtnClickEvent.emit(Unit)
+            }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        fileExplore.closeConnectionIfActive()
-    }
+    fun observeFloatBtnClick(): Flow<Unit> = floatActionBtnClickEvent
 
-    fun observeFloatBtnClick(): Observable<Unit> = floatActionBtnClickEvent
+    fun observeMessages(): Flow<List<Message>> = stateFlow.map { it.messages }.distinctUntilChanged()
 
-    fun observeMessages(): Observable<List<Message>> = bindState().map { it.messages }.distinctUntilChanged()
-
-    suspend fun updateNewMessage(msg: Message) {
-        updateState { it.copy(messages = it.messages + msg) }.await()
+    fun updateNewMessage(msg: Message) {
+        updateState { it.copy(messages = it.messages + msg) }
     }
 
     private val fileTransferMutex: Mutex by lazy {
@@ -391,6 +396,11 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
         fileTransferMutex.unlock()
     }
 
+    override fun onViewModelCleared() {
+        super.onViewModelCleared()
+        fileExplore.closeConnectionIfActive()
+    }
+
     companion object {
 
         private const val TAG = "FileTransporterActivity"
@@ -418,12 +428,6 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             val fromRemote: Boolean
         )
 
-        data class FileTransportActivityState(
-            val selectedTabType: DirTabType = DirTabType.MyApps,
-            val handshake: Optional<Handshake> = Optional.empty(),
-            val messages: List<Message> = emptyList()
-        )
-
         enum class DirTabType {
             MyApps,
             MyImages,
@@ -433,6 +437,20 @@ class FileTransportActivity : BaseActivity<FileTransportActivityBinding, FileTra
             RemoteDir,
             Message
         }
+
+        sealed class ConnectionStatus {
+            data object Connecting : ConnectionStatus()
+
+            data class Connected(val handshake: Handshake) : ConnectionStatus()
+
+            data object Closed : ConnectionStatus()
+        }
+
+        data class FileTransportActivityState(
+            val selectedTabType: DirTabType = DirTabType.MyApps,
+            val connectionStatus: ConnectionStatus = ConnectionStatus.Connecting,
+            val messages: List<Message> = emptyList()
+        )
 
         fun getIntent(context: Context,
                       localAddress: InetAddress,

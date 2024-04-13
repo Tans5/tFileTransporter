@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
 
-    <FrameLayout
+    <include
+        android:id="@+id/file_tree_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white">
+        layout="@layout/file_tree_layout" />
 
-        <include
-            android:id="@+id/file_tree_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            layout="@layout/file_tree_layout" />
-
-    </FrameLayout>
-
-</layout>
+</FrameLayout>

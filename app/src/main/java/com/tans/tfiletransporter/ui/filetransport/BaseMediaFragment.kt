@@ -1,19 +1,13 @@
 package com.tans.tfiletransporter.ui.filetransport
 
 import android.os.Environment
+import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
-import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
-import com.tans.rxutils.QueryMediaItem
-import com.tans.rxutils.QueryMediaType
-import com.tans.rxutils.getMedia
-import com.tans.rxutils.switchThread
-import com.tans.tadapter.adapter.DifferHandler
-import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
-import com.tans.tadapter.spec.SimpleAdapterSpec
-import com.tans.tadapter.spec.toAdapter
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.BaseMediaFragmentLayoutBinding
@@ -22,87 +16,92 @@ import com.tans.tfiletransporter.databinding.VideoAudioItemLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
-import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.file.toFileExploreFile
 import com.tans.tfiletransporter.toSizeString
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.utils.dp2px
-import io.reactivex.rxjava3.core.Single
+import com.tans.tuiutils.adapter.decoration.MarginDividerItemDecoration
+import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
+import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
+import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
+import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
+import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
+import com.tans.tuiutils.mediastore.MediaStoreAudio
+import com.tans.tuiutils.mediastore.MediaStoreImage
+import com.tans.tuiutils.mediastore.MediaStoreVideo
+import com.tans.tuiutils.mediastore.queryAudioFromMediaStore
+import com.tans.tuiutils.mediastore.queryImageFromMediaStore
+import com.tans.tuiutils.mediastore.queryVideoFromMediaStore
+import com.tans.tuiutils.view.clicks
+import com.tans.tuiutils.view.refreshes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
-import org.kodein.di.instance
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 
 abstract class BaseMediaFragment(
     private val mediaType: MediaType
-) : BaseFragment<BaseMediaFragmentLayoutBinding, BaseMediaFragment.Companion.BaseMediaState>(
-    layoutId = R.layout.base_media_fragment_layout,
-    default = BaseMediaState()
+) : BaseCoroutineStateFragment<BaseMediaFragment.Companion.BaseMediaState>(
+    defaultState = BaseMediaState()
 ) {
 
-    private val fileExplore: FileExplore by instance()
+    override val layoutId: Int = R.layout.base_media_fragment_layout
+
+
+    private val fileExplore: FileExplore by lazy {
+        (requireActivity() as FileTransportActivity).fileExplore
+    }
 
     private val androidRootDir: File by lazy {
         Environment.getExternalStorageDirectory()
     }
 
-    private val recyclerViewScrollChannel = Channel<Int>(1)
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
+        launch {
+            refreshMediaItems()
+        }
+    }
 
-    override fun initViews(binding: BaseMediaFragmentLayoutBinding) {
+    override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        val viewBinding = BaseMediaFragmentLayoutBinding.bind(contentView)
 
-        refreshMediaItems().switchThread().bindLife()
 
         val rvAdapter = when (mediaType) {
             MediaType.Image -> {
-                binding.myMediaItemsRv.layoutManager = GridLayoutManager(requireContext(), 2)
-                SimpleAdapterSpec<Pair<QueryMediaItem.Image, Boolean>, ImageItemLayoutBinding>(
-                    layoutId = R.layout.image_item_layout,
-                    bindData = { _, (image, select), lBinding ->
-                        lBinding.select = select
-                        Glide.with(lBinding.root)
-                            .load(image.uri)
-                            .into(lBinding.photoIv)
-                    },
-                    itemClicks = listOf { lBinding, _ ->
-                        lBinding.root to { _, (image, lastSelectStatus) ->
-                            selectMediaItem(!lastSelectStatus, image).map { Unit }
-                        }
-                    },
-                    dataUpdater = bindState().map { state ->
-                        state.mediaItems.filterIsInstance<QueryMediaItem.Image>().map {
-                            it to state.selectedMediaItems.contains(it)
-                        }
-                    },
-                    differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.uri == d2.first.uri },
-                        contentTheSame = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
-                        changePayLoad = { d1, d2 ->
-                            if (d1.first.uri == d2.first.uri && d1.second != d2.second) {
-                                MediaItemSelectChange
-                            } else {
-                                null
+                viewBinding.myMediaItemsRv.layoutManager = GridLayoutManager(requireContext(), 2)
+                SimpleAdapterBuilderImpl<Pair<MediaStoreImage, Boolean>>(
+                    itemViewCreator = SingleItemViewCreatorImpl(R.layout.image_item_layout),
+                    dataSource = FlowDataSourceImpl(
+                        dataFlow = stateFlow().map { s ->
+                            s.images.map {
+                                it to s.selectedImages.contains(it)
                             }
-                        }),
-                    bindDataPayload = { _, data, lBinding, payloads ->
-                        if (payloads.contains(MediaItemSelectChange)) {
-                            lBinding.select = data.second
-                            true
-                        } else {
-                            false
+                        },
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                    ),
+                    dataBinder = DataBinderImpl<Pair<MediaStoreImage, Boolean>> { data, view, _ ->
+                        val itemViewBinding = ImageItemLayoutBinding.bind(view)
+                        Glide.with(itemViewBinding.root)
+                            .load(data.first.uri)
+                            .into(itemViewBinding.photoIv)
+                        itemViewBinding.root.clicks(this) {
+                            selectOrUnSelectImage(data.first)
                         }
+                    }.addPayloadDataBinder(Unit) { data, view, _ ->
+                        val itemViewBinding = ImageItemLayoutBinding.bind(view)
+                        itemViewBinding.imageCb.isChecked = data.second
                     }
-                ).toAdapter {
-                    val position = recyclerViewScrollChannel.tryReceive().getOrNull()
-                    if (position != null && it.isNotEmpty()) {
-                        (binding.myMediaItemsRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
-                    }
-                }
+                ).build()
             }
-            else -> {
-                binding.myMediaItemsRv.layoutManager = LinearLayoutManager(requireContext())
-                binding.myMediaItemsRv.addItemDecoration(
+            MediaType.Audio -> {
+                viewBinding.myMediaItemsRv.layoutManager = LinearLayoutManager(requireContext())
+                viewBinding.myMediaItemsRv.addItemDecoration(
                     MarginDividerItemDecoration.Companion.Builder()
                         .divider(
                             MarginDividerItemDecoration.Companion.ColorDivider(requireActivity().getColor(R.color.line_color),
@@ -110,162 +109,198 @@ abstract class BaseMediaFragment(
                         .marginStart(requireActivity().dp2px(65))
                         .build()
                 )
-                SimpleAdapterSpec<Pair<QueryMediaItem, Boolean>, VideoAudioItemLayoutBinding>(
-                    layoutId = R.layout.video_audio_item_layout,
-                    bindData = { _, (item, isSelect), lBinding ->
-                        lBinding.mediaCb.isChecked = isSelect
-                        if (item is QueryMediaItem.Video) {
-                            lBinding.mediaItemIv.setImageDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.ic_movie))
-                            lBinding.titleTv.text = item.displayName
-                            lBinding.artistTv.text = requireContext().getString(R.string.media_artist_name, item.artist)
-                            lBinding.albumTv.text = requireContext().getString(R.string.media_album_name, item.album)
-                            lBinding.mediaSizeTv.text = item.size.toSizeString()
-                        }
-                        if (item is QueryMediaItem.Audio) {
-                            lBinding.mediaItemIv.setImageDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.ic_audio))
-                            lBinding.titleTv.text = item.displayName
-                            lBinding.artistTv.text = requireContext().getString(R.string.media_artist_name, item.artist)
-                            lBinding.albumTv.text = requireContext().getString(R.string.media_album_name, item.album)
-                            lBinding.mediaSizeTv.text = item.size.toSizeString()
-                        }
-                    },
-                    itemClicks = listOf { lBinding, _ ->
-                        lBinding.root to { _, (item, lastSelectStatus) ->
-                            selectMediaItem(!lastSelectStatus, item).map { Unit }
-                        }
-                    },
-                    dataUpdater = bindState().map { state ->
-                        state.mediaItems.filter { it is QueryMediaItem.Video || it is QueryMediaItem.Audio }.map {
-                            it to state.selectedMediaItems.contains(it)
-                        }
-                    },
-                    differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.uri == d2.first.uri },
-                        contentTheSame = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
-                        changePayLoad = { d1, d2 ->
-                            if (d1.first.uri == d2.first.uri && d1.second != d2.second) {
-                                MediaItemSelectChange
-                            } else {
-                                null
+                SimpleAdapterBuilderImpl<Pair<MediaStoreAudio, Boolean>>(
+                    itemViewCreator = SingleItemViewCreatorImpl(R.layout.video_audio_item_layout),
+                    dataSource = FlowDataSourceImpl(
+                        dataFlow = stateFlow().map { s ->
+                            s.audios.map {
+                                it to s.selectedAudios.contains(it)
                             }
-                        }),
-                    bindDataPayload = { _, data, lBinding, payloads ->
-                        if (payloads.contains(MediaItemSelectChange)) {
-                            lBinding.mediaCb.isChecked = data.second
-                            true
-                        } else {
-                            false
+                        },
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                    ),
+                    dataBinder = DataBinderImpl<Pair<MediaStoreAudio, Boolean>> { data, view, _ ->
+                        val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
+                        itemViewBinding.mediaItemIv.setImageDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.ic_audio))
+                        itemViewBinding.titleTv.text = data.first.title
+                        itemViewBinding.artistTv.text = requireContext().getString(R.string.media_artist_name, data.first.artist)
+                        itemViewBinding.albumTv.text = requireContext().getString(R.string.media_album_name, data.first.album)
+                        itemViewBinding.mediaSizeTv.text = data.first.size.toSizeString()
+                        itemViewBinding.root.clicks(this) {
+                            selectOrUnSelectAudio(data.first)
                         }
+                    }.addPayloadDataBinder(Unit) { data, view, _ ->
+                        val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
+                        itemViewBinding.mediaCb.isChecked = data.second
                     }
-                ).toAdapter {
-                    val position = recyclerViewScrollChannel.tryReceive().getOrNull()
-                    if (position != null && it.isNotEmpty()) {
-                        (binding.myMediaItemsRv.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, 0)
+                ).build()
+            }
+            MediaType.Video -> {
+                viewBinding.myMediaItemsRv.layoutManager = LinearLayoutManager(requireContext())
+                viewBinding.myMediaItemsRv.addItemDecoration(
+                    MarginDividerItemDecoration.Companion.Builder()
+                        .divider(
+                            MarginDividerItemDecoration.Companion.ColorDivider(requireActivity().getColor(R.color.line_color),
+                                requireActivity().dp2px(1)))
+                        .marginStart(requireActivity().dp2px(65))
+                        .build()
+                )
+                SimpleAdapterBuilderImpl<Pair<MediaStoreVideo, Boolean>>(
+                    itemViewCreator = SingleItemViewCreatorImpl(R.layout.video_audio_item_layout),
+                    dataSource = FlowDataSourceImpl(
+                        dataFlow = stateFlow().map { s ->
+                            s.videos.map {
+                                it to s.selectedVideos.contains(it)
+                            }
+                        },
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                    ),
+                    dataBinder = DataBinderImpl<Pair<MediaStoreVideo, Boolean>> { data, view, _ ->
+                        val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
+                        itemViewBinding.mediaItemIv.setImageDrawable(ContextCompat.getDrawable(requireContext(), R.drawable.ic_movie))
+                        itemViewBinding.titleTv.text = data.first.title
+                        itemViewBinding.artistTv.visibility = View.INVISIBLE
+                        itemViewBinding.albumTv.visibility = View.INVISIBLE
+                        itemViewBinding.mediaSizeTv.text = data.first.size.toSizeString()
+                        itemViewBinding.root.clicks(this) {
+                            selectOrUnSelectVideo(data.first)
+                        }
+                    }.addPayloadDataBinder(Unit) { data, view, _ ->
+                        val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
+                        itemViewBinding.mediaCb.isChecked = data.second
                     }
-                }
+                ).build()
             }
         }
 
-        binding.myMediaItemsRv.adapter = rvAdapter
+        viewBinding.myMediaItemsRv.adapter = rvAdapter
 
-        binding.mediaItemsRefreshLayout.setColorSchemeResources(R.color.teal_200)
-        binding.mediaItemsRefreshLayout.refreshes()
-            .switchMapSingle {
-                refreshMediaItems()
-                    .switchThread()
-                    .doFinally {
-                        recyclerViewScrollChannel.trySend(0).isSuccess
-                        if (binding.mediaItemsRefreshLayout.isRefreshing)
-                            binding.mediaItemsRefreshLayout.isRefreshing = false
+        viewBinding.mediaItemsRefreshLayout.setColorSchemeResources(R.color.teal_200)
+        viewBinding.mediaItemsRefreshLayout.refreshes(coroutineScope = this, refreshWorkOn = Dispatchers.IO) {
+            refreshMediaItems()
+        }
+
+        val context = requireActivity() as FileTransportActivity
+
+        launch {
+            context.observeFloatBtnClick()
+                .filter {
+                    val selectedTab = context.currentState().selectedTabType
+                    when (mediaType) {
+                        MediaType.Image -> selectedTab == FileTransportActivity.Companion.DirTabType.MyImages
+                        MediaType.Video -> selectedTab == FileTransportActivity.Companion.DirTabType.MyVideos
+                        MediaType.Audio -> selectedTab == FileTransportActivity.Companion.DirTabType.MyAudios
                     }
-            }
-            .bindLife()
-
-        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
-            .flatMapSingle {
-                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
-                    .firstOrError()
-            }
-            .filter {
-                when (mediaType) {
-                    MediaType.Image -> it == FileTransportActivity.Companion.DirTabType.MyImages
-                    MediaType.Video -> it == FileTransportActivity.Companion.DirTabType.MyVideos
-                    MediaType.Audio -> it == FileTransportActivity.Companion.DirTabType.MyAudios
                 }
-            }
-            .switchMapSingle {
-                rxSingle(Dispatchers.IO) {
-                    val selectedItems = bindState().firstOrError().map { it.selectedMediaItems }.await()
-                    if (selectedItems.isEmpty()) return@rxSingle
-                    val files = selectedItems.mapNotNull {
-                        val parentFile = File(androidRootDir, it.path)
-                        val file = File(parentFile, it.displayName)
-                        if (file.isFile) {
-                            file
+                .collect {
+                    launch(Dispatchers.IO) {
+                        val currentState = currentState()
+                        val files = when (mediaType) {
+                            MediaType.Image -> currentState.selectedImages.map { File(File(androidRootDir, it.relativePath), it.displayName) }
+                            MediaType.Video -> currentState.selectedVideos.map { File(File(androidRootDir, it.relativePath), it.displayName) }
+                            MediaType.Audio -> currentState.selectedAudios.map { File(File(androidRootDir, it.relativePath), it.displayName) }
+                        }.filter { it.isFile }
+                        val senderFiles = files.map { SenderFile(it, it.toFileExploreFile()) }
+                        if (senderFiles.isNotEmpty()) {
+                            runCatching {
+                                fileExplore.requestSendFilesSuspend(
+                                    sendFiles = senderFiles.map { it.exploreFile },
+                                    maxConnection = Settings.transferFileMaxConnection()
+                                )
+                            }.onSuccess {
+                                AndroidLog.d(TAG, "Request send image success")
+                                runCatching {
+                                    (requireActivity() as FileTransportActivity).sendSenderFiles(senderFiles)
+                                }
+                            }.onFailure {
+                                AndroidLog.e(TAG, "Request send image fail.")
+                            }
                         } else {
-                            null
+                            AndroidLog.e(TAG, "Selected files is empty.")
                         }
+                        updateState { it.copy(selectedVideos = emptyList(), selectedAudios = emptyList(), selectedImages = emptyList()) }
                     }
-                    val senderFiles = files.map { SenderFile(it, it.toFileExploreFile()) }
-                    if (senderFiles.isNotEmpty()) {
-                        runCatching {
-                            fileExplore.requestSendFilesSuspend(
-                                sendFiles = senderFiles.map { it.exploreFile },
-                                maxConnection = Settings.transferFileMaxConnection()
-                            )
-                        }.onSuccess {
-                            AndroidLog.d(TAG, "Request send image success")
-                            (requireActivity() as FileTransportActivity).sendSenderFiles(senderFiles)
-                        }.onFailure {
-                            AndroidLog.e(TAG, "Request send image fail.")
-                        }
-                    } else {
-                        AndroidLog.e(TAG, "Selected files is empty.")
-                    }
-                    updateState { it.copy(selectedMediaItems = emptyList()) }.await()
-                }.onErrorResumeNext {
-                    Single.just(Unit)
                 }
-            }
-            .bindLife()
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.myMediaItemsRv) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+
+            insets
+        }
     }
 
-    private fun refreshMediaItems() = getMedia(
-        context = requireContext(),
-        queryMediaType = when (mediaType) {
-            MediaType.Image -> QueryMediaType.Image
-            MediaType.Video -> QueryMediaType.Video
-            MediaType.Audio -> QueryMediaType.Audio
-        }
-    )
-        .flatMap { media ->
-            updateState {
-                val mediaItems = when (mediaType) {
-                    MediaType.Image -> media.filterIsInstance<QueryMediaItem.Image>()
-                        .sortedByDescending { it.dateModify }
 
-                    MediaType.Video -> media.filterIsInstance<QueryMediaItem.Video>()
-                        .sortedByDescending { it.dateModify }
-
-                    MediaType.Audio -> media.filterIsInstance<QueryMediaItem.Audio>()
-                        .sortedByDescending { it.dateModify }
-                }.filter { it.size > 1024 }
-                BaseMediaState(mediaItems = mediaItems)
+    private suspend fun refreshMediaItems() {
+        withContext(Dispatchers.IO) {
+            when (mediaType) {
+                MediaType.Image -> {
+                    val images = queryImageFromMediaStore().sortedByDescending { it.dateModified }
+                    updateState { it.copy(selectedImages = emptyList(), images = images) }
+                }
+                MediaType.Video -> {
+                    val videos = queryVideoFromMediaStore().sortedByDescending { it.dateModified }
+                    updateState { it.copy(selectedVideos = emptyList(), videos = videos) }
+                }
+                MediaType.Audio -> {
+                    val audios = queryAudioFromMediaStore().sortedByDescending { it.dateModified }
+                    updateState { it.copy(selectedAudios = emptyList(), audios = audios) }
+                }
             }
         }
+    }
 
-    private fun selectMediaItem(select: Boolean, item: QueryMediaItem) = updateState { state ->
-        val oldSelect = state.selectedMediaItems
-        state.copy(selectedMediaItems = if (select) oldSelect + item else oldSelect - item)
+    private fun selectOrUnSelectImage(image: MediaStoreImage) {
+        updateState {  s ->
+            val oldSelectImages = s.selectedImages
+            val newSelectImages = if (oldSelectImages.contains(image)) {
+                oldSelectImages - image
+            } else {
+                oldSelectImages + image
+            }
+            s.copy(selectedImages = newSelectImages)
+        }
+    }
+
+    private fun selectOrUnSelectAudio(audio: MediaStoreAudio) {
+        updateState {  s ->
+            val oldSelectAudios = s.selectedAudios
+            val newSelectAudios = if (oldSelectAudios.contains(audio)) {
+                oldSelectAudios - audio
+            } else {
+                oldSelectAudios + audio
+            }
+            s.copy(selectedAudios = newSelectAudios)
+        }
+    }
+
+    private fun selectOrUnSelectVideo(video: MediaStoreVideo) {
+        updateState {  s ->
+            val oldSelectVideos = s.selectedVideos
+            val newSelectVideos = if (oldSelectVideos.contains(video)) {
+                oldSelectVideos - video
+            } else {
+                oldSelectVideos + video
+            }
+            s.copy(selectedVideos = newSelectVideos)
+        }
     }
 
     companion object {
         private const val TAG = "BaseMediaFragment"
         data class BaseMediaState(
-            val mediaItems: List<QueryMediaItem> = emptyList(),
-            val selectedMediaItems: List<QueryMediaItem> = emptyList()
+            val selectedVideos: List<MediaStoreVideo> = emptyList(),
+            val selectedImages: List<MediaStoreImage> = emptyList(),
+            val selectedAudios: List<MediaStoreAudio> = emptyList(),
+            val videos: List<MediaStoreVideo> = emptyList(),
+            val images: List<MediaStoreImage> = emptyList(),
+            val audios: List<MediaStoreAudio> = emptyList(),
         )
-
-        object MediaItemSelectChange
 
         enum class MediaType { Image, Video, Audio }
     }

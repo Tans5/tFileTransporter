@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.ui.filetransport
 
+import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.addCallback
@@ -11,27 +12,29 @@ import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestDownloadFilesSuspend
 import com.tans.tfiletransporter.transferproto.fileexplore.requestScanDirSuspend
-import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.ui.FileTreeUI
-import kotlinx.coroutines.Dispatchers
+import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
-import org.kodein.di.instance
+import java.io.File
 import java.util.concurrent.LinkedBlockingDeque
-import kotlin.jvm.optionals.getOrNull
 import kotlin.math.min
 
 
-class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.remote_dir_fragment, Unit) {
+class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
+
+    override val layoutId: Int = R.layout.remote_dir_fragment
 
     private var fileTreeUI: FileTreeUI? = null
 
-    private val onBackPressedDispatcher: OnBackPressedDispatcher by instance()
+    private val onBackPressedDispatcher: OnBackPressedDispatcher by lazy {
+        requireActivity().onBackPressedDispatcher
+    }
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
         onBackPressedDispatcher.addCallback {
@@ -39,7 +42,9 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
         }
     }
 
-    private val fileExplore: FileExplore by instance()
+    private val fileExplore: FileExplore by lazy {
+        (requireActivity() as FileTransportActivity).fileExplore
+    }
 
     private val fileTreeStateFlow by lazy {
         MutableStateFlow(FileTreeUI.Companion.FileTreeState())
@@ -53,32 +58,42 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
         LinkedBlockingDeque()
     }
 
-    override fun initViews(binding: RemoteDirFragmentBinding) {
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
+    override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        val viewBinding = RemoteDirFragmentBinding.bind(contentView)
+        val context = requireActivity() as FileTransportActivity
         val fileTreeUI = FileTreeUI(
-            viewBinding = binding.fileTreeLayout,
+            viewBinding = viewBinding.fileTreeLayout,
             rootTreeUpdater = {
-                val handshake = (requireActivity() as FileTransportActivity).bindState()
-                    .filter { it.handshake.getOrNull() != null }
-                    .map { it.handshake.get() }
-                    .firstOrError()
-                    .await()
-                val result = runCatching {
-                    fileExplore.requestScanDirSuspend(handshake.remoteFileSeparator)
-                }.onSuccess {
-                    AndroidLog.d(TAG, "Request scan root dir success")
-                }.onFailure {
-                    AndroidLog.e(TAG, "Request scan root dir fail: $it", it)
+                val handshake = (context.currentState().connectionStatus as? FileTransportActivity.Companion.ConnectionStatus.Connected)?.handshake
+                if (handshake != null) {
+                   val result = runCatching {
+                        fileExplore.requestScanDirSuspend(handshake.remoteFileSeparator)
+                    }.onSuccess {
+                        AndroidLog.d(TAG, "Request scan root dir success")
+                    }.onFailure {
+                        AndroidLog.e(TAG, "Request scan root dir fail: $it", it)
+                    }
+                    if (result.isSuccess) {
+                        createRemoteRootTree(result.getOrNull()!!)
+                    } else {
+                        FileTree(
+                            dirLeafs = emptyList(),
+                            fileLeafs = emptyList(),
+                            path = handshake.remoteFileSeparator,
+                            parentTree = null
+                        )
+                    }
+                } else {
+                    FileTree(
+                        dirLeafs = emptyList(),
+                        fileLeafs = emptyList(),
+                        path = File.separator,
+                        parentTree = null
+                    )
                 }
-                result.getOrNull()?.let {
-                    createRemoteRootTree(it)
-                } ?: FileTree(
-                    dirLeafs = emptyList(),
-                    fileLeafs = emptyList(),
-                    path = handshake.remoteFileSeparator,
-                    parentTree = null
-                )
-             },
+            },
             subTreeUpdater = { parentTree, dir ->
                 val result = runCatching {
                     fileExplore.requestScanDirSuspend(dir.path)
@@ -97,55 +112,51 @@ class RemoteDirFragment : BaseFragment<RemoteDirFragmentBinding, Unit>(R.layout.
             folderPositionDeque = fileTreeFolderPositionDeque
         )
 
-
-        this.fileTreeUI = fileTreeUI
+        this@RemoteDirFragment.fileTreeUI = fileTreeUI
 
         launch {
             fileTreeUI.stateFlow()
                 .map { it.fileTree }
                 .collect { tree ->
-                    val tab = (requireActivity() as FileTransportActivity).bindState().map { it.selectedTabType }.firstOrError().await()
+                    val tab = context.currentState().selectedTabType
                     onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
                 }
         }
 
-        (requireActivity() as FileTransportActivity).bindState()
-            .map { it.selectedTabType }
-            .distinctUntilChanged()
-            .doOnNext {
-                onBackPressedCallback.isEnabled = it == FileTransportActivity.Companion.DirTabType.RemoteDir
-            }
-            .bindLife()
-
-
-
-        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
-            .flatMapSingle {
-                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
-                    .firstOrError()
-                    .map { tabType ->
-                        tabType to fileTreeUI.getSelectedFiles()
-                    }
-            }
-            .filter { it.first == FileTransportActivity.Companion.DirTabType.RemoteDir && it.second.isNotEmpty() }
-            .map { it.second }
-            .flatMapSingle { leafs ->
-                rxSingle(Dispatchers.IO) {
-                    val exploreFiles = leafs.toList().toExploreFiles()
-                    runCatching {
-                        fileExplore.requestDownloadFilesSuspend(exploreFiles)
-                    }.onSuccess {
-                        AndroidLog.d(TAG, "Request download fails success.")
-                        val mineMax = Settings.transferFileMaxConnection()
-                        (requireActivity() as FileTransportActivity)
-                            .downloadFiles(files = exploreFiles, Settings.fixTransferFileConnectionSize(min(it.maxConnection, mineMax)))
-                    }.onFailure {
-                        AndroidLog.e(TAG, "Request download files fail: $it", it)
-                    }
-                    fileTreeUI.clearSelectedFiles()
+        launch {
+            context.stateFlow()
+                .map { it.selectedTabType }
+                .distinctUntilChanged()
+                .collect {
+                    onBackPressedCallback.isEnabled = it == FileTransportActivity.Companion.DirTabType.RemoteDir
                 }
-            }
-            .bindLife()
+        }
+
+
+        launch {
+            context.observeFloatBtnClick()
+                .collect {
+                    val tab = context.currentState().selectedTabType
+                    val exploreFiles = fileTreeUI.getSelectedFiles().toExploreFiles()
+                    if (tab == FileTransportActivity.Companion.DirTabType.RemoteDir && exploreFiles.isNotEmpty()) {
+                        launch {
+                            runCatching {
+                                fileExplore.requestDownloadFilesSuspend(exploreFiles)
+                            }.onSuccess {
+                                AndroidLog.d(TAG, "Request download fails success.")
+                                val mineMax = Settings.transferFileMaxConnection()
+                                runCatching {
+                                    (requireActivity() as FileTransportActivity)
+                                        .downloadFiles(files = exploreFiles, Settings.fixTransferFileConnectionSize(min(it.maxConnection, mineMax)))
+                                }
+                            }.onFailure {
+                                AndroidLog.e(TAG, "Request download files fail: $it", it)
+                            }
+                            fileTreeUI.clearSelectedFiles()
+                        }
+                    }
+                }
+        }
     }
 
     companion object {

@@ -3,11 +3,9 @@ package com.tans.tfiletransporter.ui.filetransport
 import android.annotation.SuppressLint
 import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
-import com.jakewharton.rxbinding4.swiperefreshlayout.refreshes
-import com.tans.tadapter.adapter.DifferHandler
-import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
-import com.tans.tadapter.spec.SimpleAdapterSpec
-import com.tans.tadapter.spec.toAdapter
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.AppItemLayoutBinding
@@ -18,134 +16,145 @@ import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.BaseFragment
 import com.tans.tfiletransporter.utils.dp2px
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.schedulers.Schedulers
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
-import org.kodein.di.instance
+import com.tans.tuiutils.adapter.decoration.MarginDividerItemDecoration
+import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
+import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
+import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
+import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
+import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
+import com.tans.tuiutils.view.clicks
+import com.tans.tuiutils.view.refreshes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 
 
-class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.Companion.MyAppsState>(
-        layoutId = R.layout.my_apps_fragment_layout,
-        default = MyAppsState()
+class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyAppsState>(
+        defaultState = MyAppsState()
 ) {
 
-    private val fileExplore: FileExplore by instance()
+    override val layoutId: Int = R.layout.my_apps_fragment_layout
 
-    override fun initViews(binding: MyAppsFragmentLayoutBinding) {
+    private val fileExplore: FileExplore by lazy {
+        (requireActivity() as FileTransportActivity).fileExplore
+    }
 
-        refreshApps().subscribeOn(Schedulers.io()).bindLife()
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
+        launch {
+            refreshApps()
+        }
+    }
 
-        binding.appsRefreshLayout.setColorSchemeResources(R.color.teal_200)
-        binding.appsRefreshLayout.refreshes()
-                .switchMapSingle {
-                    refreshApps()
-                            .subscribeOn(Schedulers.io())
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .doFinally {
-                                if (binding.appsRefreshLayout.isRefreshing) { binding.appsRefreshLayout.isRefreshing = false }
-                            }
-                }
-                .bindLife()
+    override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        val viewBinding = MyAppsFragmentLayoutBinding.bind(contentView)
 
-        binding.myAppsRv.adapter = SimpleAdapterSpec<Pair<AppInfo, Boolean>, AppItemLayoutBinding>(
-                layoutId = R.layout.app_item_layout,
-                dataUpdater = bindState().map { state -> state.apps.map { it to state.selected.contains(it) } },
-                bindData = { _, (app, select), lBinding ->
-                    lBinding.appNameTv.text = app.name
-                    lBinding.appIdTv.text = app.packageName
-                    lBinding.appSizeTv.text = app.appSize.toSizeString()
-                    lBinding.appCb.isChecked = select
-                    lBinding.appIconIv.background = app.icon
+        viewBinding.appsRefreshLayout.setColorSchemeResources(R.color.teal_200)
+        viewBinding.appsRefreshLayout.refreshes(coroutineScope = this, refreshWorkOn = Dispatchers.IO) {
+            refreshApps()
+        }
+
+        viewBinding.myAppsRv.adapter = SimpleAdapterBuilderImpl<Pair<AppInfo, Boolean>>(
+            itemViewCreator = SingleItemViewCreatorImpl(R.layout.app_item_layout),
+            dataSource = FlowDataSourceImpl(
+                dataFlow = stateFlow().map { state ->
+                    state.apps.map {
+                        it to state.selected.contains(it)
+                    }
                 },
-                differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.first.packageName == d2.first.packageName },
-                        contentTheSame = { d1, d2 -> d1.first.packageName == d2.first.packageName && d1.second == d2.second },
-                        changePayLoad = { d1, d2 ->
-                            if (d1.first.packageName == d2.first.packageName && d1.second != d2.second) {
-                                AppSelectChange
+                areDataItemsTheSameParam = { d1, d2 -> d1.first.packageName == d2.first.packageName },
+                areDataItemsContentTheSameParam = { d1, d2 -> d1.first.packageName == d2.first.packageName && d1.second == d2.second },
+                getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.packageName == d2.first.packageName && d1.second != d2.second) Unit else null }
+            ),
+            dataBinder = DataBinderImpl<Pair<AppInfo, Boolean>> { data, view, _ ->
+                val itemViewBinding = AppItemLayoutBinding.bind(view)
+                itemViewBinding.appNameTv.text = data.first.name
+                itemViewBinding.appIdTv.text = data.first.packageName
+                itemViewBinding.appSizeTv.text = data.first.appSize.toSizeString()
+                itemViewBinding.appIconIv.background = data.first.icon
+                itemViewBinding.root.clicks(this) {
+                    updateState {  oldState ->
+                        val newSelected = if (oldState.selected.contains(data.first)) {
+                            oldState.selected - data.first
+                        } else {
+                            oldState.selected + data.first
+                        }
+                        oldState.copy(selected = newSelected)
+                    }
+                }
+            }.addPayloadDataBinder(Unit) { data, view, _ ->
+                val itemViewBinding = AppItemLayoutBinding.bind(view)
+                itemViewBinding.appCb.isChecked = data.second
+            }
+        ).build()
+
+        viewBinding.myAppsRv.addItemDecoration(
+            MarginDividerItemDecoration.Companion.Builder()
+            .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
+                requireContext().dp2px(1)))
+            .marginStart(requireContext().dp2px(70))
+            .build()
+        )
+
+        val context = requireActivity() as FileTransportActivity
+
+        launch {
+            context.observeFloatBtnClick()
+                .filter {
+                    val selectedTab = context.currentState().selectedTabType
+                    selectedTab == FileTransportActivity.Companion.DirTabType.MyApps
+                }
+                .collect {
+                    launch(Dispatchers.IO) {
+                        val selectedApps = currentState().selected
+                        val senderFiles = selectedApps.mapNotNull {
+                            val f = File(it.sourceDir)
+                            if (f.canRead()) {
+                                SenderFile(
+                                    realFile = f,
+                                    exploreFile = FileExploreFile(
+                                        name = "${it.name}-${it.packageName}.apk",
+                                        path = it.sourceDir,
+                                        size = it.appSize,
+                                        lastModify = System.currentTimeMillis()
+                                    )
+                                )
                             } else {
                                 null
                             }
-                        }),
-                bindDataPayload = { _, (_, isSelect), lBinding, payloads ->
-                    if (payloads.contains(AppSelectChange)) {
-                        lBinding.appCb.isChecked = isSelect
-                        true
-                    } else {
-                        false
-                    }
-                },
-                itemClicks = listOf { binding, _ ->
-                    binding.root to { _, (app, isSelect) ->
-                        updateState { oldState ->
-                            val oldSelect = oldState.selected
-                            val newSelect = if (isSelect) oldSelect - app else oldSelect + app
-                            oldState.copy(selected = newSelect)
-                        }.map { }
-                    }
-                }
-        ).toAdapter()
-
-        binding.myAppsRv.addItemDecoration(MarginDividerItemDecoration.Companion.Builder()
-                .divider(MarginDividerItemDecoration.Companion.ColorDivider(requireContext().getColor(R.color.line_color),
-                        requireContext().dp2px(1)))
-                .marginStart(requireContext().dp2px(70))
-                .build()
-        )
-
-        (requireActivity() as FileTransportActivity).observeFloatBtnClick()
-            .flatMapSingle {
-                (activity as FileTransportActivity).bindState().map { it.selectedTabType }
-                    .firstOrError()
-            }
-            .filter { it == FileTransportActivity.Companion.DirTabType.MyApps }
-            .observeOn(Schedulers.io())
-            .switchMapSingle {
-                rxSingle {
-                    val selectedApps = bindState().firstOrError().map { it.selected }.await()
-                    val senderFiles = selectedApps.mapNotNull {
-                        val f = File(it.sourceDir)
-                        if (f.canRead()) {
-                            SenderFile(
-                                realFile = f,
-                                exploreFile = FileExploreFile(
-                                    name = "${it.name}-${it.packageName}.apk",
-                                    path = it.sourceDir,
-                                    size = it.appSize,
-                                    lastModify = System.currentTimeMillis()
+                        }
+                        if (senderFiles.isNotEmpty()) {
+                            runCatching {
+                                fileExplore.requestSendFilesSuspend(
+                                    sendFiles = senderFiles.map { it.exploreFile },
+                                    maxConnection = Settings.transferFileMaxConnection()
                                 )
-                            )
-                        } else {
-                            null
+                            }.onSuccess {
+                                AndroidLog.d(TAG, "Request send apps success: $it")
+                                runCatching {
+                                    (requireActivity() as FileTransportActivity).sendSenderFiles(files = senderFiles)
+                                }
+                            }.onFailure {
+                                AndroidLog.e(TAG, "Request send apps fail: $it", it)
+                            }
                         }
+                        updateState { it.copy(selected = emptyList()) }
                     }
-                    if (senderFiles.isNotEmpty()) {
-                        runCatching {
-                            fileExplore.requestSendFilesSuspend(
-                                sendFiles = senderFiles.map { it.exploreFile },
-                                maxConnection = Settings.transferFileMaxConnection()
-                            )
-                        }.onFailure {
-                            AndroidLog.e(TAG, "Request send apps fail: $it", it)
-                        }.onSuccess {
-                            AndroidLog.d(TAG, "Request send apps success: $it")
-                            (requireActivity() as FileTransportActivity)
-                                .sendSenderFiles(files = senderFiles)
-                        }
-                    }
-                    updateState { it.copy(selected = emptySet()) }.await()
-                    Unit
-                }.onErrorResumeNext {
-                    Single.just(Unit)
                 }
-            }
-            .bindLife()
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.myAppsRv) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+
+            insets
+        }
+
     }
 
     @SuppressLint("QueryPermissionsNeeded")
@@ -164,7 +173,7 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
                 .sortedBy { it.name }
         MyAppsState(
                 apps = apps,
-                selected = emptySet()
+                selected = emptyList()
         )
     }
 
@@ -180,10 +189,8 @@ class MyAppsFragment : BaseFragment<MyAppsFragmentLayoutBinding, MyAppsFragment.
 
         data class MyAppsState(
             val apps: List<AppInfo> = emptyList(),
-            val selected: Set<AppInfo> = emptySet()
+            val selected: List<AppInfo> = emptyList()
         )
-
-        object AppSelectChange
 
         private const val TAG = "MyAppsFragment"
     }
