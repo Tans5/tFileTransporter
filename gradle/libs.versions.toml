@@ -4,7 +4,7 @@ kotlin = "1.9.23"
 googleKsp = "1.9.23-1.0.19"
 coreKtx = "1.12.0"
 junit = "4.13.2"
-junitVersion = "1.1.5"
+androidJunit = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
 material = "1.11.0"
@@ -12,13 +12,12 @@ activity = "1.8.2"
 annotaion = "1.7.1"
 constraintlayout = "2.1.4"
 lifecycle = "2.7.0"
-jetbrainsKotlinJvm = "1.9.22"
 flexbox = "3.0.0"
 rxjava3 = "3.1.8"
 rxkotlin3 = "3.0.1"
 rxandroid3 = "3.0.2"
 corouines = "1.8.0"
-moshi = "1.15.0"
+moshi = "1.15.1"
 netty = "4.1.86.Final"
 okio = "3.6.0"
 rxbinding = "4.0.0"
@@ -36,7 +35,7 @@ tuiutils = "1.0.1"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
@@ -84,7 +83,7 @@ tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiuti
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-jetbrainsKotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
+jetbrainsKotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 googleKsp = { id = "com.google.devtools.ksp", version.ref = "googleKsp" }
 
 

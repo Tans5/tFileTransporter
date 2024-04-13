@@ -8,14 +8,16 @@ plugins {
 android {
 
     namespace = "com.tans.tfiletransporter"
-    compileSdk = 34
+    compileSdk = properties["ANDROID_COMPILE_SDK"].toString().toInt()
 
     defaultConfig {
         applicationId = "com.tans.tfiletransporter"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 23092802
-        versionName = "2.4.1"
+        minSdk = properties["ANDROID_MIN_SDK"].toString().toInt()
+        targetSdk = properties["ANDROID_TARGET_SDK"].toString().toInt()
+        versionCode = properties["VERSION_CODE"].toString().toInt()
+        versionName = properties["VERSION_NAME"].toString()
+
+        setProperty("archivesBaseName", "tfiletransfer-${properties["VERSION_NAME"].toString()}")
     }
 
     packaging {
