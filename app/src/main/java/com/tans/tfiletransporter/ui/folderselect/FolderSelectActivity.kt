@@ -3,7 +3,6 @@ package com.tans.tfiletransporter.ui.folderselect
 import android.app.Activity
 import android.content.Intent
 import android.view.View
-import android.view.ViewGroup.MarginLayoutParams
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
 import androidx.core.view.ViewCompat

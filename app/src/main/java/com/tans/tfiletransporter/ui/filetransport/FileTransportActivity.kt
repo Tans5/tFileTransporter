@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -34,7 +35,6 @@ import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
-import com.tans.tfiletransporter.viewpager2.FragmentStateAdapter
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
@@ -355,7 +355,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         if (fileTransferMutex.isLocked) return
         fileTransferMutex.lock()
         val result = withContext(Dispatchers.Main) {
-            showFileSenderDialog(
+            supportFragmentManager.showFileSenderDialog(
                 bindAddress = intent.getLocalAddress(),
                 files = files
             )
@@ -378,7 +378,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         fileTransferMutex.lock()
         delay(150L)
         val result = withContext(Dispatchers.Main) {
-            showFileDownloaderDialog(
+            this@FileTransportActivity.supportFragmentManager.showFileDownloaderDialog(
                 senderAddress = intent.getRemoteAddress(),
                 files = fixedFiles,
                 downloadDir = File(Settings.getDownloadDir()),
@@ -410,10 +410,12 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         private const val REMOTE_INFO_EXTRA_KEY = "remote_info_extra_key"
         private const val IS_SERVER_EXTRA_KEY = "is_server_extra_key"
 
+        @Suppress("DEPRECATION")
         private fun Intent.getLocalAddress(): InetAddress = getSerializableExtra(
             LOCAL_ADDRESS_EXTRA_KEY
         ) as? InetAddress ?: error("FileTransportActivity get local address fail.")
 
+        @Suppress("DEPRECATION")
         private fun Intent.getRemoteAddress(): InetAddress = getSerializableExtra(
             REMOTE_ADDRESS_EXTRA_KEY,
         ) as? InetAddress ?: error("FileTransportActivity get remote address fail.")

@@ -1,13 +1,14 @@
 package com.tans.tfiletransporter.ui.filetransport
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import com.jakewharton.rxbinding4.view.clicks
-import com.tans.rxutils.ignoreSeveralClicks
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.toSizeString
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.FileSender
@@ -15,30 +16,23 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.BaseCustomDialog
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.schedulers.Schedulers
-import kotlinx.coroutines.Dispatchers
+import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
+import com.tans.tuiutils.dialog.DialogForceResultCallback
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.ref.WeakReference
 import java.net.InetAddress
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.resume
 import kotlin.jvm.optionals.getOrNull
 
-class FileSenderDialog(
-    private val context: Activity,
-    private val bindAddress: InetAddress,
-    private val files: List<SenderFile>,
-    private val callback: (result: FileTransferResult) -> Unit
-) : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, FileTransferDialogState>(
-    context = context,
-    layoutId = R.layout.reading_writing_files_dialog_layout,
-    defaultState = FileTransferDialogState(),
-    outSizeCancelable = false
-) {
+class FileSenderDialog : BaseCoroutineStateForceResultDialogFragment<FileTransferDialogState, FileTransferResult> {
+
+    private val bindAddress: InetAddress?
+    private val files: List<SenderFile>?
+
     private val sender: AtomicReference<FileSender?> by lazy {
         AtomicReference(null)
     }
@@ -47,14 +41,27 @@ class FileSenderDialog(
         AtomicReference(null)
     }
 
-    private val hasInvokeCallback: AtomicBoolean by lazy {
-        AtomicBoolean(false)
+    constructor() : super(FileTransferDialogState(), null) {
+        this.bindAddress = null
+        this.files = null
     }
 
-    @SuppressLint("SetTextI18n")
-    override fun bindingStart(binding: ReadingWritingFilesDialogLayoutBinding) {
-        setCancelable(false)
-        launch(Dispatchers.IO) {
+    constructor(bindAddress: InetAddress, files: List<SenderFile>, callback: DialogForceResultCallback<FileTransferResult>) : super(
+        FileTransferDialogState(), callback
+    ) {
+        this.bindAddress = bindAddress
+        this.files = files
+    }
+
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context)
+            .inflate(R.layout.reading_writing_files_dialog_layout, parent, false)
+    }
+
+    override fun firstLaunchInitData() {
+        val files = this.files ?: return
+        val bindAddress = this.bindAddress ?: return
+        launch {
             val sender = FileSender(
                 files = files,
                 bindAddress = bindAddress,
@@ -67,7 +74,7 @@ class FileSenderDialog(
                 override fun onSpeedUpdated(speedInBytes: Long, speedInString: String) {
                     updateState {
                         it.copy(speedString = speedInString)
-                    }.bindLife()
+                    }
                 }
             })
             this@FileSenderDialog.speedCalculator.set(speedCalculator)
@@ -79,36 +86,19 @@ class FileSenderDialog(
                             speedCalculator.start()
                         }
                         FileTransferState.Canceled -> {
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Cancel)
-                            }
+                            onResult(FileTransferResult.Cancel)
                         }
                         FileTransferState.Finished -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Finished)
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Finished)
                         }
                         is FileTransferState.Error -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Error(s.msg))
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Error(s.msg))
                         }
                         is FileTransferState.RemoteError -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Error("Remote error: ${s.msg}"))
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Error("Remote error: ${s.msg}"))
                         }
                     }
                 }
@@ -120,14 +110,14 @@ class FileSenderDialog(
                             transferFile = Optional.of(file),
                             process = 0L
                         )
-                    }.bindLife()
+                    }
                 }
 
                 override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
                     speedCalculator.updateCurrentSize(progress)
                     updateState { oldState ->
                         oldState.copy(process = progress)
-                    }.bindLife()
+                    }
                 }
 
                 override fun onEndFile(file: FileExploreFile) {}
@@ -135,52 +125,54 @@ class FileSenderDialog(
             })
             sender.start()
         }
+    }
+
+    @SuppressLint("SetTextI18n")
+    override fun bindContentView(view: View) {
+        val files = this.files ?: return
+
+        val viewBinding = ReadingWritingFilesDialogLayoutBinding.bind(view)
 
         val exploreFiles = files.map { it.exploreFile }.toList()
-        render({ it.transferFile }) {
+        renderStateNewCoroutine({ it.transferFile }) {
             val file = it.getOrNull()
             if (file != null) {
-                binding.titleTv.text = context.getString(
+                viewBinding.titleTv.text = requireContext().getString(
                     R.string.sending_files_dialog_title,
                     exploreFiles.indexOf(file) + 1, exploreFiles.size
                 )
-                binding.fileNameTv.text = file.name
+                viewBinding.fileNameTv.text = file.name
             } else {
-                binding.titleTv.text = ""
-                binding.fileNameTv.text = ""
+                viewBinding.titleTv.text = ""
+                viewBinding.fileNameTv.text = ""
             }
-        }.bindLife()
+        }
 
-        render({ it.transferFile to it.process }) {
+        renderStateNewCoroutine({ it.transferFile to it.process }) {
             val file = it.first.getOrNull()
             val process = it.second
             if (file != null) {
                 val processInPercent = process * 100L / file.size
-                binding.filePb.progress = processInPercent.toInt()
-                binding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
+                viewBinding.filePb.progress = processInPercent.toInt()
+                viewBinding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
             } else {
-                binding.filePb.progress = 0
-                binding.fileDealSizeTv.text = ""
+                viewBinding.filePb.progress = 0
+                viewBinding.fileDealSizeTv.text = ""
             }
-        }.bindLife()
+        }
 
-        render({ it.speedString }) {
-            binding.speedTv.text = it
-        }.bindLife()
+        renderStateNewCoroutine({ it.speedString }) {
+            viewBinding.speedTv.text = it
+        }
 
-        binding.cancelButton.clicks()
-            .ignoreSeveralClicks(1000L)
-            .observeOn(Schedulers.io())
-            .doOnNext { sender.get()?.cancel() }
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnNext {
-                cancel()
-            }
-            .bindLife()
+        viewBinding.cancelButton.clicks(this, 1000L) {
+            onResult(FileTransferResult.Cancel)
+        }
+
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         sender.get()?.cancel()
         speedCalculator.get()?.stop()
     }
@@ -188,8 +180,8 @@ class FileSenderDialog(
 
 sealed class FileTransferResult {
     data class Error(val msg: String) : FileTransferResult()
-    object Cancel : FileTransferResult()
-    object Finished : FileTransferResult()
+    data object Cancel : FileTransferResult()
+    data object Finished : FileTransferResult()
 }
 
 data class FileTransferDialogState(
@@ -198,17 +190,30 @@ data class FileTransferDialogState(
     val speedString: String = ""
 )
 
-suspend fun Activity.showFileSenderDialog(
+suspend fun FragmentManager.showFileSenderDialog(
     bindAddress: InetAddress,
     files: List<SenderFile>,
 ): FileTransferResult = suspendCancellableCoroutine { cont ->
     val d = FileSenderDialog(
-        context = this,
         bindAddress = bindAddress,
         files = files,
-        callback = { result ->
-            cont.resumeIfActive(result)
+        callback = object : DialogForceResultCallback<FileTransferResult> {
+            override fun onError(e: String) {
+                if (cont.isActive) {
+                    cont.resume(FileTransferResult.Error(e))
+                }
+            }
+
+            override fun onResult(t: FileTransferResult) {
+                if (cont.isActive) {
+                    cont.resume(t)
+                }
+            }
         }
     )
-    d.show()
+    d.show(this, "FileSenderDialog#${System.currentTimeMillis()}")
+    val wd = WeakReference(d)
+    cont.invokeOnCancellation {
+        wd.get()?.dismissSafe()
+    }
 }

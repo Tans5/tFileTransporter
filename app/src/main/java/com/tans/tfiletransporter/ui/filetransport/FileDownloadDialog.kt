@@ -1,49 +1,43 @@
 package com.tans.tfiletransporter.ui.filetransport
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.media.MediaScannerConnection
-import com.jakewharton.rxbinding4.view.clicks
-import com.tans.rxutils.ignoreSeveralClicks
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.resumeIfActive
 import com.tans.tfiletransporter.toSizeString
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.filetransfer.FileDownloader
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
-import com.tans.tfiletransporter.ui.BaseCustomDialog
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.schedulers.Schedulers
-import kotlinx.coroutines.Dispatchers
+import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
+import com.tans.tuiutils.dialog.DialogForceResultCallback
+import com.tans.tuiutils.mediastore.insertMediaFilesToMediaStore
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.rx3.rxSingle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import java.lang.ref.WeakReference
 import java.net.InetAddress
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.resume
 import kotlin.jvm.optionals.getOrNull
 
-class FileDownloaderDialog(
-    private val context: Activity,
-    private val senderAddress: InetAddress,
-    private val files: List<FileExploreFile>,
-    private val downloadDir: File,
-    private val maxConnectionSize: Int,
-    private val callback: (result: FileTransferResult) -> Unit
-) : BaseCustomDialog<ReadingWritingFilesDialogLayoutBinding, FileTransferDialogState>(
-    context = context,
-    layoutId = R.layout.reading_writing_files_dialog_layout,
-    defaultState = FileTransferDialogState(),
-    outSizeCancelable = false
-) {
+class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTransferDialogState, FileTransferResult> {
+
+    private val senderAddress: InetAddress?
+    private val files: List<FileExploreFile>?
+    private val downloadDir: File?
+    private val maxConnectionSize: Int?
+
     private val downloader: AtomicReference<FileDownloader?> by lazy {
         AtomicReference(null)
     }
@@ -56,10 +50,36 @@ class FileDownloaderDialog(
         AtomicBoolean(false)
     }
 
-    @SuppressLint("SetTextI18n")
-    override fun bindingStart(binding: ReadingWritingFilesDialogLayoutBinding) {
-        setCancelable(false)
-        launch(Dispatchers.IO) {
+    constructor() : super(FileTransferDialogState(), null) {
+        this.senderAddress = null
+        this.files = null
+        this.downloadDir = null
+        this.maxConnectionSize = null
+    }
+
+    constructor(
+        senderAddress: InetAddress,
+        files: List<FileExploreFile>,
+        downloadDir: File,
+        maxConnectionSize: Int,
+        callback: DialogForceResultCallback<FileTransferResult>) : super(FileTransferDialogState(), callback) {
+        this.senderAddress = senderAddress
+        this.files = files
+        this.downloadDir = downloadDir
+        this.maxConnectionSize = maxConnectionSize
+    }
+
+    override fun createContentView(context: Context, parent: ViewGroup): View {
+        return LayoutInflater.from(context)
+            .inflate(R.layout.reading_writing_files_dialog_layout, parent, false)
+    }
+
+    override fun firstLaunchInitData() {
+        val senderAddress = this.senderAddress ?: return
+        val files = this.files ?: return
+        val downloadDir = this.downloadDir ?: return
+        val maxConnectionSize = this.maxConnectionSize ?: return
+        launch {
             val downloader = FileDownloader(
                 files = files,
                 downloadDir = downloadDir,
@@ -74,7 +94,7 @@ class FileDownloaderDialog(
                 override fun onSpeedUpdated(speedInBytes: Long, speedInString: String) {
                     updateState {
                         it.copy(speedString = speedInString)
-                    }.bindLife()
+                    }
                 }
             })
             this@FileDownloaderDialog.speedCalculator.set(speedCalculator)
@@ -87,143 +107,131 @@ class FileDownloaderDialog(
                         }
                         FileTransferState.Canceled -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Cancel)
-                            }
+                            onResult(FileTransferResult.Cancel)
                         }
                         FileTransferState.Finished -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Finished)
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Finished)
                         }
                         is FileTransferState.Error -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Error(s.msg))
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Error(s.msg))
                         }
                         is FileTransferState.RemoteError -> {
                             speedCalculator.stop()
-                            if (hasInvokeCallback.compareAndSet(false, true)) {
-                                callback(FileTransferResult.Error("Remote error: ${s.msg}"))
-                            }
-                            rxSingle(Dispatchers.Main) {
-                                cancel()
-                            }.bindLife()
+                            onResult(FileTransferResult.Error("Remote error: ${s.msg}"))
                         }
                     }
                 }
 
                 override fun onStartFile(file: FileExploreFile) {
                     speedCalculator.reset()
-                    rxSingle {
-                        updateState {
-                            FileTransferDialogState(
-                                transferFile = Optional.of(file),
-                                process = 0L
-                            )
-                        }.await()
-                    }.bindLife()
+                    updateState {
+                        FileTransferDialogState(
+                            transferFile = Optional.of(file),
+                            process = 0L
+                        )
+                    }
                 }
 
                 override fun onProgressUpdate(file: FileExploreFile, progress: Long) {
                     speedCalculator.updateCurrentSize(progress)
-                    rxSingle {
-                        updateState { oldState ->
-                            oldState.copy(process = progress)
-                        }.await()
-                    }.bindLife()
+                    updateState { oldState ->
+                        oldState.copy(process = progress)
+                    }
                 }
 
                 override fun onEndFile(file: FileExploreFile) {
                     val mimeAndMediaType = getMediaMimeTypeWithFileName(file.name)
                     if (mimeAndMediaType != null) {
-                        rxSingle {
-                            MediaScannerConnection.scanFile(
-                                context,
-                                arrayOf(File(downloadDir, file.name).canonicalPath),
-                                arrayOf(mimeAndMediaType.first),
-                                null
+                        runCatching {
+                            insertMediaFilesToMediaStore(
+                                filesToMimeType = mapOf(File(downloadDir, file.name) to mimeAndMediaType.first)
                             )
-                        }.bindLife()
+                        }
                     }
                 }
 
             })
             downloader.start()
         }
+    }
 
-        render({ it.transferFile }) {
+    @SuppressLint("SetTextI18n")
+    override fun bindContentView(view: View) {
+        val files = this.files ?: return
+        val viewBinding = ReadingWritingFilesDialogLayoutBinding.bind(view)
+        renderStateNewCoroutine({ it.transferFile }) {
             val file = it.getOrNull()
             if (file != null) {
-                binding.titleTv.text = context.getString(
+                viewBinding.titleTv.text = requireContext().getString(
                     R.string.downloading_files_dialog_title,
                     files.indexOf(file) + 1, files.size
                 )
-                binding.fileNameTv.text = file.name
+                viewBinding.fileNameTv.text = file.name
             } else {
-                binding.titleTv.text = ""
-                binding.fileNameTv.text = ""
+                viewBinding.titleTv.text = ""
+                viewBinding.fileNameTv.text = ""
             }
-        }.bindLife()
+        }
 
-        render({ it.transferFile to it.process }) {
+        renderStateNewCoroutine({ it.transferFile to it. process }) {
             val file = it.first.getOrNull()
             val process = it.second
             if (file != null) {
                 val processInPercent = process * 100L / file.size
-                binding.filePb.progress = processInPercent.toInt()
-                binding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
+                viewBinding.filePb.progress = processInPercent.toInt()
+                viewBinding.fileDealSizeTv.text = "${process.toSizeString()}/${file.size.toSizeString()}"
             } else {
-                binding.filePb.progress = 0
-                binding.fileDealSizeTv.text = ""
+                viewBinding.filePb.progress = 0
+                viewBinding.fileDealSizeTv.text = ""
             }
-        }.bindLife()
+        }
 
-        render({ it.speedString }) {
-            binding.speedTv.text = it
-        }.bindLife()
+        renderStateNewCoroutine({ it.speedString }) {
+            viewBinding.speedTv.text = it
+        }
 
-        binding.cancelButton.clicks()
-            .ignoreSeveralClicks(1000L)
-            .observeOn(Schedulers.io())
-            .doOnNext { downloader.get()?.cancel() }
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnNext {
-                cancel()
-            }
-            .bindLife()
+        viewBinding.cancelButton.clicks(this, 1000L) {
+            onResult(FileTransferResult.Cancel)
+        }
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         downloader.get()?.cancel()
         speedCalculator.get()?.stop()
     }
 }
 
-suspend fun Activity.showFileDownloaderDialog(
+suspend fun FragmentManager.showFileDownloaderDialog(
     senderAddress: InetAddress,
     files: List<FileExploreFile>,
     downloadDir: File,
     maxConnectionSize: Int
 ): FileTransferResult = suspendCancellableCoroutine { cont ->
     val d = FileDownloaderDialog(
-        context = this,
         senderAddress = senderAddress,
         files = files,
-        maxConnectionSize = maxConnectionSize,
         downloadDir = downloadDir,
-        callback = { result ->
-            cont.resumeIfActive(result)
+        maxConnectionSize = maxConnectionSize,
+        callback = object : DialogForceResultCallback<FileTransferResult> {
+            override fun onError(e: String) {
+                if (cont.isActive) {
+                    cont.resume(FileTransferResult.Error(e))
+                }
+            }
+
+            override fun onResult(t: FileTransferResult) {
+                if (cont.isActive) {
+                    cont.resume(t)
+                }
+            }
         }
     )
-    d.show()
+    d.show(this, "FileDownloaderDialog#${System.currentTimeMillis()}")
+    val wd = WeakReference(d)
+    cont.invokeOnCancellation {
+        wd.get()?.dismissSafe()
+    }
 }

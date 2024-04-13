@@ -1,106 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_gravity="center"
+    android:background="@drawable/common_dialog_bg"
+    android:layout_marginStart="?attr/dialogPreferredPadding"
+    android:layout_marginEnd="?attr/dialogPreferredPadding">
+
+    <TextView
+        android:id="@+id/title_tv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/md_dialog_title_top_margin"
+        android:textSize="@dimen/md_dialog_title_text_size"
+        android:textColor="@color/md_dialog_title_color"
+        android:layout_marginStart="?attr/dialogPreferredPadding"
+        android:layout_marginEnd="?attr/dialogPreferredPadding"
+        android:textStyle="bold"
+        tools:text="Downloading Files (1/5)"/>
+
+    <TextView
+        android:id="@+id/file_name_tv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/md_dialog_message_min_height"
+        android:textSize="@dimen/md_dialog_message_text_size"
+        android:textColor="@color/md_dialog_title_color"
+        android:lineSpacingExtra="4dp"
+        android:layout_marginStart="?attr/dialogPreferredPadding"
+        android:layout_marginEnd="?attr/dialogPreferredPadding"
+        android:layout_marginTop="@dimen/md_dialog_message_top_margin"
+        tools:text="xxxxxxxxxxxxxxxxxx1231313131312313123131.png"/>
+
+
+    <ProgressBar
+        android:id="@+id/file_pb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="?attr/dialogPreferredPadding"
+        android:layout_marginEnd="?attr/dialogPreferredPadding"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        tools:progress="30"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/common_dialog_bg"
+        android:orientation="horizontal"
+        android:layout_marginTop="5dp"
         android:layout_marginStart="?attr/dialogPreferredPadding"
         android:layout_marginEnd="?attr/dialogPreferredPadding">
 
         <TextView
-            android:id="@+id/title_tv"
-            android:layout_width="match_parent"
+            android:id="@+id/file_deal_size_tv"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/md_dialog_title_top_margin"
-            android:textSize="@dimen/md_dialog_title_text_size"
-            android:textColor="@color/md_dialog_title_color"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:textStyle="bold"
-            tools:text="Downloading Files (1/5)"/>
+            android:textColor="@color/gray_1"
+            android:textSize="12sp"
+            tools:text="100.0MB/2.3GB"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"/>
 
         <TextView
-            android:id="@+id/file_name_tv"
-            android:layout_width="match_parent"
+            android:id="@+id/speed_tv"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minHeight="@dimen/md_dialog_message_min_height"
-            android:textSize="@dimen/md_dialog_message_text_size"
-            android:textColor="@color/md_dialog_title_color"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:layout_marginTop="@dimen/md_dialog_message_top_margin"
-            tools:text="xxxxxxxxxxxxxxxxxx1231313131312313123131.png"/>
-
-
-        <ProgressBar
-            android:id="@+id/file_pb"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginEnd="?attr/dialogPreferredPadding"
-            android:layout_marginTop="8dp"
-            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-            tools:progress="30"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="5dp"
-            android:layout_marginStart="?attr/dialogPreferredPadding"
-            android:layout_marginEnd="?attr/dialogPreferredPadding">
-
-            <TextView
-                android:id="@+id/file_deal_size_tv"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/gray_1"
-                android:textSize="12sp"
-                tools:text="100.0MB/2.3GB"/>
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1"/>
-
-            <TextView
-                android:id="@+id/speed_tv"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/gray_1"
-                android:textSize="12sp"
-                android:layout_gravity="end"
-                tools:text="100 MB/s"/>
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/md_dialog_button_layout_padding_horizontal"
-            android:layout_marginEnd="@dimen/md_dialog_button_layout_padding_horizontal"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            android:paddingTop="@dimen/md_dialog_button_layout_padding_vertical"
-            android:paddingBottom="@dimen/md_dialog_button_layout_padding_vertical">
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <Button
-                android:id="@+id/cancel_button"
-                style="?attr/buttonBarNegativeButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/broadcast_waiting_cancel" />
-
-        </LinearLayout>
+            android:textColor="@color/gray_1"
+            android:textSize="12sp"
+            android:layout_gravity="end"
+            tools:text="100 MB/s"/>
 
     </LinearLayout>
-</layout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/md_dialog_button_layout_padding_horizontal"
+        android:layout_marginEnd="@dimen/md_dialog_button_layout_padding_horizontal"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:paddingTop="@dimen/md_dialog_button_layout_padding_vertical"
+        android:paddingBottom="@dimen/md_dialog_button_layout_padding_vertical">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/cancel_button"
+            style="?attr/buttonBarNegativeButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/broadcast_waiting_cancel" />
+
+    </LinearLayout>
+
+</LinearLayout>
