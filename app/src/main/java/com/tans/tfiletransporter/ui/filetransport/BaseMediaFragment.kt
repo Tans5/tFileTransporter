@@ -61,8 +61,11 @@ abstract class BaseMediaFragment(
     }
 
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {
+        configureChangeCreateNewContentView = true
         launch {
-            refreshMediaItems()
+            if (defaultState == currentState()) {
+                refreshMediaItems()
+            }
         }
     }
 

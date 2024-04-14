@@ -41,7 +41,9 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
         (requireActivity() as FileTransportActivity).fileExplore
     }
 
-    override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
+        configureChangeCreateNewContentView = true
+    }
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MessageFragmentBinding.bind(contentView)

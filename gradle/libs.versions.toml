@@ -29,7 +29,7 @@ qrcodegen = "3.0.1"
 threetenabp = "1.4.6"
 glide = "4.16.0"
 keyborad = "3.0.0-RC2"
-tuiutils = "1.0.1"
+tuiutils = "1.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

@@ -254,7 +254,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.entries[position]]!!
             }
-            viewBinding.viewPager.offscreenPageLimit = Int.MAX_VALUE
+            viewBinding.viewPager.offscreenPageLimit = fragments.size
             TabLayoutMediator(viewBinding.tabLayout, viewBinding.viewPager) { tab, position ->
                 tab.text = when (DirTabType.entries[position]) {
                     DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)
