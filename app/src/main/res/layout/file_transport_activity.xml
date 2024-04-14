@@ -14,6 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/white"
+        android:fitsSystemWindows="true"
         app:elevation="0dp">
 
         <com.google.android.material.appbar.CollapsingToolbarLayout
@@ -21,7 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:layout_scrollFlags="enterAlways|scroll"
-            android:fitsSystemWindows="true"
+            app:statusBarScrim="@color/white"
             app:titleEnabled="false">
 
             <androidx.appcompat.widget.Toolbar

@@ -153,7 +153,7 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
 
         ViewCompat.setOnApplyWindowInsetsListener(viewBinding.fileTreeLayout.fileFolderRv) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
 
 //            viewBinding.doneActionBt.apply {
 //                val lp = layoutParams as MarginLayoutParams

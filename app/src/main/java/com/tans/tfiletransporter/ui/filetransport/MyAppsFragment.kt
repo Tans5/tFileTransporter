@@ -150,7 +150,7 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
 
         ViewCompat.setOnApplyWindowInsetsListener(viewBinding.myAppsRv) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
 
             insets
         }
@@ -158,23 +158,27 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
     }
 
     @SuppressLint("QueryPermissionsNeeded")
-    fun refreshApps() = updateState {
-        val apps = requireActivity().packageManager.getInstalledApplications(0)
-                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 && Files.isReadable(Paths.get(it.sourceDir)) }
-                .map {
-                    AppInfo(
-                        name = it.loadLabel(requireActivity().packageManager).toString(),
-                        sourceDir = it.sourceDir,
-                        packageName = it.packageName,
-                        appSize = Files.size(Paths.get(it.sourceDir)),
-                        icon = it.loadIcon(requireActivity().packageManager)
-                    )
-                }
-                .sortedBy { it.name }
-        MyAppsState(
-                apps = apps,
-                selected = emptyList()
-        )
+    fun refreshApps() {
+        runCatching {
+            val pm = activity?.packageManager
+            if (pm != null) {
+                val apps = pm.getInstalledApplications(0)
+                    .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 && Files.isReadable(Paths.get(it.sourceDir)) }
+                    .map {
+                        AppInfo(
+                            name = it.loadLabel(pm).toString(),
+                            sourceDir = it.sourceDir,
+                            packageName = it.packageName,
+                            appSize = Files.size(Paths.get(it.sourceDir)),
+                            icon = it.loadIcon(pm)
+                        )
+                    }
+                    .sortedBy { it.name }
+                updateState { it.copy(apps = apps, selected = emptyList()) }
+            }
+        }.onFailure {
+            AndroidLog.e(TAG, "Refresh app error: ${it.message}", it)
+        }
     }
 
     companion object {

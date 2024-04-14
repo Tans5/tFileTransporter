@@ -64,7 +64,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
     override val layoutId: Int = R.layout.file_transport_activity
 
     private val floatActionBtnClickEvent: MutableSharedFlow<Unit> by lazyViewModelField("floatActionBtnClickEvent") {
-        MutableSharedFlow(onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        MutableSharedFlow(onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
     }
 
     /**
@@ -254,6 +254,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.entries[position]]!!
             }
+            viewBinding.viewPager.offscreenPageLimit = Int.MAX_VALUE
             TabLayoutMediator(viewBinding.tabLayout, viewBinding.viewPager) { tab, position ->
                 tab.text = when (DirTabType.entries[position]) {
                     DirTabType.MyApps -> getString(R.string.file_transport_activity_tab_my_apps)

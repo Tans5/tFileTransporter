@@ -115,7 +115,7 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
 
         ViewCompat.setOnApplyWindowInsetsListener(viewBinding.editLayout) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + v.paddingBottom)
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
 
             insets
         }
