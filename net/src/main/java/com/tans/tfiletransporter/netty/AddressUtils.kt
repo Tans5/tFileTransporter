@@ -4,6 +4,7 @@ import com.tans.tfiletransporter.toBytes
 import com.tans.tfiletransporter.toInt
 import java.net.InetAddress
 import java.net.NetworkInterface
+import java.util.Enumeration
 
 /**
  * return broadcast address and subnet mask.
@@ -22,14 +23,16 @@ fun InetAddress.getBroadcastAddress()
 
 
 fun findLocalAddressV4(): List<InetAddress> {
-    val interfaces = NetworkInterface.getNetworkInterfaces()
+    val interfaces: Enumeration<NetworkInterface>? = NetworkInterface.getNetworkInterfaces()
     val result = ArrayList<InetAddress>()
-    while (interfaces.hasMoreElements()) {
-        val inetAddresses = interfaces.nextElement().inetAddresses
-        while (inetAddresses.hasMoreElements()) {
-            val address = inetAddresses.nextElement()
-            if (address.address.size == 4 && !address.isLinkLocalAddress && !address.isLoopbackAddress) {
-                result.add(address)
+    if (interfaces != null) {
+        while (interfaces.hasMoreElements()) {
+            val inetAddresses = interfaces.nextElement().inetAddresses
+            while (inetAddresses.hasMoreElements()) {
+                val address = inetAddresses.nextElement()
+                if (address.address.size == 4 && !address.isLinkLocalAddress && !address.isLoopbackAddress) {
+                    result.add(address)
+                }
             }
         }
     }
