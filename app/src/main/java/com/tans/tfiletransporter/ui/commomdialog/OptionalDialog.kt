@@ -11,8 +11,6 @@ import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
 import com.tans.tuiutils.dialog.DialogCancelableResultCallback
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.lang.ref.WeakReference
-import kotlin.coroutines.resume
 
 class OptionalDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, Boolean> {
 
@@ -75,24 +73,8 @@ suspend fun FragmentManager.showOptionalDialogSuspend(
             message = message,
             positiveButtonText = positiveButtonText,
             negativeButtonText = negativeButtonText,
-            callback = object : DialogCancelableResultCallback<Boolean> {
-                override fun onResult(t: Boolean) {
-                    if (cont.isActive) {
-                        cont.resume(t)
-                    }
-                }
-
-                override fun onCancel() {
-                    if (cont.isActive) {
-                        cont.resume(null)
-                    }
-                }
-            }
+            callback = CoroutineDialogCancelableResultCallback(cont)
         )
-        d.show(this, "OptionalDialog#${System.currentTimeMillis()}")
-        val wd = WeakReference(d)
-        cont.invokeOnCancellation {
-            wd.get()?.dismissSafe()
-        }
+        coroutineShowSafe(d, "OptionalDialog#${System.currentTimeMillis()}", cont)
     }
 }

@@ -14,7 +14,6 @@ import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
 import com.tans.tuiutils.dialog.DialogCancelableResultCallback
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.lang.ref.WeakReference
 import kotlin.coroutines.resume
 
 class TextInputDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, String> {
@@ -71,24 +70,10 @@ suspend fun FragmentManager.showTextInputDialogSuspend(hintText: String): String
     return suspendCancellableCoroutine { cont ->
         val d = TextInputDialog(
             hintText = hintText,
-            callback = object : DialogCancelableResultCallback<String> {
-                override fun onResult(t: String) {
-                    if (cont.isActive) {
-                        cont.resume(t)
-                    }
-                }
-
-                override fun onCancel() {
-                    if (cont.isActive) {
-                        cont.resume(null)
-                    }
-                }
-            }
+            callback = CoroutineDialogCancelableResultCallback(cont)
         )
-        d.show(this, "TextInputDialog#${System.currentTimeMillis()}")
-        val wd = WeakReference(d)
-        cont.invokeOnCancellation {
-            wd.get()?.dismissSafe()
+        if (!coroutineShowSafe(d, "TextInputDialog#${System.currentTimeMillis()}", cont)) {
+            cont.resume(null)
         }
     }
 }

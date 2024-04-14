@@ -16,12 +16,13 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogForceResultCallback
+import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
 import com.tans.tuiutils.dialog.DialogForceResultCallback
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.lang.ref.WeakReference
 import java.net.InetAddress
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicReference
@@ -193,27 +194,19 @@ data class FileTransferDialogState(
 suspend fun FragmentManager.showFileSenderDialog(
     bindAddress: InetAddress,
     files: List<SenderFile>,
-): FileTransferResult = suspendCancellableCoroutine { cont ->
-    val d = FileSenderDialog(
-        bindAddress = bindAddress,
-        files = files,
-        callback = object : DialogForceResultCallback<FileTransferResult> {
-            override fun onError(e: String) {
-                if (cont.isActive) {
-                    cont.resume(FileTransferResult.Error(e))
-                }
-            }
-
-            override fun onResult(t: FileTransferResult) {
-                if (cont.isActive) {
-                    cont.resume(t)
-                }
+): FileTransferResult {
+    return try {
+        suspendCancellableCoroutine { cont ->
+            val d = FileSenderDialog(
+                bindAddress = bindAddress,
+                files = files,
+                callback = CoroutineDialogForceResultCallback(cont)
+            )
+            if (!coroutineShowSafe(d, "FileSenderDialog#${System.currentTimeMillis()}", cont)) {
+                cont.resume(FileTransferResult.Error("FragmentManager was destroyed."))
             }
         }
-    )
-    d.show(this, "FileSenderDialog#${System.currentTimeMillis()}")
-    val wd = WeakReference(d)
-    cont.invokeOnCancellation {
-        wd.get()?.dismissSafe()
+    } catch (e: Throwable) {
+        FileTransferResult.Error(e.message ?: "")
     }
 }

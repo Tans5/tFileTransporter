@@ -30,12 +30,19 @@ class LoadingDialog : BaseDialogFragment() {
 
 suspend fun <T> FragmentManager.loadingDialogSuspend(job: suspend () -> T): T {
     val loadingDialog = LoadingDialog()
-    withContext(Dispatchers.Main.immediate) {
-        loadingDialog.show(this@loadingDialogSuspend, "LoadingDialog#${System.currentTimeMillis()}")
+    val isShowLoading = withContext(Dispatchers.Main.immediate) {
+        if (!isDestroyed) {
+            loadingDialog.show(this@loadingDialogSuspend, "LoadingDialog#${System.currentTimeMillis()}")
+            true
+        } else {
+            false
+        }
     }
     val result = job()
     withContext(Dispatchers.Main.immediate) {
-        loadingDialog.dismiss()
+        if (!isDestroyed && isShowLoading) {
+            loadingDialog.dismissAllowingStateLoss()
+        }
     }
     return result
 }

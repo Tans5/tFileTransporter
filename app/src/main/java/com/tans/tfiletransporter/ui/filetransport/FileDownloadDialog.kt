@@ -15,6 +15,8 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileDownloader
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
+import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogForceResultCallback
+import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
 import com.tans.tuiutils.dialog.DialogForceResultCallback
@@ -23,10 +25,8 @@ import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
-import java.lang.ref.WeakReference
 import java.net.InetAddress
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.jvm.optionals.getOrNull
@@ -205,29 +205,21 @@ suspend fun FragmentManager.showFileDownloaderDialog(
     files: List<FileExploreFile>,
     downloadDir: File,
     maxConnectionSize: Int
-): FileTransferResult = suspendCancellableCoroutine { cont ->
-    val d = FileDownloaderDialog(
-        senderAddress = senderAddress,
-        files = files,
-        downloadDir = downloadDir,
-        maxConnectionSize = maxConnectionSize,
-        callback = object : DialogForceResultCallback<FileTransferResult> {
-            override fun onError(e: String) {
-                if (cont.isActive) {
-                    cont.resume(FileTransferResult.Error(e))
-                }
-            }
-
-            override fun onResult(t: FileTransferResult) {
-                if (cont.isActive) {
-                    cont.resume(t)
-                }
+): FileTransferResult {
+    return try {
+        suspendCancellableCoroutine { cont ->
+            val d = FileDownloaderDialog(
+                senderAddress = senderAddress,
+                files = files,
+                downloadDir = downloadDir,
+                maxConnectionSize = maxConnectionSize,
+                callback = CoroutineDialogForceResultCallback(cont)
+            )
+            if (!coroutineShowSafe(d, "FileSenderDialog#${System.currentTimeMillis()}", cont)) {
+                cont.resume(FileTransferResult.Error("FragmentManager was destroyed."))
             }
         }
-    )
-    d.show(this, "FileDownloaderDialog#${System.currentTimeMillis()}")
-    val wd = WeakReference(d)
-    cont.invokeOnCancellation {
-        wd.get()?.dismissSafe()
+    } catch (e: Throwable) {
+        FileTransferResult.Error(e.message ?: "")
     }
 }
