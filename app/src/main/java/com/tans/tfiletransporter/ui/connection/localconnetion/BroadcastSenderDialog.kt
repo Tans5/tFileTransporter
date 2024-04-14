@@ -16,6 +16,8 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderStat
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.startSenderSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.waitClose
+import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogCancelableResultCallback
+import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.showToastShort
 import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
 import com.tans.tuiutils.dialog.DialogCancelableResultCallback
@@ -25,7 +27,6 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.lang.ref.WeakReference
 import java.net.InetAddress
 import kotlin.coroutines.resume
 
@@ -105,23 +106,11 @@ class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<U
 }
 suspend fun FragmentManager.showBroadcastSenderDialogSuspend(localAddress: InetAddress): RemoteDevice? {
     return suspendCancellableCoroutine { cont ->
-        val d = BroadcastSenderDialog(localAddress, object : DialogCancelableResultCallback<RemoteDevice> {
-            override fun onCancel() {
-                if (cont.isActive) {
-                    cont.resume(null)
-                }
+        val d = BroadcastSenderDialog(localAddress, CoroutineDialogCancelableResultCallback(cont))
+        if (!coroutineShowSafe(d, "BroadcastSenderDialog#${System.currentTimeMillis()}", cont)) {
+            if (cont.isActive) {
+                cont.resume(null)
             }
-
-            override fun onResult(t: RemoteDevice) {
-                if (cont.isActive) {
-                    cont.resume(t)
-                }
-            }
-        })
-        d.show(this, "BroadcastSenderDialog#${System.currentTimeMillis()}")
-        val wd = WeakReference(d)
-        cont.invokeOnCancellation {
-            wd.get()?.dismissSafe()
         }
     }
 }

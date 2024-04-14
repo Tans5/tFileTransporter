@@ -17,6 +17,8 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanServerObserv
 import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanState
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanServerSuspend
+import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogCancelableResultCallback
+import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.toJson
 import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
 import com.tans.tuiutils.dialog.DialogCancelableResultCallback
@@ -116,23 +118,11 @@ class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit
 
 suspend fun FragmentManager.showQRCodeServerDialogSuspend(localAddress: InetAddress): RemoteDevice? {
     return suspendCancellableCoroutine { cont ->
-        val d = QRCodeServerDialog(localAddress, object : DialogCancelableResultCallback<RemoteDevice> {
-            override fun onCancel() {
-                if (cont.isActive) {
-                    cont.resume(null)
-                }
+        val d = QRCodeServerDialog(localAddress, CoroutineDialogCancelableResultCallback(cont))
+        if (!coroutineShowSafe(d, "QRCodeServerDialog#${System.currentTimeMillis()}", cont)) {
+            if (cont.isActive) {
+                cont.resume(null)
             }
-
-            override fun onResult(t: RemoteDevice) {
-                if (cont.isActive) {
-                    cont.resume(t)
-                }
-            }
-        })
-        d.show(this, "QRCodeServerDialog#${System.currentTimeMillis()}")
-        val wd = WeakReference(d)
-        cont.invokeOnCancellation {
-            wd.get()?.dismissSafe()
         }
     }
 }

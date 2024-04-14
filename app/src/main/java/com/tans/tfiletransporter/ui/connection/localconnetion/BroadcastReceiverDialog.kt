@@ -18,6 +18,8 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.requestFileTransferSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.startReceiverSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.waitCloseSuspend
+import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogCancelableResultCallback
+import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.showToastShort
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.builders.plus
@@ -33,7 +35,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.lang.ref.WeakReference
 import java.net.InetAddress
 import kotlin.coroutines.resume
 
@@ -156,23 +157,14 @@ class BroadcastReceiverDialog : BaseCoroutineStateCancelableResultDialogFragment
 
 suspend fun FragmentManager.showBroadcastReceiverDialogSuspend(localAddress: InetAddress): RemoteDevice? {
     return suspendCancellableCoroutine { cont ->
-        val d = BroadcastReceiverDialog(localAddress, object : DialogCancelableResultCallback<RemoteDevice> {
-            override fun onCancel() {
-                if (cont.isActive) {
-                    cont.resume(null)
-                }
+        val d = BroadcastReceiverDialog(
+            localAddress = localAddress,
+            callback = CoroutineDialogCancelableResultCallback(cont)
+        )
+        if (!coroutineShowSafe(d, "BroadcastReceiverDialog#${System.currentTimeMillis()}", cont)) {
+            if (cont.isActive) {
+                cont.resume(null)
             }
-
-            override fun onResult(t: RemoteDevice) {
-                if (cont.isActive) {
-                    cont.resume(t)
-                }
-            }
-        })
-        d.show(this, "BroadcastReceiverDialog#${System.currentTimeMillis()}")
-        val wd = WeakReference(d)
-        cont.invokeOnCancellation {
-            wd.get()?.dismissSafe()
         }
     }
 }
