@@ -46,10 +46,6 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
         AtomicReference(null)
     }
 
-    private val hasInvokeCallback: AtomicBoolean by lazy {
-        AtomicBoolean(false)
-    }
-
     constructor() : super(FileTransferDialogState(), null) {
         this.senderAddress = null
         this.files = null

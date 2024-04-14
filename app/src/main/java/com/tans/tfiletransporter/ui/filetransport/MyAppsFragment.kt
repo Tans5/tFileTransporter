@@ -46,11 +46,8 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
     }
 
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {
-        configureChangeCreateNewContentView = true
         launch {
-            if (currentState() == defaultState) {
-                refreshApps()
-            }
+            refreshApps()
         }
     }
 

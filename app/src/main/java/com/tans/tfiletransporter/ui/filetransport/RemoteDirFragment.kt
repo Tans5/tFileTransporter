@@ -58,9 +58,7 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
         LinkedBlockingDeque()
     }
 
-    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
-        configureChangeCreateNewContentView = true
-    }
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = RemoteDirFragmentBinding.bind(contentView)
