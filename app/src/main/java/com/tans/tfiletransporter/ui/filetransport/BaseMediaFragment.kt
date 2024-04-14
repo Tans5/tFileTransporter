@@ -87,9 +87,12 @@ abstract class BaseMediaFragment(
                     ),
                     dataBinder = DataBinderImpl<Pair<MediaStoreImage, Boolean>> { data, view, _ ->
                         val itemViewBinding = ImageItemLayoutBinding.bind(view)
-                        Glide.with(itemViewBinding.root)
-                            .load(data.first.uri)
-                            .into(itemViewBinding.photoIv)
+                        val act = activity
+                        if (act != null) {
+                            Glide.with(act)
+                                .load(data.first.uri)
+                                .into(itemViewBinding.photoIv)
+                        }
                         itemViewBinding.root.clicks(this) {
                             selectOrUnSelectImage(data.first)
                         }
