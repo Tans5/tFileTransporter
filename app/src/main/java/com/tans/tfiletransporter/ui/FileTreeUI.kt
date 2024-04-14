@@ -1,6 +1,8 @@
 package com.tans.tfiletransporter.ui
 
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.tans.tfiletransporter.R
@@ -27,7 +29,6 @@ import com.tans.tuiutils.view.refreshes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -223,6 +224,12 @@ class FileTreeUI(
 
         viewBinding.folderMenuLayout.clicks(coroutineScope) {
             popupMenu.show()
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.fileFolderRv) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + viewBinding.root.context.dp2px(85))
+            insets
         }
     }
 

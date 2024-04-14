@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui.filetransport
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -53,6 +54,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.net.InetAddress
 import java.io.File
+import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 
 
@@ -62,6 +65,16 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
 ) {
 
     override val layoutId: Int = R.layout.file_transport_activity
+
+
+    private val activityContainer: AtomicReference<WeakReference<FileTransportActivity?>?> by lazyViewModelField("activityContainer") {
+        AtomicReference(null)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        activityContainer.set(WeakReference(this))
+        super.onCreate(savedInstanceState)
+    }
 
     private val floatActionBtnClickEvent: MutableSharedFlow<Unit> by lazyViewModelField("floatActionBtnClickEvent") {
         MutableSharedFlow(onBufferOverflow = BufferOverflow.DROP_OLDEST, extraBufferCapacity = 1)
@@ -93,9 +106,10 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         object : FileExploreRequestHandler<SendFilesReq, SendFilesResp> {
             override fun onRequest(isNew: Boolean, request: SendFilesReq): SendFilesResp {
                 if (isNew) {
-                    uiCoroutineScope.launch {
+                    dataCoroutineScope.launch {
                         val mineMax = Settings.transferFileMaxConnection()
-                        downloadFiles(
+                        val act = activityContainer.get()?.get()
+                        act?.downloadFiles(
                             request.sendFiles,
                             Settings.fixTransferFileConnectionSize(min(request.maxConnection, mineMax))
                         )
@@ -114,8 +128,9 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         object : FileExploreRequestHandler<DownloadFilesReq, DownloadFilesResp> {
             override fun onRequest(isNew: Boolean, request: DownloadFilesReq): DownloadFilesResp {
                 if (isNew) {
-                    uiCoroutineScope.launch {
-                        sendFiles(request.downloadFiles)
+                    dataCoroutineScope.launch {
+                        val act = activityContainer.get()?.get()
+                        act?.sendFiles(request.downloadFiles)
                     }
                 }
                 return DownloadFilesResp(maxConnection = Settings.transferFileMaxConnection())

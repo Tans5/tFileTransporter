@@ -8,11 +8,14 @@ import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import kotlinx.coroutines.Dispatchers
 import androidx.activity.addCallback
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.FileTreeUI
+import com.tans.tfiletransporter.utils.dp2px
 import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow

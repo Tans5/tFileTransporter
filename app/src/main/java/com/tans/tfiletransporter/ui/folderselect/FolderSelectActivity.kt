@@ -16,6 +16,7 @@ import com.tans.tfiletransporter.file.newLocalSubTree
 import com.tans.tfiletransporter.ui.FileTreeUI
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialogSuspend
+import com.tans.tfiletransporter.utils.dp2px
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
@@ -149,18 +150,6 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
                     Unit
                 }
             }
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.fileTreeLayout.fileFolderRv) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
-
-//            viewBinding.doneActionBt.apply {
-//                val lp = layoutParams as MarginLayoutParams
-//                lp.bottomMargin += systemBars.bottom
-//                layoutParams = lp
-//            }
-            insets
         }
 
     }
