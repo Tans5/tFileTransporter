@@ -53,9 +53,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.tans.tfiletransporter.ui.filetransport.FileTransportActivity"
+        <activity android:name=".ui.filetransport.FileTransportActivity"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:windowSoftInputMode="adjustNothing"
             android:launchMode="singleTask"
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize|uiMode"

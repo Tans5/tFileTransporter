@@ -13,7 +13,7 @@ import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestMsgSuspend
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
-import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
+import com.tans.tuiutils.adapter.impl.datasources.DataSourceImpl
 import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
 import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import com.tans.tuiutils.view.clicks
@@ -25,8 +25,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEvent
-import net.yslibrary.android.keyboardvisibilityevent.KeyboardVisibilityEventListener
 
 class MessageFragment : BaseCoroutineStateFragment<Unit>(
     Unit
@@ -43,13 +41,17 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
 
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
+    private val messageDataSource: DataSourceImpl<FileTransportActivity.Companion.Message> by lazy {
+        DataSourceImpl()
+    }
+
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MessageFragmentBinding.bind(contentView)
         val context = requireActivity() as FileTransportActivity
 
         viewBinding.messageRv.adapter = SimpleAdapterBuilderImpl<FileTransportActivity.Companion.Message>(
             itemViewCreator = SingleItemViewCreatorImpl(R.layout.message_item_layout),
-            dataSource = FlowDataSourceImpl(context.observeMessages()),
+            dataSource = messageDataSource,
             dataBinder = DataBinderImpl { data, view, _ ->
                 val itemViewBinding = MessageItemLayoutBinding.bind(view)
                 val isRemote = data.fromRemote
@@ -64,6 +66,20 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
                 }
             }
         ).build()
+
+        launch {
+            context.observeMessages()
+                .map { it.reversed() }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Main.immediate)
+                .collect {
+                    messageDataSource.submitDataList(it) {
+                        if (it.isNotEmpty()) {
+                            viewBinding.messageRv.scrollToPosition(0)
+                        }
+                    }
+                }
+        }
 
         viewBinding.sendLayout.clicks(this) {
             val text = viewBinding.editText.text.toString()
@@ -100,23 +116,20 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
                 }
         }
 
-        KeyboardVisibilityEvent.registerEventListener(requireActivity(), object : KeyboardVisibilityEventListener {
-            override fun onVisibilityChanged(isOpen: Boolean) {
-                if (isOpen) {
-                    launch {
-                        val messages = context.observeMessages().first()
-                        if (messages.isNotEmpty()) {
-                            viewBinding.messageRv.scrollToPosition(0)
-                        }
+        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.editLayout) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // SoftKeyboard
+            val imeBars = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + imeBars.bottom)
+            if (imeBars.bottom > 0) {
+                // If soft keyboard show, scroll to first.
+                launch {
+                    val messages = context.observeMessages().first()
+                    if (messages.isNotEmpty()) {
+                        viewBinding.messageRv.scrollToPosition(0)
                     }
                 }
             }
-        })
-
-        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.editLayout) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
-
             insets
         }
     }
