@@ -13,6 +13,7 @@ import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.BaseMediaFragmentLayoutBinding
 import com.tans.tfiletransporter.databinding.ImageItemLayoutBinding
 import com.tans.tfiletransporter.databinding.VideoAudioItemLayoutBinding
+import com.tans.tfiletransporter.file.fileDateText
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
@@ -130,6 +131,7 @@ abstract class BaseMediaFragment(
                         itemViewBinding.titleTv.text = data.first.title
                         itemViewBinding.artistTv.text = requireContext().getString(R.string.media_artist_name, data.first.artist)
                         itemViewBinding.albumTv.text = requireContext().getString(R.string.media_album_name, data.first.album)
+                        itemViewBinding.modifiedDateTv.text = (data.first.dateModified * 1000L).fileDateText()
                         itemViewBinding.mediaSizeTv.text = data.first.size.toSizeString()
                         itemViewBinding.root.clicks(this) {
                             selectOrUnSelectAudio(data.first)
@@ -168,6 +170,7 @@ abstract class BaseMediaFragment(
                         itemViewBinding.titleTv.text = data.first.title
                         itemViewBinding.artistTv.visibility = View.INVISIBLE
                         itemViewBinding.albumTv.visibility = View.INVISIBLE
+                        itemViewBinding.modifiedDateTv.text = (data.first.dateModified * 1000L).fileDateText()
                         itemViewBinding.mediaSizeTv.text = data.first.size.toSizeString()
                         itemViewBinding.root.clicks(this) {
                             selectOrUnSelectVideo(data.first)

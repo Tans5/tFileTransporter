@@ -136,8 +136,8 @@ private val fileTimeFormatter by lazy {
 }
 
 
-fun fileDateText(targetTimeMillis: Long): String {
-    val targetOffsetDateTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(targetTimeMillis), ZoneId.systemDefault())
+fun Long.fileDateText(): String {
+    val targetOffsetDateTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneId.systemDefault())
     val targetLocalDate = targetOffsetDateTime.toLocalDate()
 
     val nowLocalDate = OffsetDateTime.now(ZoneId.systemDefault()).toLocalDate()

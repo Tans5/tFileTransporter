@@ -86,7 +86,7 @@ class FileTreeUI(
                 val itemViewBinding = FolderItemLayoutBinding.bind(view)
                 itemViewBinding.titleTv.text = data.name
                 itemViewBinding.filesCountTv.text = context.getString(R.string.file_count, data.childrenCount)
-                itemViewBinding.modifiedDateTv.text = fileDateText(data.lastModified)
+                itemViewBinding.modifiedDateTv.text = data.lastModified.fileDateText()
                 itemViewBinding.root.clicks(coroutineScope = coroutineScope, clickWorkOn = Dispatchers.IO) {
                     context.supportFragmentManager.loadingDialogSuspend {
                         val i = withContext(Dispatchers.Main) {
@@ -109,7 +109,7 @@ class FileTreeUI(
             dataBinder = DataBinderImpl<Pair<FileLeaf.CommonFileLeaf, Boolean>> { data, view, _ ->
                 val itemViewBinding = FileItemLayoutBinding.bind(view)
                 itemViewBinding.titleTv.text = data.first.name
-                itemViewBinding.modifiedDateTv.text = fileDateText(data.first.lastModified)
+                itemViewBinding.modifiedDateTv.text = data.first.lastModified.fileDateText()
                 itemViewBinding.filesSizeTv.text = data.first.size.toSizeString()
 
                 itemViewBinding.root.clicks(coroutineScope) {
