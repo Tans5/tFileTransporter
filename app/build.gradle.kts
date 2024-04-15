@@ -117,9 +117,6 @@ dependencies {
     // glide
     implementation(libs.glide)
 
-    //keyboard hide
-    implementation(libs.keyboard)
-
     implementation(project(":net"))
 
 }

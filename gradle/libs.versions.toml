@@ -1,5 +1,5 @@
 [versions]
-agp = "8.3.1"
+agp = "8.3.2"
 kotlin = "1.9.23"
 googleKsp = "1.9.23-1.0.19"
 coreKtx = "1.12.0"
@@ -28,7 +28,6 @@ barcodescan = "17.2.0"
 qrcodegen = "3.0.1"
 threetenabp = "1.4.6"
 glide = "4.16.0"
-keyborad = "3.0.0-RC2"
 tuiutils = "1.0.4"
 
 [libraries]
@@ -73,7 +72,6 @@ barcodescan = { group = "com.google.mlkit", name = "barcode-scanning", version.r
 qrcodegen = { group = "com.github.kenglxn.QRGen", name = "android", version.ref = "qrcodegen" }
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenabp" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide"}
-keyboard = { group = "net.yslibrary.keyboardvisibilityevent", name = "keyboardvisibilityevent", version.ref = "keyborad" }
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 
 [plugins]
