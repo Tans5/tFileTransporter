@@ -7,15 +7,11 @@ import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.MyDirFragmentBinding
 import com.tans.tfiletransporter.file.*
 import kotlinx.coroutines.Dispatchers
-import androidx.activity.addCallback
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.transferproto.fileexplore.FileExplore
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.ui.FileTreeUI
-import com.tans.tfiletransporter.utils.dp2px
 import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -32,9 +28,8 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
 
     override val layoutId: Int = R.layout.my_dir_fragment
 
-    private val onBackPressedDispatcher: OnBackPressedDispatcher by lazy {
-        requireActivity().onBackPressedDispatcher
-    }
+    private val onBackPressedDispatcher: OnBackPressedDispatcher
+        get() = requireActivity().onBackPressedDispatcher
 
     private val fileExplore: FileExplore by lazy {
         (requireActivity() as FileTransportActivity).fileExplore
@@ -43,9 +38,11 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
     private var fileTreeUI : FileTreeUI? = null
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
-        onBackPressedDispatcher.addCallback {
-            uiCoroutineScope?.launch {
-                fileTreeUI?.backPress()
+        object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                uiCoroutineScope?.launch {
+                    fileTreeUI?.backPress()
+                }
             }
         }
     }
@@ -65,6 +62,7 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        onBackPressedDispatcher.addCallback(this@MyDirFragment, onBackPressedCallback)
         val viewBinding = MyDirFragmentBinding.bind(contentView)
         val fileTreeUI = FileTreeUI(
             viewBinding = viewBinding.fileTreeLayout,
@@ -91,6 +89,7 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
             fileTreeUI.stateFlow()
                 .map { it.fileTree }
                 .distinctUntilChanged()
+                .flowOn(Dispatchers.Main)
                 .collect { tree ->
                     val tab = context.currentState().selectedTabType
                     onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.MyDir
@@ -103,7 +102,8 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
                 .distinctUntilChanged()
                 .flowOn(Dispatchers.Main)
                 .collect { tab ->
-                    onBackPressedCallback.isEnabled =  tab == FileTransportActivity.Companion.DirTabType.MyDir
+                    val tree = fileTreeUI.currentState().fileTree
+                    onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.MyDir
                 }
         }
 

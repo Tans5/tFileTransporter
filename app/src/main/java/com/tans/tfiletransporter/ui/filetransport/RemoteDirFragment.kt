@@ -3,7 +3,6 @@ package com.tans.tfiletransporter.ui.filetransport
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
-import androidx.activity.addCallback
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.RemoteDirFragmentBinding
@@ -15,10 +14,12 @@ import com.tans.tfiletransporter.transferproto.fileexplore.requestScanDirSuspend
 import com.tans.tfiletransporter.ui.FileTreeUI
 import com.tans.tuiutils.fragment.BaseCoroutineStateFragment
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
@@ -32,13 +33,16 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
 
     private var fileTreeUI: FileTreeUI? = null
 
-    private val onBackPressedDispatcher: OnBackPressedDispatcher by lazy {
-        requireActivity().onBackPressedDispatcher
-    }
+    private val onBackPressedDispatcher: OnBackPressedDispatcher
+        get() = requireActivity().onBackPressedDispatcher
 
     private val onBackPressedCallback: OnBackPressedCallback by lazy {
-        onBackPressedDispatcher.addCallback {
-            fileTreeUI?.backPress()
+        object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                uiCoroutineScope?.launch {
+                    fileTreeUI?.backPress()
+                }
+            }
         }
     }
 
@@ -61,6 +65,7 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
+        onBackPressedDispatcher.addCallback(this@RemoteDirFragment, onBackPressedCallback)
         val viewBinding = RemoteDirFragmentBinding.bind(contentView)
         val context = requireActivity() as FileTransportActivity
         val fileTreeUI = FileTreeUI(
@@ -117,6 +122,8 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
         launch {
             fileTreeUI.stateFlow()
                 .map { it.fileTree }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Main)
                 .collect { tree ->
                     val tab = context.currentState().selectedTabType
                     onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
@@ -127,8 +134,10 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
             context.stateFlow()
                 .map { it.selectedTabType }
                 .distinctUntilChanged()
-                .collect {
-                    onBackPressedCallback.isEnabled = it == FileTransportActivity.Companion.DirTabType.RemoteDir
+                .flowOn(Dispatchers.Main)
+                .collect { tab ->
+                    val tree = fileTreeUI.currentState().fileTree
+                    onBackPressedCallback.isEnabled = !tree.isRootFileTree() && tab == FileTransportActivity.Companion.DirTabType.RemoteDir
                 }
         }
 
