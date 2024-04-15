@@ -37,6 +37,7 @@ import java.util.concurrent.LinkedBlockingDeque
 
 
 class FileTreeUI(
+    private val context: FragmentActivity,
     private val viewBinding: FileTreeLayoutBinding,
     private val rootTreeUpdater: suspend () -> FileTree,
     private val subTreeUpdater: suspend (parentTree: FileTree, dir: FileLeaf.DirectoryFileLeaf) -> FileTree,
@@ -62,7 +63,6 @@ class FileTreeUI(
     }
 
     init {
-        val context = viewBinding.root.context as FragmentActivity
         val currentState = currentState()
 
         // Empty State, need to load root tree.

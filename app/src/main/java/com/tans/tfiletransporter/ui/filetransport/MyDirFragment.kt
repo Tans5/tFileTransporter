@@ -65,6 +65,7 @@ class MyDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
         onBackPressedDispatcher.addCallback(this@MyDirFragment, onBackPressedCallback)
         val viewBinding = MyDirFragmentBinding.bind(contentView)
         val fileTreeUI = FileTreeUI(
+            context = requireActivity(),
             viewBinding = viewBinding.fileTreeLayout,
             rootTreeUpdater = {
                 withContext(Dispatchers.IO) {

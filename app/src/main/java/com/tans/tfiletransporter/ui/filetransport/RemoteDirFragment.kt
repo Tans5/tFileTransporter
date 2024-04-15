@@ -69,6 +69,7 @@ class RemoteDirFragment : BaseCoroutineStateFragment<Unit>(Unit) {
         val viewBinding = RemoteDirFragmentBinding.bind(contentView)
         val context = requireActivity() as FileTransportActivity
         val fileTreeUI = FileTreeUI(
+            context = requireActivity(),
             viewBinding = viewBinding.fileTreeLayout,
             rootTreeUpdater = {
                 val handshake = (context.currentState().connectionStatus as? FileTransportActivity.Companion.ConnectionStatus.Connected)?.handshake

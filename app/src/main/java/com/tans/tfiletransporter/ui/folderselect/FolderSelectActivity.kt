@@ -62,6 +62,7 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = FolderSelectActivityBinding.bind(contentView)
         val fileTreeUI = FileTreeUI(
+            context = this@FolderSelectActivity,
             viewBinding = viewBinding.fileTreeLayout,
             rootTreeUpdater = {
                 withContext(Dispatchers.IO) {
