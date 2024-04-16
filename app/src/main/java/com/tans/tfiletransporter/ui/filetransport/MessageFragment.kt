@@ -120,7 +120,6 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             // SoftKeyboard
             val imeBars = insets.getInsets(WindowInsetsCompat.Type.ime())
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom + imeBars.bottom)
             if (imeBars.bottom > 0) {
                 // If soft keyboard show, scroll to first.
                 launch {
@@ -129,6 +128,10 @@ class MessageFragment : BaseCoroutineStateFragment<Unit>(
                         viewBinding.messageRv.scrollToPosition(0)
                     }
                 }
+                v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, imeBars.bottom)
+            } else {
+                // soft keyboard hide.
+                v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, systemBars.bottom)
             }
             insets
         }
