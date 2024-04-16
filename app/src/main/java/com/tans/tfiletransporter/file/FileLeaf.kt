@@ -4,13 +4,21 @@ import androidx.annotation.Keep
 
 @Keep
 sealed class FileLeaf(
-    val name: String,
-    val path: String,
-    val lastModified: Long
 ) {
+    abstract val name: String
+    abstract val path: String
+    abstract val lastModified: Long
     @Keep
-    class CommonFileLeaf(name: String, path: String, val size: Long, lastModified: Long) : FileLeaf(name, path, lastModified)
+    data class CommonFileLeaf(
+        override val name: String,
+        override val path: String,
+        override val lastModified: Long,
+        val size: Long) : FileLeaf()
 
     @Keep
-    class DirectoryFileLeaf(name: String, path: String, val childrenCount: Long, lastModified: Long) : FileLeaf(name, path, lastModified)
+    data class DirectoryFileLeaf(
+        override val name: String,
+        override val path: String,
+        override val lastModified: Long,
+        val childrenCount: Long) : FileLeaf()
 }

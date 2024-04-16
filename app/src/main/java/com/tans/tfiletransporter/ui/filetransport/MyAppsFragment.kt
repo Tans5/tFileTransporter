@@ -67,9 +67,9 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
                         it to state.selected.contains(it)
                     }
                 },
-                areDataItemsTheSameParam = { d1, d2 -> d1.first.packageName == d2.first.packageName },
-                areDataItemsContentTheSameParam = { d1, d2 -> d1.first.packageName == d2.first.packageName && d1.second == d2.second },
-                getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.packageName == d2.first.packageName && d1.second != d2.second) Unit else null }
+                areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first },
+                areDataItemsContentTheSameParam = { d1, d2 -> d1 == d2 },
+                getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
             ),
             dataBinder = DataBinderImpl<Pair<AppInfo, Boolean>> { data, view, _ ->
                 val itemViewBinding = AppItemLayoutBinding.bind(view)
@@ -189,7 +189,29 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
             val packageName: String,
             val appSize: Long,
             val icon: Drawable
-        )
+        ) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as AppInfo
+
+                if (name != other.name) return false
+                if (sourceDir != other.sourceDir) return false
+                if (packageName != other.packageName) return false
+                if (appSize != other.appSize) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = name.hashCode()
+                result = 31 * result + sourceDir.hashCode()
+                result = 31 * result + packageName.hashCode()
+                result = 31 * result + appSize.hashCode()
+                return result
+            }
+        }
 
         data class MyAppsState(
             val apps: List<AppInfo> = emptyList(),

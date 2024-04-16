@@ -82,9 +82,9 @@ abstract class BaseMediaFragment(
                                 it to s.selectedImages.contains(it)
                             }
                         },
-                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
-                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
-                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1 == d2 },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
                     ),
                     dataBinder = DataBinderImpl<Pair<MediaStoreImage, Boolean>> { data, view, _ ->
                         val itemViewBinding = ImageItemLayoutBinding.bind(view)
@@ -121,9 +121,9 @@ abstract class BaseMediaFragment(
                                 it to s.selectedAudios.contains(it)
                             }
                         },
-                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
-                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
-                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1 == d2 },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
                     ),
                     dataBinder = DataBinderImpl<Pair<MediaStoreAudio, Boolean>> { data, view, _ ->
                         val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
@@ -160,9 +160,9 @@ abstract class BaseMediaFragment(
                                 it to s.selectedVideos.contains(it)
                             }
                         },
-                        areDataItemsTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri},
-                        areDataItemsContentTheSameParam = { d1, d2 -> d1.first.uri == d2.first.uri && d1.second == d2.second },
-                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first.uri == d2.first.uri && d1.second != d2.second) Unit else null }
+                        areDataItemsTheSameParam = { d1, d2 -> d1.first == d2.first},
+                        areDataItemsContentTheSameParam = { d1, d2 -> d1 == d2 },
+                        getDataItemsChangePayloadParam = { d1, d2 -> if (d1.first == d2.first && d1.second != d2.second) Unit else null }
                     ),
                     dataBinder = DataBinderImpl<Pair<MediaStoreVideo, Boolean>> { data, view, _ ->
                         val itemViewBinding = VideoAudioItemLayoutBinding.bind(view)
