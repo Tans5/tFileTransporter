@@ -1,6 +1,5 @@
 package com.tans.tfiletransporter.ui.filetransport
 
-import android.os.Environment
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -41,7 +40,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 
 abstract class BaseMediaFragment(
@@ -55,10 +53,6 @@ abstract class BaseMediaFragment(
 
     private val fileExplore: FileExplore by lazy {
         (requireActivity() as FileTransportActivity).fileExplore
-    }
-
-    private val androidRootDir: File by lazy {
-        Environment.getExternalStorageDirectory()
     }
 
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {
@@ -206,9 +200,9 @@ abstract class BaseMediaFragment(
                     launch(Dispatchers.IO) {
                         val currentState = currentState()
                         val files = when (mediaType) {
-                            MediaType.Image -> currentState.selectedImages.map { File(File(androidRootDir, it.relativePath), it.displayName) }
-                            MediaType.Video -> currentState.selectedVideos.map { File(File(androidRootDir, it.relativePath), it.displayName) }
-                            MediaType.Audio -> currentState.selectedAudios.map { File(File(androidRootDir, it.relativePath), it.displayName) }
+                            MediaType.Image -> currentState.selectedImages.mapNotNull { it.file }
+                            MediaType.Video -> currentState.selectedVideos.mapNotNull { it.file }
+                            MediaType.Audio -> currentState.selectedAudios.mapNotNull { it.file }
                         }.filter { it.isFile }
                         val senderFiles = files.map { SenderFile(it, it.toFileExploreFile()) }
                         if (senderFiles.isNotEmpty()) {
@@ -246,15 +240,15 @@ abstract class BaseMediaFragment(
         withContext(Dispatchers.IO) {
             when (mediaType) {
                 MediaType.Image -> {
-                    val images = queryImageFromMediaStore().sortedByDescending { it.dateModified }
+                    val images = queryImageFromMediaStore().sortedByDescending { it.dateModified }.filter { it.file != null }
                     updateState { it.copy(selectedImages = emptyList(), images = images) }
                 }
                 MediaType.Video -> {
-                    val videos = queryVideoFromMediaStore().sortedByDescending { it.dateModified }
+                    val videos = queryVideoFromMediaStore().sortedByDescending { it.dateModified }.filter { it.file != null }
                     updateState { it.copy(selectedVideos = emptyList(), videos = videos) }
                 }
                 MediaType.Audio -> {
-                    val audios = queryAudioFromMediaStore().sortedByDescending { it.dateModified }
+                    val audios = queryAudioFromMediaStore().sortedByDescending { it.dateModified }.filter { it.file != null }
                     updateState { it.copy(selectedAudios = emptyList(), audios = audios) }
                 }
             }

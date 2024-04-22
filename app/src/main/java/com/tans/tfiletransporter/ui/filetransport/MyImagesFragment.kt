@@ -1,3 +1,3 @@
 package com.tans.tfiletransporter.ui.filetransport
 
-class MyImagesFragment : BaseMediaFragment(mediaType = Companion.MediaType.Image)
+class MyImagesFragment : BaseMediaFragment(Companion.MediaType.Image)
