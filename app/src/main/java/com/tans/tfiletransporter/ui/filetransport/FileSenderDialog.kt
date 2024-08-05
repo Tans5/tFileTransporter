@@ -121,7 +121,9 @@ class FileSenderDialog : BaseCoroutineStateForceResultDialogFragment<FileTransfe
                     }
                 }
 
-                override fun onEndFile(file: FileExploreFile) {}
+                override fun onEndFile(file: FileExploreFile) {
+                    updateState { oldState -> oldState.copy(finishedFiles = oldState.finishedFiles + file) }
+                }
 
             })
             sender.start()
@@ -188,7 +190,8 @@ sealed class FileTransferResult {
 data class FileTransferDialogState(
     val transferFile: Optional<FileExploreFile> = Optional.empty(),
     val process: Long = 0L,
-    val speedString: String = ""
+    val speedString: String = "",
+    val finishedFiles: List<FileExploreFile> = emptyList()
 )
 
 suspend fun FragmentManager.showFileSenderDialog(

@@ -44,11 +44,14 @@ enum class MediaType {
     Image
 }
 
+private val fileSuffixRegex : Regex by lazy {
+    ".*\\.(.+)$".toRegex()
+}
+
 /**
  * @return Media file Mimetype and MediaType
  */
 fun getMediaMimeTypeWithFileName(fileName: String): Pair<String, MediaType>? {
-    val fileSuffixRegex = ".*\\.(.+)$".toRegex()
     val matchResult = fileSuffixRegex.find(fileName)
     return matchResult?.groupValues?.get(1)?.lowercase(Locale.US).let { suffix ->
         val mimeType = mediaFileSuffixAndMimeType[suffix]

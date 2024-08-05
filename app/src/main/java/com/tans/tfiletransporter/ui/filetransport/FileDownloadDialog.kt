@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.ui.filetransport
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,8 +21,9 @@ import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.getMediaMimeTypeWithFileName
 import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
 import com.tans.tuiutils.dialog.DialogForceResultCallback
-import com.tans.tuiutils.mediastore.insertMediaFilesToMediaStore
 import com.tans.tuiutils.view.clicks
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
@@ -75,6 +77,7 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
         val files = this.files ?: return
         val downloadDir = this.downloadDir ?: return
         val maxConnectionSize = this.maxConnectionSize ?: return
+        val ctx = activity?.application ?: return
         launch {
             val downloader = FileDownloader(
                 files = files,
@@ -94,6 +97,28 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
                 }
             })
             this@FileDownloaderDialog.speedCalculator.set(speedCalculator)
+            fun checkFinishedFileAndInsertToMediaStore() {
+                val finishedFiles = this@FileDownloaderDialog.currentState().finishedFiles
+                if (finishedFiles.isNotEmpty()) {
+                    Dispatchers.IO.asExecutor().execute {
+                        val pathAndMimeType = finishedFiles.mapNotNull {
+                            val mimeType = getMediaMimeTypeWithFileName(it.name)?.first
+                            if (mimeType != null) {
+                                File(downloadDir, it.name).canonicalPath to mimeType
+                            } else {
+                                null
+                            }
+                        }
+                        if (pathAndMimeType.isNotEmpty()) {
+                            MediaScannerConnection.scanFile(
+                                ctx,
+                                pathAndMimeType.map { it.first }.toTypedArray(),
+                                pathAndMimeType.map { it.second }.toTypedArray(), null
+                            )
+                        }
+                    }
+                }
+            }
             downloader.addObserver(object : FileTransferObserver {
                 override fun onNewState(s: FileTransferState) {
                     when (s) {
@@ -102,18 +127,22 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
                             speedCalculator.start()
                         }
                         FileTransferState.Canceled -> {
+                            checkFinishedFileAndInsertToMediaStore()
                             speedCalculator.stop()
                             onResult(FileTransferResult.Cancel)
                         }
                         FileTransferState.Finished -> {
+                            checkFinishedFileAndInsertToMediaStore()
                             speedCalculator.stop()
                             onResult(FileTransferResult.Finished)
                         }
                         is FileTransferState.Error -> {
+                            checkFinishedFileAndInsertToMediaStore()
                             speedCalculator.stop()
                             onResult(FileTransferResult.Error(s.msg))
                         }
                         is FileTransferState.RemoteError -> {
+                            checkFinishedFileAndInsertToMediaStore()
                             speedCalculator.stop()
                             onResult(FileTransferResult.Error("Remote error: ${s.msg}"))
                         }
@@ -138,14 +167,7 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
                 }
 
                 override fun onEndFile(file: FileExploreFile) {
-                    val mimeAndMediaType = getMediaMimeTypeWithFileName(file.name)
-                    if (mimeAndMediaType != null) {
-                        runCatching {
-                            insertMediaFilesToMediaStore(
-                                filesToMimeType = mapOf(File(downloadDir, file.name) to mimeAndMediaType.first)
-                            )
-                        }
-                    }
+                    updateState { oldState -> oldState.copy(finishedFiles = oldState.finishedFiles + file) }
                 }
 
             })
