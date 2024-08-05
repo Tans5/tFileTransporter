@@ -46,6 +46,7 @@
             android:taskAffinity=".transfer"
             android:configChanges="orientation|screenSize|uiMode"
             android:exported="true"
+            android:launchMode="singleTask"
             tools:ignore="DiscouragedApi,LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

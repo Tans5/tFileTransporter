@@ -152,9 +152,10 @@ class FileDownloaderDialog : BaseCoroutineStateForceResultDialogFragment<FileTra
                 override fun onStartFile(file: FileExploreFile) {
                     speedCalculator.reset()
                     updateState {
-                        FileTransferDialogState(
+                        it.copy(
                             transferFile = Optional.of(file),
-                            process = 0L
+                            process = 0L,
+                            speedString = ""
                         )
                     }
                 }
