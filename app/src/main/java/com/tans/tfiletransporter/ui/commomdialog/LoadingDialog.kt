@@ -32,7 +32,7 @@ suspend fun <T> FragmentManager.loadingDialogSuspend(job: suspend () -> T): T {
     val loadingDialog = LoadingDialog()
     val isShowLoading = withContext(Dispatchers.Main.immediate) {
         if (!isDestroyed) {
-            loadingDialog.show(this@loadingDialogSuspend, "LoadingDialog#${System.currentTimeMillis()}")
+            loadingDialog.showSafe(this@loadingDialogSuspend, "LoadingDialog#${System.currentTimeMillis()}")
             true
         } else {
             false

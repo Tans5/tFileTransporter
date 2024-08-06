@@ -8,7 +8,8 @@
     android:layout_height="match_parent"
     android:background="@color/white"
     android:fitsSystemWindows="true"
-    android:keepScreenOn="true">
+    android:keepScreenOn="true"
+    android:saveEnabled="false">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbar_layout"

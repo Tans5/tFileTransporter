@@ -90,6 +90,6 @@ class SettingsDialog : BaseCoroutineStateDialogFragment<Settings.SettingsData>(
 fun FragmentManager.showSettingsDialog() {
     val d = SettingsDialog()
     if (!isDestroyed) {
-        d.show(this, "SettingsDialog#${System.currentTimeMillis()}")
+        d.showSafe(this, "SettingsDialog#${System.currentTimeMillis()}")
     }
 }
