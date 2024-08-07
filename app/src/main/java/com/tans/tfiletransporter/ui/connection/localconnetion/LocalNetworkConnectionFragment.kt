@@ -30,6 +30,7 @@ import java.net.InetAddress
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 import androidx.core.content.getSystemService
+import com.tans.tfiletransporter.ui.connection.ConnectionActivity
 import com.tans.tuiutils.actresult.startActivityResultSuspend
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
@@ -161,7 +162,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
                                         localAddress = selectedAddress,
                                         remoteAddress = serverAddress,
                                         remoteDeviceInfo = qrcodeShare.deviceName,
-                                        isServer = false
+                                        isServer = false,
+                                        requestShareFiles = (requireActivity() as ConnectionActivity).consumeRequestShareFiles()
                                     ))
                             }
                         }.onFailure {
@@ -187,7 +189,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
                                 localAddress = selectedAddress,
                                 remoteAddress = remoteAddress.remoteAddress.address,
                                 remoteDeviceInfo = remoteAddress.deviceName,
-                                isServer = true
+                                isServer = true,
+                                requestShareFiles = (requireActivity() as ConnectionActivity).consumeRequestShareFiles()
                             ))
                     }
                 }
@@ -208,7 +211,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
                                 localAddress = selectedAddress,
                                 remoteAddress = remoteDevice.remoteAddress.address,
                                 remoteDeviceInfo = remoteDevice.deviceName,
-                                isServer = false
+                                isServer = false,
+                                requestShareFiles = (requireActivity() as ConnectionActivity).consumeRequestShareFiles()
                             )
                         )
                     }
@@ -231,7 +235,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
                                 localAddress = selectedAddress,
                                 remoteAddress = remoteDevice.remoteAddress.address,
                                 remoteDeviceInfo = remoteDevice.deviceName,
-                                isServer = true
+                                isServer = true,
+                                requestShareFiles = (requireActivity() as ConnectionActivity).consumeRequestShareFiles()
                             ))
                     }
                 }

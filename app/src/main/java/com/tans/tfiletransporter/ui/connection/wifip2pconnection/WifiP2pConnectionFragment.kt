@@ -24,6 +24,7 @@ import com.tans.tfiletransporter.transferproto.p2pconn.connectSuspend
 import com.tans.tfiletransporter.transferproto.p2pconn.transferFileSuspend
 import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
+import com.tans.tfiletransporter.ui.connection.ConnectionActivity
 import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
@@ -249,7 +250,8 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
                                                             localAddress = handshake.localAddress.address,
                                                             remoteAddress = handshake.remoteAddress.address,
                                                             remoteDeviceInfo = handshake.remoteDeviceName,
-                                                            isServer = isReceiver
+                                                            isServer = isReceiver,
+                                                            requestShareFiles = (requireActivity() as ConnectionActivity).consumeRequestShareFiles()
                                                         )
                                                     )
                                                 }

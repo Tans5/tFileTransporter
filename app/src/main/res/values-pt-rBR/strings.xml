@@ -4,7 +4,7 @@
     <string name="dialog_positive">OK</string>
     <string name="dialog_negative">Cancel</string>
 
-    <!-- File Transport Activity Start -->
+    <!--region FileTransportActivity-->
     <string name="file_transport_activity_tab_my_apps">APPS</string>
     <string name="file_transport_activity_tab_my_images">IMAGENS</string>
     <string name="file_transport_activity_tab_my_videos">MY VIDEOS</string>
@@ -22,9 +22,13 @@
     <string name="downloading_files_dialog_title">Baixando arquivo(s) (%d/%d)</string>
     <string name="sending_files_dialog_title">Enviando arquivo(s) (%d/%d)</string>
     <string name="app_version">Versão: %s</string>
-    <!-- File Transport Activity End -->
+    <string name="request_share_title">Request Share</string>
+    <string name="request_share_body">Request share %d files.</string>
+    <string name="request_share_positive">Share</string>
+    <string name="request_share_negative">Drop</string>
+    <!--endregion-->
 
-    <!-- Connection Activity Start -->
+    <!--region ConnectionActivity-->
     <string name="local_network_connection_title">Conectar dispositivo remoto via Broadcast</string>
     <string name="local_network_connection_description">Use transmissão UDP para conectar ao dispositivo alvo, tanto seu dispositivo como o outro deve estar na mesma rede. \nUse o sistema Broadcast rápido, embora alguns dispositivos podem não ter suporte para isto.</string>
     <string name="broadcast_connection_local_device">Dispositivo local: %s</string>
@@ -58,46 +62,53 @@
     <string name="wifi_p2p_connection_transfer_files">Transferir arquivos</string>
     <string name="wifi_p2p_connection_close_current_connection">Terminar a conexão</string>
     <string name="local_network_local_address">Endereço local: </string>
-    <!-- Connection Activity End -->
 
+    <string name="request_share_files">Request share %d files.</string>
+    <string name="drop_request_share_files">Drop</string>
+    <!--endregion-->
+
+    <!--region Size-->
     <string name="size_B">%dB</string>
     <string name="size_KB">%.2fKB</string>
     <string name="size_MB">%.2fMB</string>
     <string name="size_GB">%.2fGB</string>
+    <!--endregion-->
 
-    <!-- Folder Menu Start -->
+    <!--region FolderMenu-->
     <string name="folder_menu_select_all_files">Selecione todos arquivos</string>
     <string name="folder_menu_unselect_all_files">Deselecione todos arquivos</string>
     <string name="folder_menu_sort_by_date">Ordenar por data de modificação</string>
     <string name="folder_menu_sort_by_file_name">Ordenar por nome</string>
-    <!-- Folder Menu End -->
+    <!--endregion-->
 
-    <!-- Transfer Settings Menu Start -->
+    <!--region TransferSettingsMenu-->
     <string name="transfer_setting_share_folder">Compartilhe minha pasta</string>
-    <!-- Transfer Settings Menu End -->
+    <!--endregion-->
 
-    <!-- Settings Start -->
+    <!--region SettingsDialog-->
     <string name="settings_title">Settings</string>
     <string name="setting_download_dir">Download Folder</string>
     <string name="setting_share_my_dir">Share My Folder</string>
     <string name="setting_max_connections_size">Max Tcp Connections</string>
-    <!-- Settings End-->
+    <!--endregion-->
 
-    <!-- Request Permission Start -->
+    <!--region RequestPermission-->
     <string name="permission_request_title">Request Permission</string>
     <string name="permission_storage_request_content">tFileTransfer needs MANAGE STORAGE permission to share your files.</string>
-    <!-- Request Permission End -->
+    <!--endregion-->
 
-    <!-- Folder Select Start -->
+    <!--region FolderSelect-->
     <string name="folder_select_title">Select a Folder</string>
     <string name="folder_select_create">Create a new folder</string>
     <string name="folder_select_error_title">Select folder fail</string>
     <string name="folder_select_error_body">Error: %s</string>
     <string name="folder_select_create_folder_error">Create folder fail</string>
     <string name="folder_select_create_new_folder_hint">Input folder name</string>
-    <!-- Folder Select End -->
+    <!--endregion-->
 
+    <!--region Media-->
     <string name="media_artist_name">Artist: %s</string>
-    <string name="media_album_name">Album: %s</string>
+    <string name="media_album_name">Álbum: %s</string>
+    <!--endregion-->
 
 </resources>

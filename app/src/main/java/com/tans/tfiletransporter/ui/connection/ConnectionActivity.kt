@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.*
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.View
@@ -18,15 +19,18 @@ import com.tans.tfiletransporter.ui.commomdialog.showOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.ui.connection.localconnetion.LocalNetworkConnectionFragment
 import com.tans.tfiletransporter.ui.connection.wifip2pconnection.WifiP2pConnectionFragment
+import com.tans.tfiletransporter.utils.uri2FileReal
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.permission.permissionsRequestSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
+import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
+import java.io.File
 
 @SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
-class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
-    defaultState = Unit
+class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Companion.ConnectionActivityState>(
+    defaultState = ConnectionActivityState()
 ) {
     override val layoutId: Int = R.layout.connection_activity
 
@@ -36,6 +40,11 @@ class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
 
     private val localNetworkFragment by lazyViewModelField("localNetworkFragment") {
         LocalNetworkConnectionFragment()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        checkIntentAction(intent)
     }
 
     override fun CoroutineScope.firstLaunchInitDataCoroutine() {
@@ -119,6 +128,74 @@ class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
             v.setPadding(0, 0, 0, systemBars.bottom)
             insets
         }
+
+        renderStateNewCoroutine({ it.requestShareFiles }) { requestShareFiles ->
+            if (requestShareFiles.isNotEmpty()) {
+                viewBinding.requestShareLayout.visibility = View.VISIBLE
+                viewBinding.requestShareTv.text = getString(R.string.request_share_files, requestShareFiles.size)
+            } else {
+                viewBinding.requestShareLayout.visibility = View.GONE
+            }
+        }
+        viewBinding.dropRequestShareBt.clicks(this) {
+            updateState { it.copy(requestShareFiles = emptyList()) }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        checkIntentAction(intent)
+    }
+
+    fun consumeRequestShareFiles(): List<String> {
+        val files = currentState().requestShareFiles
+        if (files.isNotEmpty()) {
+            updateState { it.copy(requestShareFiles = emptyList()) }
+        }
+        return files.map { it.canonicalPath }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun checkIntentAction(intent: Intent) {
+        if (intent.action == Intent.ACTION_SEND) {
+            val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            }
+            AndroidLog.d(TAG, "Receive ACTION_SEND uri: $uri")
+            if (uri != null) {
+                handleSharedUris(listOf(uri))
+            }
+        }
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) ?: emptyList<Uri>()
+            } else {
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.mapNotNull { it } ?: emptyList<Uri>()
+            }
+            AndroidLog.d(TAG, "Receive ACTION_SEND_MULTIPLE uris: ${uris.joinToString { it.toString() }}")
+            if (uris.isNotEmpty()) {
+                handleSharedUris(uris)
+            }
+        }
+    }
+
+    private fun handleSharedUris(uris: List<Uri>) {
+        val files = uris.mapNotNull {
+            val f = uri2FileReal(this@ConnectionActivity, it)
+            if (f?.isFile == true && f.canRead() && f.length() > 0L) {
+                f
+            } else {
+                null
+            }
+        }
+        AndroidLog.d(TAG, "Handle shared files: $files")
+        if (files.isNotEmpty()) {
+            updateState {
+                it.copy(requestShareFiles = files)
+            }
+        }
     }
 
     companion object {
@@ -126,5 +203,9 @@ class ConnectionActivity : BaseCoroutineStateActivity<Unit>(
 
         private const val WIFI_P2P_CONNECTION_FRAGMENT_TAG = "WIFI_P2P_CONNECTION_FRAGMENT_TAG"
         private const val LOCAL_NETWORK_FRAGMENT_TAG = "LOCAL_NETWORK_FRAGMENT_TAG"
+
+        data class ConnectionActivityState(
+            val requestShareFiles: List<File> = emptyList()
+        )
     }
 }

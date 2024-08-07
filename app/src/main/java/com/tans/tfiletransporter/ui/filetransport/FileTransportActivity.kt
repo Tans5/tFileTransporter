@@ -32,11 +32,13 @@ import com.tans.tfiletransporter.transferproto.fileexplore.waitClose
 import com.tans.tfiletransporter.transferproto.fileexplore.waitHandshake
 import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
+import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
 import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
+import com.tans.tfiletransporter.ui.commomdialog.showOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
-import com.tans.tfiletransporter.utils.dp2px
+import com.tans.tfiletransporter.ui.filetransport.MyDirFragment.Companion
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
@@ -56,6 +58,7 @@ import kotlinx.coroutines.withTimeout
 import java.net.InetAddress
 import java.io.File
 import java.lang.ref.WeakReference
+import java.util.ArrayList
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 
@@ -346,6 +349,42 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
                 floatActionBtnClickEvent.emit(Unit)
             }
         }
+
+        launch {
+            stateFlow().map { it.connectionStatus }.first { it is ConnectionStatus.Connected }
+            val requestShareFiles = intent.getRequestShareFiles()
+            if (requestShareFiles.isNotEmpty()) {
+                val share = supportFragmentManager.showOptionalDialogSuspend(
+                    title = getString(R.string.request_share_title),
+                    message = getString(R.string.request_share_body, requestShareFiles.size),
+                    positiveButtonText = getString(R.string.request_share_positive),
+                    negativeButtonText = getString(R.string.request_share_negative)
+                )
+                if (share == true) {
+                    val exploreFiles = requestShareFiles.map {
+                        val f = File(it)
+                        FileExploreFile(
+                            name = f.name,
+                            path = f.path,
+                            size = f.length(),
+                            lastModify = f.lastModified()
+                        )
+                    }
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            fileExplore.requestSendFilesSuspend(exploreFiles, Settings.transferFileMaxConnection())
+                        }
+                    }.onSuccess {
+                        AndroidLog.d(TAG, "Request send files success: $it")
+                        runCatching {
+                            sendFiles(exploreFiles)
+                        }
+                    }.onFailure {
+                        AndroidLog.e(TAG, "Request send files fail: $it", it)
+                    }
+                }
+            }
+        }
     }
 
     fun observeFloatBtnClick(): Flow<Unit> = floatActionBtnClickEvent
@@ -426,6 +465,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         private const val REMOTE_ADDRESS_EXTRA_KEY = "remote_address_extra_key"
         private const val REMOTE_INFO_EXTRA_KEY = "remote_info_extra_key"
         private const val IS_SERVER_EXTRA_KEY = "is_server_extra_key"
+        private const val REQUEST_SHARE_FILES = "request_share_files_key"
 
         @Suppress("DEPRECATION")
         private fun Intent.getLocalAddress(): InetAddress = getSerializableExtra(
@@ -440,6 +480,8 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         private fun Intent.getRemoteInfo(): String = getStringExtra(REMOTE_INFO_EXTRA_KEY) ?: ""
 
         private fun Intent.getIsServer(): Boolean = getBooleanExtra(IS_SERVER_EXTRA_KEY, false)
+
+        private fun Intent.getRequestShareFiles(): List<String> = getStringArrayListExtra(REQUEST_SHARE_FILES) ?: emptyList()
 
         data class Message(
             val time: Long,
@@ -475,12 +517,14 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
                       localAddress: InetAddress,
                       remoteAddress: InetAddress,
                       remoteDeviceInfo: String,
-                      isServer: Boolean): Intent {
+                      isServer: Boolean,
+                      requestShareFiles: List<String>): Intent {
             val i = Intent(context, FileTransportActivity::class.java)
             i.putExtra(LOCAL_ADDRESS_EXTRA_KEY, localAddress)
             i.putExtra(REMOTE_ADDRESS_EXTRA_KEY, remoteAddress)
             i.putExtra(REMOTE_INFO_EXTRA_KEY, remoteDeviceInfo)
             i.putExtra(IS_SERVER_EXTRA_KEY, isServer)
+            i.putStringArrayListExtra(REQUEST_SHARE_FILES, requestShareFiles as? ArrayList<String>)
             return i
         }
     }
