@@ -333,7 +333,7 @@ class FileExplore(
                             simpleCallback.onSuccess(Unit)
                         }
                         // Start heartbeat task, send a heartbeat each 8000 milliseconds default.
-                        val future = taskScheduleExecutor.scheduleAtFixedRate(
+                        val future = taskScheduleExecutor.scheduleWithFixedDelay(
                             {
                                 sendHeartbeat()
                             },

@@ -229,7 +229,7 @@ class BroadcastSender(
                                             simpleCallback.onSuccess(Unit)
                                         }
                                         // Send one broadcast each second (default)
-                                        val senderFuture = taskScheduleExecutor.scheduleAtFixedRate(
+                                        val senderFuture = taskScheduleExecutor.scheduleWithFixedDelay(
                                             senderBroadcastTask,
                                             500,
                                             broadcastSendIntervalMillis, TimeUnit.MILLISECONDS

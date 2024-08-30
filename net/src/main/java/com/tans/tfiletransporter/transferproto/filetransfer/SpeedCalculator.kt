@@ -38,7 +38,7 @@ class SpeedCalculator : SimpleObservable<SpeedCalculator.Companion.SpeedObserver
             lastCycleSize.set(0L)
             currentSize.set(0L)
             isUpdating.set(false)
-            val future = taskScheduleExecutor.scheduleAtFixedRate({
+            val future = taskScheduleExecutor.scheduleWithFixedDelay({
                 val lastCycleSize = lastCycleSize.get()
                 val currentSize = currentSize.get()
                 this.lastCycleSize.set(currentSize)
