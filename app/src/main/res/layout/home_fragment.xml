@@ -25,14 +25,15 @@
         android:textAllCaps="false"
         android:layout_below="@id/txt_find_friend"
         android:layout_marginTop="16dp"
-        android:padding="20sp"/>
+        android:textSize="20sp"
+        android:padding="24dp"/>
 
     <TextView
         android:id="@+id/txt_find_friend"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Connect with your friends easily"
-        android:textColor="@color/black_2"
+        android:text="Let's find some friends and start sharing"
+        android:textColor="@color/black_1"
         android:textSize="24sp"
         android:layout_marginTop="8dp"
         android:layout_centerInParent="true"

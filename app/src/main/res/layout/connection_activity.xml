@@ -35,7 +35,6 @@
         android:id="@+id/nested_Scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white_1"
         android:fitsSystemWindows="true"
         android:clipToPadding="false"
         app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">

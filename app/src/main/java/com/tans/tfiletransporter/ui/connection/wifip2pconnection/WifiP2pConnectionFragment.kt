@@ -11,6 +11,8 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.getSystemService
+import com.airbnb.lottie.Lottie
+import com.airbnb.lottie.LottieAnimationView
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
 import com.tans.tfiletransporter.databinding.WifiP2pConnectionFragmentBinding
@@ -102,6 +104,7 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val intentFilter = IntentFilter().apply {
             addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
@@ -281,55 +284,55 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = WifiP2pConnectionFragmentBinding.bind(contentView)
 
-        renderStateNewCoroutine({ it.p2pHandshake.getOrNull() to it.connectionStatus }) { (handshake, status) ->
-            if (handshake != null) {
-                viewBinding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, handshake.localAddress.toString().removePrefix("/"))
-                viewBinding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                    handshake.remoteDeviceName, handshake.remoteAddress.toString().removePrefix("/"), status)
-            } else {
-                viewBinding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
-                viewBinding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
-                    "Not Available", "Not Available", status.toString())
-            }
-        }
+//        renderStateNewCoroutine({ it.p2pHandshake.getOrNull() to it.connectionStatus }) { (handshake, status) ->
+//            if (handshake != null) {
+//                viewBinding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, handshake.localAddress.toString().removePrefix("/"))
+//                viewBinding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+//                    handshake.remoteDeviceName, handshake.remoteAddress.toString().removePrefix("/"), status)
+//            } else {
+//                viewBinding.localAddressTv.text = getString(R.string.wifi_p2p_connection_local_address, "Not Available")
+//                viewBinding.remoteConnectedDeviceTv.text = getString(R.string.wifi_p2p_connection_remote_device,
+//                    "Not Available", "Not Available", status.toString())
+//            }
+//        }
+//
+//        renderStateNewCoroutine({ it.wifiP2PConnection.getOrNull() to it.p2pHandshake.getOrNull() }) { (wifiP2pConnection, handshake) ->
+//            if (wifiP2pConnection != null) {
+//                viewBinding.connectedActionsLayout.visibility = View.VISIBLE
+//                viewBinding.remoteDevicesRv.visibility = View.GONE
+//                if (handshake != null) {
+//                    viewBinding.transferFileLayout.visibility = View.VISIBLE
+//                } else {
+//                    viewBinding.transferFileLayout.visibility = View.INVISIBLE
+//                }
+//            } else {
+//                viewBinding.connectedActionsLayout.visibility = View.GONE
+//                viewBinding.remoteDevicesRv.visibility = View.VISIBLE
+//            }
+//        }
+//
+//        viewBinding.transferFileLayout.clicks(coroutineScope = this, minInterval = 1000L, clickWorkOn = Dispatchers.IO) {
+//            val handshake = currentState().p2pHandshake.getOrNull()
+//            val transferFileConnection = handshake?.p2pConnection
+//            if (transferFileConnection == null) {
+//                AndroidLog.e(TAG, "Request transfer file fail: handshake is null.")
+//            } else {
+//                runCatching {
+//                    transferFileConnection.transferFileSuspend()
+//                }.onSuccess {
+//                    AndroidLog.d(TAG, "Request transfer file success.")
+//                }.onFailure {
+//                    AndroidLog.e(TAG, "Request transfer file fail: ${it.message}", it)
+//                }
+//            }
+//        }
 
-        renderStateNewCoroutine({ it.wifiP2PConnection.getOrNull() to it.p2pHandshake.getOrNull() }) { (wifiP2pConnection, handshake) ->
-            if (wifiP2pConnection != null) {
-                viewBinding.connectedActionsLayout.visibility = View.VISIBLE
-                viewBinding.remoteDevicesRv.visibility = View.GONE
-                if (handshake != null) {
-                    viewBinding.transferFileLayout.visibility = View.VISIBLE
-                } else {
-                    viewBinding.transferFileLayout.visibility = View.INVISIBLE
-                }
-            } else {
-                viewBinding.connectedActionsLayout.visibility = View.GONE
-                viewBinding.remoteDevicesRv.visibility = View.VISIBLE
-            }
-        }
-
-        viewBinding.transferFileLayout.clicks(coroutineScope = this, minInterval = 1000L, clickWorkOn = Dispatchers.IO) {
-            val handshake = currentState().p2pHandshake.getOrNull()
-            val transferFileConnection = handshake?.p2pConnection
-            if (transferFileConnection == null) {
-                AndroidLog.e(TAG, "Request transfer file fail: handshake is null.")
-            } else {
-                runCatching {
-                    transferFileConnection.transferFileSuspend()
-                }.onSuccess {
-                    AndroidLog.d(TAG, "Request transfer file success.")
-                }.onFailure {
-                    AndroidLog.e(TAG, "Request transfer file fail: ${it.message}", it)
-                }
-            }
-        }
-
-        viewBinding.closeCurrentConnectionLayout.clicks(coroutineScope = this, clickWorkOn = Dispatchers.IO) {
-            runCatching {
-                currentState().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
-            }
-            closeCurrentWifiConnection()
-        }
+//        viewBinding.closeCurrentConnectionLayout.clicks(coroutineScope = this, clickWorkOn = Dispatchers.IO) {
+//            runCatching {
+//                currentState().p2pHandshake.getOrNull()?.p2pConnection?.closeSuspend()
+//            }
+//            closeCurrentWifiConnection()
+//        }
 
         val connectionMutex = Mutex()
 
@@ -362,7 +365,7 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
                 }
             }
         )
-        viewBinding.remoteDevicesRv.adapter = remoteDevicesAdapterBuilder.build()
+//        viewBinding.remoteDevicesRv.adapter = remoteDevicesAdapterBuilder.build()
     }
 
     private suspend fun closeCurrentWifiConnection() {

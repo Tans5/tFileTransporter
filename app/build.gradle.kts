@@ -117,6 +117,11 @@ dependencies {
     // glide
     implementation(libs.glide)
 
+    // lottie
+    implementation(libs.lottie)
+
+
     implementation(project(":net"))
+
 
 }
