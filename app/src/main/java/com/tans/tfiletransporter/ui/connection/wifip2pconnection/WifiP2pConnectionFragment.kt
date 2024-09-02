@@ -9,6 +9,7 @@ import android.net.wifi.p2p.*
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.core.content.getSystemService
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.RemoteServerItemLayoutBinding
@@ -25,6 +26,7 @@ import com.tans.tfiletransporter.transferproto.p2pconn.transferFileSuspend
 import com.tans.tfiletransporter.transferproto.p2pconn.waitClose
 import com.tans.tfiletransporter.transferproto.p2pconn.waitHandshaking
 import com.tans.tfiletransporter.ui.connection.ConnectionActivity
+import com.tans.tfiletransporter.ui.connection.home.EventListener
 import com.tans.tfiletransporter.ui.filetransport.FileTransportActivity
 import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
@@ -46,9 +48,7 @@ import java.net.InetAddress
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
-class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFragment.Companion.WifiP2pConnectionState>(
-        defaultState = WifiP2pConnectionState()
-) {
+class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFragment.Companion.WifiP2pConnectionState>(defaultState = WifiP2pConnectionState()) {
 
     private val wifiP2pManager: WifiP2pManager by lazy {
         requireActivity().getSystemService()!!
@@ -445,4 +445,6 @@ class WifiP2pConnectionFragment : BaseCoroutineStateFragment<WifiP2pConnectionFr
             val connectionStatus: ConnectionStatus = ConnectionStatus.NoConnection
         )
     }
+
+
 }

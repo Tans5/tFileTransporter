@@ -8,16 +8,16 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.View
+import android.widget.Toast
 import androidx.activity.addCallback
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
 import com.tans.tfiletransporter.ui.commomdialog.showOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
-import com.tans.tfiletransporter.ui.connection.localconnetion.LocalNetworkConnectionFragment
+import com.tans.tfiletransporter.ui.connection.home.EventListener
+import com.tans.tfiletransporter.ui.connection.home.HomeFragment
 import com.tans.tfiletransporter.ui.connection.wifip2pconnection.WifiP2pConnectionFragment
 import com.tans.tfiletransporter.utils.uri2FileReal
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
@@ -29,9 +29,10 @@ import kotlinx.coroutines.CoroutineScope
 import java.io.File
 
 @SystemBarStyle(statusBarThemeStyle = 1, navigationBarThemeStyle = 1)
-class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Companion.ConnectionActivityState>(
-    defaultState = ConnectionActivityState()
-) {
+class ConnectionActivity :
+    BaseCoroutineStateActivity<ConnectionActivity.Companion.ConnectionActivityState>(
+        defaultState = ConnectionActivityState()
+    ), EventListener {
     override val layoutId: Int = R.layout.connection_activity
 
     private val wifiP2pFragment by lazyViewModelField("wifiP2pFragment") {
@@ -39,7 +40,7 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
     }
 
     private val homeFragment by lazyViewModelField("homeFragment") {
-        HomeFragment()
+        HomeFragment(this)
     }
 
 //    private val localNetworkFragment by lazyViewModelField("localNetworkFragment") {
@@ -92,10 +93,11 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
 
-                    val grant = this@ConnectionActivity.supportFragmentManager.showOptionalDialogSuspend(
-                        title = getString(R.string.permission_request_title),
-                        message = getString(R.string.permission_storage_request_content)
-                    )
+                    val grant =
+                        this@ConnectionActivity.supportFragmentManager.showOptionalDialogSuspend(
+                            title = getString(R.string.permission_request_title),
+                            message = getString(R.string.permission_storage_request_content)
+                        )
 
                     if (grant == true) {
                         val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
@@ -115,7 +117,11 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
 
         val tcWifiP2p = supportFragmentManager.beginTransaction()
         if (supportFragmentManager.findFragmentByTag(WIFI_P2P_CONNECTION_FRAGMENT_TAG) == null) {
-            tcWifiP2p.add(R.id.wifi_p2p_fragment_container, homeFragment, WIFI_P2P_CONNECTION_FRAGMENT_TAG)
+            tcWifiP2p.add(
+                R.id.wifi_p2p_fragment_container,
+                homeFragment,
+                WIFI_P2P_CONNECTION_FRAGMENT_TAG
+            )
         }
         tcWifiP2p.setMaxLifecycle(homeFragment, Lifecycle.State.RESUMED)
         tcWifiP2p.commitAllowingStateLoss()
@@ -136,7 +142,8 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         renderStateNewCoroutine({ it.requestShareFiles }) { requestShareFiles ->
             if (requestShareFiles.isNotEmpty()) {
                 viewBinding.requestShareLayout.visibility = View.VISIBLE
-                viewBinding.requestShareTv.text = getString(R.string.request_share_files, requestShareFiles.size)
+                viewBinding.requestShareTv.text =
+                    getString(R.string.request_share_files, requestShareFiles.size)
             } else {
                 viewBinding.requestShareLayout.visibility = View.GONE
             }
@@ -174,11 +181,16 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         }
         if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
             val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) ?: emptyList<Uri>()
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                    ?: emptyList<Uri>()
             } else {
-                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.mapNotNull { it } ?: emptyList<Uri>()
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.mapNotNull { it }
+                    ?: emptyList<Uri>()
             }
-            AndroidLog.d(TAG, "Receive ACTION_SEND_MULTIPLE uris: ${uris.joinToString { it.toString() }}")
+            AndroidLog.d(
+                TAG,
+                "Receive ACTION_SEND_MULTIPLE uris: ${uris.joinToString { it.toString() }}"
+            )
             if (uris.isNotEmpty()) {
                 handleSharedUris(uris)
             }
@@ -205,11 +217,25 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
     companion object {
         private const val TAG = "ConnectionActivity"
 
+
         private const val WIFI_P2P_CONNECTION_FRAGMENT_TAG = "WIFI_P2P_CONNECTION_FRAGMENT_TAG"
+        private const val HOME_FRAGMENT_TAG = "WIFI_P2P_CONNECTION_FRAGMENT_TAG"
 //        private const val LOCAL_NETWORK_FRAGMENT_TAG = "LOCAL_NETWORK_FRAGMENT_TAG"
 
         data class ConnectionActivityState(
             val requestShareFiles: List<File> = emptyList()
         )
+    }
+
+    override fun onFindBtnClicked() {
+        val tcWifiP2p = supportFragmentManager.beginTransaction()
+        tcWifiP2p.addToBackStack(null)
+        tcWifiP2p.replace(
+            R.id.wifi_p2p_fragment_container,
+            wifiP2pFragment,
+            WIFI_P2P_CONNECTION_FRAGMENT_TAG)
+
+        tcWifiP2p.setMaxLifecycle(wifiP2pFragment, Lifecycle.State.RESUMED)
+        tcWifiP2p.commitAllowingStateLoss()
     }
 }
