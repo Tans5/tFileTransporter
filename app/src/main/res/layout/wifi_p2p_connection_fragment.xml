@@ -71,7 +71,7 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
                 android:textSize="14sp"
-                android:textColor="@color/teal_200"/>
+                android:textColor="?colorPrimary"/>
 
         </FrameLayout>
 
@@ -92,7 +92,7 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
                 android:textSize="14sp"
-                android:textColor="@color/teal_200"/>
+                android:textColor="?colorPrimary"/>
 
         </FrameLayout>
 

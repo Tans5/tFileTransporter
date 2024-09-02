@@ -54,7 +54,7 @@ class MyAppsFragment : BaseCoroutineStateFragment<MyAppsFragment.Companion.MyApp
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MyAppsFragmentLayoutBinding.bind(contentView)
 
-        viewBinding.appsRefreshLayout.setColorSchemeResources(R.color.teal_200)
+        viewBinding.appsRefreshLayout.setColorSchemeResources(R.color.blue_500)
         viewBinding.appsRefreshLayout.refreshes(coroutineScope = this, refreshWorkOn = Dispatchers.IO) {
             refreshApps()
         }

@@ -18,7 +18,7 @@
         android:layout_marginEnd="?attr/dialogPreferredPadding"
         android:layout_marginTop="17dp"
         android:textColorHint="@color/gray_3"
-        app:backgroundTint="@color/teal_200"
+        app:backgroundTint="?colorPrimary"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"

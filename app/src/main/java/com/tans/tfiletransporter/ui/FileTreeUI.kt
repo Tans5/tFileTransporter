@@ -154,7 +154,7 @@ class FileTreeUI(
                 .build()
         )
 
-        viewBinding.refreshLayout.setColorSchemeResources(R.color.teal_200)
+        viewBinding.refreshLayout.setColorSchemeResources(R.color.blue_500)
         viewBinding.refreshLayout.refreshes(coroutineScope = coroutineScope, refreshWorkOn = Dispatchers.IO) {
             val oldState = currentState()
             val oldTree = oldState.fileTree

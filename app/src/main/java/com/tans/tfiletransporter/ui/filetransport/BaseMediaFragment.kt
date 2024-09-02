@@ -179,7 +179,7 @@ abstract class BaseMediaFragment(
 
         viewBinding.myMediaItemsRv.adapter = rvAdapter
 
-        viewBinding.mediaItemsRefreshLayout.setColorSchemeResources(R.color.teal_200)
+        viewBinding.mediaItemsRefreshLayout.setColorSchemeResources(R.color.blue_500)
         viewBinding.mediaItemsRefreshLayout.refreshes(coroutineScope = this, refreshWorkOn = Dispatchers.IO) {
             refreshMediaItems()
         }

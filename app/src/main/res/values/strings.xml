@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">tFileTransfer</string>
+    <string name="app_name">BeamBox</string>
 
     <string name="dialog_positive">OK</string>
     <string name="dialog_negative">Cancel</string>

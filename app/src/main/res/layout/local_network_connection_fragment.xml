@@ -55,7 +55,7 @@
             android:layout_gravity="center"
             android:text="@string/local_network_scan_qr_code"
             android:textSize="18sp"
-            android:textColor="@color/teal_200"/>
+            android:textColor="?colorPrimary"/>
 
     </FrameLayout>
 
@@ -72,7 +72,7 @@
             android:layout_gravity="center"
             android:text="@string/local_network_show_qr_code"
             android:textSize="18sp"
-            android:textColor="@color/teal_200"/>
+            android:textColor="?colorPrimary"/>
 
     </FrameLayout>
 
@@ -89,7 +89,7 @@
             android:layout_gravity="center"
             android:text="@string/broadcast_connection_as_receiver"
             android:textSize="18sp"
-            android:textColor="@color/teal_200"/>
+            android:textColor="?colorPrimary"/>
 
     </FrameLayout>
 
@@ -106,7 +106,7 @@
             android:layout_gravity="center"
             android:text="@string/broadcast_connection_as_sender"
             android:textSize="18sp"
-            android:textColor="@color/teal_200"/>
+            android:textColor="?colorPrimary"/>
 
     </FrameLayout>
 

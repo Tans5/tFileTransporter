@@ -5,8 +5,8 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="tabTextColor">@color/black_2</item>
-        <item name="tabSelectedTextColor">@color/teal_200</item>
-        <item name="tabIndicatorColor">@color/teal_200</item>
+        <item name="tabSelectedTextColor">?colorPrimary</item>
+        <item name="tabIndicatorColor">?colorPrimary</item>
         <item name="tabIndicatorHeight">2dp</item>
         <item name="tabMode">scrollable</item>
         <item name="tabIndicatorGravity">bottom</item>
