@@ -92,15 +92,15 @@
                 android:layout_marginTop="10dp"
                 android:background="@drawable/common_card_bg" />
 
-            <androidx.fragment.app.FragmentContainerView
-                android:id="@+id/local_network_fragment_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="18dp"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/common_card_bg" />
+<!--            <androidx.fragment.app.FragmentContainerView-->
+<!--                android:id="@+id/local_network_fragment_container"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:padding="18dp"-->
+<!--                android:layout_marginStart="10dp"-->
+<!--                android:layout_marginEnd="10dp"-->
+<!--                android:layout_marginTop="10dp"-->
+<!--                android:background="@drawable/common_card_bg" />-->
 
         </LinearLayout>
 

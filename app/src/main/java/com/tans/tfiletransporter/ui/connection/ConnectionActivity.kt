@@ -38,9 +38,9 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         WifiP2pConnectionFragment()
     }
 
-    private val localNetworkFragment by lazyViewModelField("localNetworkFragment") {
-        LocalNetworkConnectionFragment()
-    }
+//    private val localNetworkFragment by lazyViewModelField("localNetworkFragment") {
+//        LocalNetworkConnectionFragment()
+//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,18 +116,18 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         tcWifiP2p.setMaxLifecycle(wifiP2pFragment, Lifecycle.State.RESUMED)
         tcWifiP2p.commitAllowingStateLoss()
 
-        val tcLocalNetwork = supportFragmentManager.beginTransaction()
-        if (supportFragmentManager.findFragmentByTag(LOCAL_NETWORK_FRAGMENT_TAG) == null) {
-            tcWifiP2p.add(R.id.local_network_fragment_container, localNetworkFragment, LOCAL_NETWORK_FRAGMENT_TAG)
-        }
-        tcLocalNetwork.setMaxLifecycle(localNetworkFragment, Lifecycle.State.RESUMED)
-        tcLocalNetwork.commitAllowingStateLoss()
+//        val tcLocalNetwork = supportFragmentManager.beginTransaction()
+//        if (supportFragmentManager.findFragmentByTag(LOCAL_NETWORK_FRAGMENT_TAG) == null) {
+//            tcWifiP2p.add(R.id.local_network_fragment_container, localNetworkFragment, LOCAL_NETWORK_FRAGMENT_TAG)
+//        }
+//        tcLocalNetwork.setMaxLifecycle(localNetworkFragment, Lifecycle.State.RESUMED)
+//        tcLocalNetwork.commitAllowingStateLoss()
 
-        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.nestedScrollView) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(0, 0, 0, systemBars.bottom)
-            insets
-        }
+//        ViewCompat.setOnApplyWindowInsetsListener(viewBinding.nestedScrollView) { v, insets ->
+//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+//            v.setPadding(0, 0, 0, systemBars.bottom)
+//            insets
+//        }
 
         renderStateNewCoroutine({ it.requestShareFiles }) { requestShareFiles ->
             if (requestShareFiles.isNotEmpty()) {
@@ -202,7 +202,7 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         private const val TAG = "ConnectionActivity"
 
         private const val WIFI_P2P_CONNECTION_FRAGMENT_TAG = "WIFI_P2P_CONNECTION_FRAGMENT_TAG"
-        private const val LOCAL_NETWORK_FRAGMENT_TAG = "LOCAL_NETWORK_FRAGMENT_TAG"
+//        private const val LOCAL_NETWORK_FRAGMENT_TAG = "LOCAL_NETWORK_FRAGMENT_TAG"
 
         data class ConnectionActivityState(
             val requestShareFiles: List<File> = emptyList()
