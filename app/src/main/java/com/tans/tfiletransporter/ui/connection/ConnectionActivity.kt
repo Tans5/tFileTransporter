@@ -38,6 +38,10 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
         WifiP2pConnectionFragment()
     }
 
+    private val homeFragment by lazyViewModelField("homeFragment") {
+        HomeFragment()
+    }
+
 //    private val localNetworkFragment by lazyViewModelField("localNetworkFragment") {
 //        LocalNetworkConnectionFragment()
 //    }
@@ -111,9 +115,9 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
 
         val tcWifiP2p = supportFragmentManager.beginTransaction()
         if (supportFragmentManager.findFragmentByTag(WIFI_P2P_CONNECTION_FRAGMENT_TAG) == null) {
-            tcWifiP2p.add(R.id.wifi_p2p_fragment_container, wifiP2pFragment, WIFI_P2P_CONNECTION_FRAGMENT_TAG)
+            tcWifiP2p.add(R.id.wifi_p2p_fragment_container, homeFragment, WIFI_P2P_CONNECTION_FRAGMENT_TAG)
         }
-        tcWifiP2p.setMaxLifecycle(wifiP2pFragment, Lifecycle.State.RESUMED)
+        tcWifiP2p.setMaxLifecycle(homeFragment, Lifecycle.State.RESUMED)
         tcWifiP2p.commitAllowingStateLoss()
 
 //        val tcLocalNetwork = supportFragmentManager.beginTransaction()

@@ -31,7 +31,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
 
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:id="@+id/nested_Scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -42,7 +42,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginTop="10dp"
             android:orientation="vertical"
             android:padding="10dp">
@@ -51,7 +51,7 @@
                 android:id="@+id/request_share_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="18dp"
+                android:padding="16dp"
                 android:layout_marginStart="10dp"
                 android:layout_marginEnd="10dp"
                 android:layout_marginTop="10dp"
@@ -85,12 +85,11 @@
             <androidx.fragment.app.FragmentContainerView
                 android:id="@+id/wifi_p2p_fragment_container"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="18dp"
+                android:layout_height="match_parent"
+                android:padding="16dp"
                 android:layout_marginStart="10dp"
                 android:layout_marginEnd="10dp"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/common_card_bg" />
+                android:layout_marginTop="10dp" />
 
 <!--            <androidx.fragment.app.FragmentContainerView-->
 <!--                android:id="@+id/local_network_fragment_container"-->
@@ -104,6 +103,6 @@
 
         </LinearLayout>
 
-    </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
