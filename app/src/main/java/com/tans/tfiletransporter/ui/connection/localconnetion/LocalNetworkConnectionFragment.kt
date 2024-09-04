@@ -55,7 +55,7 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
             .build()
     }
 
-    private val netWorkerCallback: ConnectivityManager.NetworkCallback by lazy {
+    private val networkCallback: ConnectivityManager.NetworkCallback by lazy {
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 AndroidLog.d(TAG, "Network available: $network")
@@ -63,15 +63,6 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
             }
             override fun onLost(network: Network) {
                 AndroidLog.d(TAG, "Network lost: $network")
-                updateAddress()
-            }
-        }
-    }
-
-    private val wifiApChangeBroadcastReceiver: BroadcastReceiver by lazy {
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                AndroidLog.d(TAG, "Wifi AP changed.")
                 updateAddress()
             }
         }
@@ -89,11 +80,7 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        connectivityManager?.registerNetworkCallback(networkRequest, netWorkerCallback)
-        val wifiApIf = IntentFilter()
-        // wifiApIf.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
-        wifiApIf.addAction("android.net.conn.TETHER_STATE_CHANGED")
-        requireContext().registerReceiver(wifiApChangeBroadcastReceiver, wifiApIf)
+        connectivityManager?.registerNetworkCallback(networkRequest, networkCallback)
         val wifiP2pConnFilter = IntentFilter()
         wifiP2pConnFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         requireContext().registerReceiver(wifiP2pConnectionBroadcastReceiver, wifiP2pConnFilter)
@@ -271,8 +258,7 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
 
     override fun onDestroy() {
         super.onDestroy()
-        connectivityManager?.unregisterNetworkCallback(netWorkerCallback)
-        requireContext().unregisterReceiver(wifiApChangeBroadcastReceiver)
+        connectivityManager?.unregisterNetworkCallback(networkCallback)
         requireContext().unregisterReceiver(wifiP2pConnectionBroadcastReceiver)
     }
 
