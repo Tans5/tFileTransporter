@@ -38,7 +38,11 @@ import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
 import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkConnectionFragment.Companion.LocalNetworkState>(
     defaultState = LocalNetworkState()
@@ -55,7 +59,7 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
             .build()
     }
 
-    private val netWorkerCallback: ConnectivityManager.NetworkCallback by lazy {
+    private val networkCallback: ConnectivityManager.NetworkCallback by lazy {
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 AndroidLog.d(TAG, "Network available: $network")
@@ -63,15 +67,6 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
             }
             override fun onLost(network: Network) {
                 AndroidLog.d(TAG, "Network lost: $network")
-                updateAddress()
-            }
-        }
-    }
-
-    private val wifiApChangeBroadcastReceiver: BroadcastReceiver by lazy {
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                AndroidLog.d(TAG, "Wifi AP changed.")
                 updateAddress()
             }
         }
@@ -89,17 +84,16 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        connectivityManager?.registerNetworkCallback(networkRequest, netWorkerCallback)
-        val wifiApIf = IntentFilter()
-        // wifiApIf.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
-        wifiApIf.addAction("android.net.conn.TETHER_STATE_CHANGED")
-        requireContext().registerReceiver(wifiApChangeBroadcastReceiver, wifiApIf)
+        connectivityManager?.registerNetworkCallback(networkRequest, networkCallback)
         val wifiP2pConnFilter = IntentFilter()
         wifiP2pConnFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
+        wifiP2pConnFilter.addAction("android.net.wifi.WIFI_AP_STATE_CHANGED")
         requireContext().registerReceiver(wifiP2pConnectionBroadcastReceiver, wifiP2pConnFilter)
     }
 
-    override fun CoroutineScope.firstLaunchInitDataCoroutine() {  }
+    override fun CoroutineScope.firstLaunchInitDataCoroutine() {
+        updateAddress(0L)
+    }
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = LocalNetworkConnectionFragmentBinding.bind(contentView)
@@ -244,35 +238,45 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
         }
     }
 
-    private fun updateAddress() {
-        val availableAddresses = findLocalAddressV4()
-        AndroidLog.d(TAG, "AvailableAddress: $availableAddresses")
-        updateState { oldState ->
-            if (availableAddresses.isEmpty()) {
-                oldState.copy(selectedAddress = Optional.empty(), availableAddresses = emptyList())
-            } else {
-                val oldSelectedAddress = oldState.selectedAddress
-                val newSelectedAddress = if (oldSelectedAddress.isPresent) {
-                    if (availableAddresses.contains(oldSelectedAddress.get())) {
-                        oldSelectedAddress
-                    } else {
-                        Optional.of(availableAddresses[0])
+    private val updateAddressLock: Mutex by lazy {
+        Mutex()
+    }
+
+    private fun updateAddress(delay: Long = 1000L) {
+        dataCoroutineScope?.launch {
+            if (!updateAddressLock.isLocked) {
+                updateAddressLock.withLock {
+                    delay(delay)
+                    val availableAddresses = findLocalAddressV4()
+                    AndroidLog.d(TAG, "AvailableAddress: $availableAddresses")
+                    updateState { oldState ->
+                        if (availableAddresses.isEmpty()) {
+                            oldState.copy(selectedAddress = Optional.empty(), availableAddresses = emptyList())
+                        } else {
+                            val oldSelectedAddress = oldState.selectedAddress
+                            val newSelectedAddress = if (oldSelectedAddress.isPresent) {
+                                if (availableAddresses.contains(oldSelectedAddress.get())) {
+                                    oldSelectedAddress
+                                } else {
+                                    Optional.of(availableAddresses[0])
+                                }
+                            } else {
+                                Optional.of(availableAddresses[0])
+                            }
+                            oldState.copy(
+                                selectedAddress = newSelectedAddress,
+                                availableAddresses = availableAddresses
+                            )
+                        }
                     }
-                } else {
-                    Optional.of(availableAddresses[0])
                 }
-                oldState.copy(
-                    selectedAddress = newSelectedAddress,
-                    availableAddresses = availableAddresses
-                )
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        connectivityManager?.unregisterNetworkCallback(netWorkerCallback)
-        requireContext().unregisterReceiver(wifiApChangeBroadcastReceiver)
+        connectivityManager?.unregisterNetworkCallback(networkCallback)
         requireContext().unregisterReceiver(wifiP2pConnectionBroadcastReceiver)
     }
 
