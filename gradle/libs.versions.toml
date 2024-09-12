@@ -1,5 +1,6 @@
 [versions]
 agp = "8.5.1"
+cardview = "1.0.0"
 kotlin = "2.0.0"
 googleKsp = "2.0.0-1.0.22"
 coreKtx = "1.13.1"
@@ -32,6 +33,7 @@ glide = "4.16.0"
 tuiutils = "1.0.9"
 
 [libraries]
+androidx-cardview = { module = "androidx.cardview:cardview", version.ref = "cardview" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidJunit" }

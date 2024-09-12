@@ -123,5 +123,8 @@ dependencies {
 
     implementation(project(":net"))
 
+    implementation(libs.androidx.cardview)
+
+
 
 }
