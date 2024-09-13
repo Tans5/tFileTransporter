@@ -244,3 +244,5 @@
 -dontwarn sun.security.x509.X500Name
 -dontwarn sun.security.x509.X509CertImpl
 -dontwarn sun.security.x509.X509CertInfo
+
+-keep class androidx.viewpager2.adapter.FragmentStateAdapter {*;}

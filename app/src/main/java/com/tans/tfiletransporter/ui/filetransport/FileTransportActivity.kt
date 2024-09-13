@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import androidx.collection.LongSparseArray
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.appbar.AppBarLayout
@@ -268,10 +269,26 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
             val (remoteInfo, remoteAddress) = with(intent) { getRemoteInfo() to getRemoteAddress() }
             viewBinding.toolBar.title = remoteInfo
             viewBinding.toolBar.subtitle = remoteAddress.hostAddress
-            viewBinding.viewPager.adapter = object : FragmentStateAdapter(this@FileTransportActivity) {
+
+            val fragmentsAdapter = object : FragmentStateAdapter(this@FileTransportActivity) {
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.entries[position]]!!
             }
+
+            // To fix act restart cause crash.
+            try {
+                val fragmentsField = FragmentStateAdapter::class.java.getDeclaredField("mFragments")
+                fragmentsField.isAccessible = true
+                val fragments = fragmentsField.get(fragmentsAdapter) as LongSparseArray<Fragment>
+                fragments.clear()
+                for ((i, f) in this@FileTransportActivity.fragments.map { it.value }.withIndex()) {
+                    fragments.put(i.toLong(), f)
+                }
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+
+            viewBinding.viewPager.adapter = fragmentsAdapter
             viewBinding.viewPager.offscreenPageLimit = fragments.size
             TabLayoutMediator(viewBinding.tabLayout, viewBinding.viewPager) { tab, position ->
                 tab.text = when (DirTabType.entries[position]) {
