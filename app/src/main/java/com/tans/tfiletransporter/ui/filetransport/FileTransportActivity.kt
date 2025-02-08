@@ -457,7 +457,7 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
                 val d = NoOptionalDialog(
                     title = getString(R.string.file_transfer_error_title),
                     message = result.msg,
-                    positiveButtonText = getString(R.string.request_share_positive)
+                    positiveButtonText = getString(R.string.dialog_positive)
                 )
                 this@FileTransportActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
             }
