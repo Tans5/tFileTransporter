@@ -1,11 +1,7 @@
 package com.tans.tfiletransporter.ui.filetransport
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ReadingWritingFilesDialogLayoutBinding
 import com.tans.tfiletransporter.logs.AndroidLog
@@ -16,20 +12,15 @@ import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferObserver
 import com.tans.tfiletransporter.transferproto.filetransfer.FileTransferState
 import com.tans.tfiletransporter.transferproto.filetransfer.SpeedCalculator
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
-import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogForceResultCallback
-import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
-import com.tans.tuiutils.dialog.BaseCoroutineStateForceResultDialogFragment
-import com.tans.tuiutils.dialog.DialogForceResultCallback
+import com.tans.tuiutils.dialog.BaseSimpleCoroutineResultForceDialogFragment
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.InetAddress
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.coroutines.resume
 import kotlin.jvm.optionals.getOrNull
 
-class FileSenderDialog : BaseCoroutineStateForceResultDialogFragment<FileTransferDialogState, FileTransferResult> {
+class FileSenderDialog : BaseSimpleCoroutineResultForceDialogFragment<FileTransferDialogState, FileTransferResult> {
 
     private val bindAddress: InetAddress?
     private val files: List<SenderFile>?
@@ -42,21 +33,16 @@ class FileSenderDialog : BaseCoroutineStateForceResultDialogFragment<FileTransfe
         AtomicReference(null)
     }
 
-    constructor() : super(FileTransferDialogState(), null) {
+    override val layoutId: Int = R.layout.reading_writing_files_dialog_layout
+
+    constructor() : super(FileTransferDialogState()) {
         this.bindAddress = null
         this.files = null
     }
 
-    constructor(bindAddress: InetAddress, files: List<SenderFile>, callback: DialogForceResultCallback<FileTransferResult>) : super(
-        FileTransferDialogState(), callback
-    ) {
+    constructor(bindAddress: InetAddress, files: List<SenderFile>) : super(FileTransferDialogState()) {
         this.bindAddress = bindAddress
         this.files = files
-    }
-
-    override fun createContentView(context: Context, parent: ViewGroup): View {
-        return LayoutInflater.from(context)
-            .inflate(R.layout.reading_writing_files_dialog_layout, parent, false)
     }
 
     override fun firstLaunchInitData() {
@@ -194,23 +180,3 @@ data class FileTransferDialogState(
     val speedString: String = "",
     val finishedFiles: List<FileExploreFile> = emptyList()
 )
-
-suspend fun FragmentManager.showFileSenderDialog(
-    bindAddress: InetAddress,
-    files: List<SenderFile>,
-): FileTransferResult {
-    return try {
-        suspendCancellableCoroutine { cont ->
-            val d = FileSenderDialog(
-                bindAddress = bindAddress,
-                files = files,
-                callback = CoroutineDialogForceResultCallback(cont)
-            )
-            if (!coroutineShowSafe(d, "FileSenderDialog#${System.currentTimeMillis()}", cont)) {
-                cont.resume(FileTransferResult.Error("FragmentManager was destroyed."))
-            }
-        }
-    } catch (e: Throwable) {
-        FileTransferResult.Error(e.message ?: "")
-    }
-}

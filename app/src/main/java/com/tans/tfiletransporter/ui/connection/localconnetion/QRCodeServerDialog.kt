@@ -1,10 +1,6 @@
 package com.tans.tfiletransporter.ui.connection.localconnetion
 
-import android.content.Context
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.QrCodeServerDialogBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
@@ -17,40 +13,32 @@ import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanServerObserv
 import com.tans.tfiletransporter.transferproto.qrscanconn.QRCodeScanState
 import com.tans.tfiletransporter.transferproto.qrscanconn.model.QRCodeShare
 import com.tans.tfiletransporter.transferproto.qrscanconn.startQRCodeScanServerSuspend
-import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogCancelableResultCallback
-import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.toJson
-import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
-import com.tans.tuiutils.dialog.DialogCancelableResultCallback
+import com.tans.tuiutils.dialog.BaseSimpleCoroutineResultCancelableDialogFragment
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.glxn.qrgen.android.QRCode
-import java.lang.ref.WeakReference
 import java.net.InetAddress
-import kotlin.coroutines.resume
 
-class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, RemoteDevice> {
+class QRCodeServerDialog : BaseSimpleCoroutineResultCancelableDialogFragment<Unit, RemoteDevice> {
 
     private val qrcodeServer: QRCodeScanServer by lazy {
         QRCodeScanServer(log = AndroidLog)
     }
 
     private val localAddress: InetAddress?
-    constructor() : super(Unit, null) {
+    constructor() : super(Unit) {
         localAddress = null
     }
 
-    constructor(localAddress: InetAddress, callback: DialogCancelableResultCallback<RemoteDevice>) : super(Unit, callback) {
+    constructor(localAddress: InetAddress) : super(Unit) {
         this.localAddress = localAddress
     }
 
-    override fun createContentView(context: Context, parent: ViewGroup): View {
-        return LayoutInflater.from(context).inflate(R.layout.qr_code_server_dialog, parent, false)
-    }
+    override val layoutId: Int = R.layout.qr_code_server_dialog
 
     override fun firstLaunchInitData() {}
 
@@ -113,16 +101,5 @@ class QRCodeServerDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit
 
     companion object {
         private const val TAG = "QRCodeServerDialog"
-    }
-}
-
-suspend fun FragmentManager.showQRCodeServerDialogSuspend(localAddress: InetAddress): RemoteDevice? {
-    return suspendCancellableCoroutine { cont ->
-        val d = QRCodeServerDialog(localAddress, CoroutineDialogCancelableResultCallback(cont))
-        if (!coroutineShowSafe(d, "QRCodeServerDialog#${System.currentTimeMillis()}", cont)) {
-            if (cont.isActive) {
-                cont.resume(null)
-            }
-        }
     }
 }

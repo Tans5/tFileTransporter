@@ -36,6 +36,7 @@ import com.tans.tuiutils.adapter.impl.builders.SimpleAdapterBuilderImpl
 import com.tans.tuiutils.adapter.impl.databinders.DataBinderImpl
 import com.tans.tuiutils.adapter.impl.datasources.FlowDataSourceImpl
 import com.tans.tuiutils.adapter.impl.viewcreatators.SingleItemViewCreatorImpl
+import com.tans.tuiutils.dialog.showSimpleCancelableCoroutineResultDialogSuspend
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -174,7 +175,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
         viewBinding.showQrCodeLayout.clicks(this) {
             val selectedAddress = currentState().selectedAddress.getOrNull()
             if (selectedAddress != null) {
-                val remoteAddress = childFragmentManager.showQRCodeServerDialogSuspend(selectedAddress)
+                val d = QRCodeServerDialog(selectedAddress)
+                val remoteAddress = childFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                 if (remoteAddress != null) {
                     withContext(Dispatchers.Main.immediate) {
                         requireActivity().startActivity(
@@ -195,8 +197,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
         viewBinding.searchServerLayout.clicks(this) {
             val selectedAddress = currentState().selectedAddress.getOrNull()
             if (selectedAddress != null) {
-                val remoteDevice =
-                    childFragmentManager.showBroadcastReceiverDialogSuspend(selectedAddress)
+                val d = BroadcastReceiverDialog(selectedAddress)
+                val remoteDevice = childFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                 if (remoteDevice != null) {
                     withContext(Dispatchers.Main.immediate) {
                         startActivity(
@@ -219,7 +221,8 @@ class LocalNetworkConnectionFragment : BaseCoroutineStateFragment<LocalNetworkCo
             val selectedAddress = currentState().selectedAddress.getOrNull()
             if (selectedAddress != null) {
                 val remoteDevice = withContext(Dispatchers.Main) {
-                    childFragmentManager.showBroadcastSenderDialogSuspend(selectedAddress)
+                    val d = BroadcastSenderDialog(selectedAddress)
+                    childFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                 }
                 if (remoteDevice != null) {
                     withContext(Dispatchers.Main.immediate) {

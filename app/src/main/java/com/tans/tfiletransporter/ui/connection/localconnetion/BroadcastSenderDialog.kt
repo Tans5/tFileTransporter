@@ -1,10 +1,6 @@
 package com.tans.tfiletransporter.ui.connection.localconnetion
 
-import android.content.Context
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import androidx.fragment.app.FragmentManager
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.BroadcastSenderDialogLayoutBinding
 import com.tans.tfiletransporter.file.LOCAL_DEVICE
@@ -16,21 +12,16 @@ import com.tans.tfiletransporter.transferproto.broadcastconn.BroadcastSenderStat
 import com.tans.tfiletransporter.transferproto.broadcastconn.model.RemoteDevice
 import com.tans.tfiletransporter.transferproto.broadcastconn.startSenderSuspend
 import com.tans.tfiletransporter.transferproto.broadcastconn.waitClose
-import com.tans.tfiletransporter.ui.commomdialog.CoroutineDialogCancelableResultCallback
-import com.tans.tfiletransporter.ui.commomdialog.coroutineShowSafe
 import com.tans.tfiletransporter.utils.showToastShort
-import com.tans.tuiutils.dialog.BaseCoroutineStateCancelableResultDialogFragment
-import com.tans.tuiutils.dialog.DialogCancelableResultCallback
+import com.tans.tuiutils.dialog.BaseSimpleCoroutineResultCancelableDialogFragment
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import kotlin.coroutines.resume
 
-class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<Unit, RemoteDevice> {
+class BroadcastSenderDialog : BaseSimpleCoroutineResultCancelableDialogFragment<Unit, RemoteDevice> {
 
     private val sender: BroadcastSender by lazy {
         BroadcastSender(
@@ -40,17 +31,15 @@ class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<U
     }
 
     private val localAddress: InetAddress?
-    constructor() : super(Unit, null) {
+    constructor() : super(Unit) {
         localAddress = null
     }
 
-    constructor(localAddress: InetAddress, callback: DialogCancelableResultCallback<RemoteDevice>) : super(Unit, callback) {
+    constructor(localAddress: InetAddress) : super(Unit) {
         this.localAddress = localAddress
     }
 
-    override fun createContentView(context: Context, parent: ViewGroup): View {
-       return LayoutInflater.from(context).inflate(R.layout.broadcast_sender_dialog_layout, parent, false)
-    }
+    override val layoutId: Int = R.layout.broadcast_sender_dialog_layout
 
     override fun firstLaunchInitData() {  }
 
@@ -102,15 +91,5 @@ class BroadcastSenderDialog : BaseCoroutineStateCancelableResultDialogFragment<U
 
     companion object {
         private const val TAG = "BroadcastSenderDialog"
-    }
-}
-suspend fun FragmentManager.showBroadcastSenderDialogSuspend(localAddress: InetAddress): RemoteDevice? {
-    return suspendCancellableCoroutine { cont ->
-        val d = BroadcastSenderDialog(localAddress, CoroutineDialogCancelableResultCallback(cont))
-        if (!coroutineShowSafe(d, "BroadcastSenderDialog#${System.currentTimeMillis()}", cont)) {
-            if (cont.isActive) {
-                cont.resume(null)
-            }
-        }
     }
 }

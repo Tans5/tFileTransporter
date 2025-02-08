@@ -4,9 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import androidx.collection.LongSparseArray
 import androidx.fragment.app.Fragment
-import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -35,13 +33,16 @@ import com.tans.tfiletransporter.file.scanChildren
 import com.tans.tfiletransporter.transferproto.fileexplore.model.FileExploreFile
 import com.tans.tfiletransporter.transferproto.fileexplore.requestSendFilesSuspend
 import com.tans.tfiletransporter.transferproto.filetransfer.model.SenderFile
+import com.tans.tfiletransporter.ui.commomdialog.NoOptionalDialog
+import com.tans.tfiletransporter.ui.commomdialog.OptionalDialog
 import com.tans.tfiletransporter.ui.commomdialog.loadingDialogSuspend
-import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
-import com.tans.tfiletransporter.ui.commomdialog.showOptionalDialogSuspend
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
+import com.tans.tuiutils.dialog.showSimpleCancelableCoroutineResultDialogSuspend
+import com.tans.tuiutils.dialog.showSimpleForceCoroutineResultDialogSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
+import com.tans.tuiutils.viewpager2.NoRecycleFragmentStateAdapter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
@@ -255,10 +256,12 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         // Connection close dialog.
         launch {
             stateFlow().map { it.connectionStatus }.first { it == ConnectionStatus.Closed }
-            this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+            val d = NoOptionalDialog(
                 title = getString(R.string.connection_error_title),
-                message = getString(R.string.connection_error_message)
+                message = getString(R.string.connection_error_message),
+                positiveButtonText = getString(R.string.dialog_positive)
             )
+            this@FileTransportActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
             finish()
         }
 
@@ -270,22 +273,9 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
             viewBinding.toolBar.title = remoteInfo
             viewBinding.toolBar.subtitle = remoteAddress.hostAddress
 
-            val fragmentsAdapter = object : FragmentStateAdapter(this@FileTransportActivity) {
+            val fragmentsAdapter = object : NoRecycleFragmentStateAdapter(this@FileTransportActivity) {
                 override fun getItemCount(): Int = fragments.size
                 override fun createFragment(position: Int): Fragment = fragments[DirTabType.entries[position]]!!
-            }
-
-            // To fix act restart cause crash.
-            try {
-                val fragmentsField = FragmentStateAdapter::class.java.getDeclaredField("mFragments")
-                fragmentsField.isAccessible = true
-                val fragments = fragmentsField.get(fragmentsAdapter) as LongSparseArray<Fragment>
-                fragments.clear()
-                for ((i, f) in this@FileTransportActivity.fragments.map { it.value }.withIndex()) {
-                    fragments.put(i.toLong(), f)
-                }
-            } catch (e: Throwable) {
-                e.printStackTrace()
             }
 
             viewBinding.viewPager.adapter = fragmentsAdapter
@@ -370,12 +360,13 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
             stateFlow().map { it.connectionStatus }.first { it is ConnectionStatus.Connected }
             val requestShareFiles = intent.getRequestShareFiles()
             if (requestShareFiles.isNotEmpty()) {
-                val share = supportFragmentManager.showOptionalDialogSuspend(
+                val d = OptionalDialog(
                     title = getString(R.string.request_share_title),
                     message = getString(R.string.request_share_body, requestShareFiles.size),
                     positiveButtonText = getString(R.string.request_share_positive),
                     negativeButtonText = getString(R.string.request_share_negative)
                 )
+                val share = supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                 if (share == true) {
                     val exploreFiles = requestShareFiles.map {
                         val f = File(it)
@@ -427,17 +418,20 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         if (fileTransferMutex.isLocked) return
         fileTransferMutex.lock()
         val result = withContext(Dispatchers.Main) {
-            supportFragmentManager.showFileSenderDialog(
+            val d = FileSenderDialog(
                 bindAddress = intent.getLocalAddress(),
                 files = files
             )
+            supportFragmentManager.showSimpleForceCoroutineResultDialogSuspend(d)
         }
         if (result is FileTransferResult.Error) {
             withContext(Dispatchers.Main) {
-                this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                val d = NoOptionalDialog(
                     title = getString(R.string.file_transfer_error_title),
-                    message = result.msg
+                    message = result.msg,
+                    positiveButtonText = getString(R.string.dialog_positive)
                 )
+                this@FileTransportActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
             }
         }
         fileTransferMutex.unlock()
@@ -450,19 +444,22 @@ class FileTransportActivity : BaseCoroutineStateActivity<FileTransportActivity.C
         fileTransferMutex.lock()
         delay(150L)
         val result = withContext(Dispatchers.Main) {
-            this@FileTransportActivity.supportFragmentManager.showFileDownloaderDialog(
+            val d = FileDownloaderDialog(
                 senderAddress = intent.getRemoteAddress(),
                 files = fixedFiles,
                 downloadDir = File(Settings.getDownloadDir()),
                 maxConnectionSize = maxConnection
             )
+            this@FileTransportActivity.supportFragmentManager.showSimpleForceCoroutineResultDialogSuspend(d)
         }
         if (result is FileTransferResult.Error) {
             withContext(Dispatchers.Main) {
-                this@FileTransportActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                val d = NoOptionalDialog(
                     title = getString(R.string.file_transfer_error_title),
-                    message = result.msg
+                    message = result.msg,
+                    positiveButtonText = getString(R.string.request_share_positive)
                 )
+                this@FileTransportActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
             }
         }
         fileTransferMutex.unlock()

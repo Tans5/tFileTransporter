@@ -15,12 +15,13 @@ import androidx.lifecycle.Lifecycle
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.databinding.ConnectionActivityBinding
 import com.tans.tfiletransporter.logs.AndroidLog
-import com.tans.tfiletransporter.ui.commomdialog.showOptionalDialogSuspend
+import com.tans.tfiletransporter.ui.commomdialog.OptionalDialog
 import com.tans.tfiletransporter.ui.commomdialog.showSettingsDialog
 import com.tans.tfiletransporter.ui.connection.localconnetion.LocalNetworkConnectionFragment
 import com.tans.tfiletransporter.ui.connection.wifip2pconnection.WifiP2pConnectionFragment
 import com.tans.tfiletransporter.utils.uri2FileReal
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
+import com.tans.tuiutils.dialog.showSimpleCancelableCoroutineResultDialogSuspend
 import com.tans.tuiutils.permission.permissionsRequestSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
@@ -87,11 +88,13 @@ class ConnectionActivity : BaseCoroutineStateActivity<ConnectionActivity.Compani
                     AndroidLog.e(TAG, "Contains denied permissions: $denied")
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-
-                    val grant = this@ConnectionActivity.supportFragmentManager.showOptionalDialogSuspend(
+                    val d = OptionalDialog(
                         title = getString(R.string.permission_request_title),
-                        message = getString(R.string.permission_storage_request_content)
+                        message = getString(R.string.permission_storage_request_content),
+                        positiveButtonText = getString(R.string.dialog_positive),
+                        negativeButtonText = getString(R.string.dialog_negative)
                     )
+                    val grant = this@ConnectionActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
 
                     if (grant == true) {
                         val i = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)

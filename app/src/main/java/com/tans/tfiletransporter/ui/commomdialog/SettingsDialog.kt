@@ -1,10 +1,7 @@
 package com.tans.tfiletransporter.ui.commomdialog
 
-import android.content.Context
 import android.content.Intent
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.fragment.app.FragmentManager
@@ -22,6 +19,8 @@ import kotlinx.coroutines.withContext
 class SettingsDialog : BaseCoroutineStateDialogFragment<Settings.SettingsData>(
     defaultState = Settings.currentState(),
 ) {
+
+    override val layoutId: Int = R.layout.settings_dialog
 
     override fun firstLaunchInitData() {
         launch {
@@ -80,10 +79,6 @@ class SettingsDialog : BaseCoroutineStateDialogFragment<Settings.SettingsData>(
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
             }
         })
-    }
-
-    override fun createContentView(context: Context, parent: ViewGroup): View {
-        return LayoutInflater.from(context).inflate(R.layout.settings_dialog, parent, false)
     }
 }
 

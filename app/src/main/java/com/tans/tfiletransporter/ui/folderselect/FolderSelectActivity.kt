@@ -5,8 +5,6 @@ import android.content.Intent
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.tans.tfiletransporter.R
 import com.tans.tfiletransporter.Settings
 import com.tans.tfiletransporter.databinding.FolderSelectActivityBinding
@@ -14,10 +12,10 @@ import com.tans.tfiletransporter.file.createLocalRootTree
 import com.tans.tfiletransporter.file.isRootFileTree
 import com.tans.tfiletransporter.file.newLocalSubTree
 import com.tans.tfiletransporter.ui.FileTreeUI
-import com.tans.tfiletransporter.ui.commomdialog.showNoOptionalDialogSuspend
-import com.tans.tfiletransporter.ui.commomdialog.showTextInputDialogSuspend
-import com.tans.tfiletransporter.utils.dp2px
+import com.tans.tfiletransporter.ui.commomdialog.NoOptionalDialog
+import com.tans.tfiletransporter.ui.commomdialog.TextInputDialog
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
+import com.tans.tuiutils.dialog.showSimpleCancelableCoroutineResultDialogSuspend
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.CoroutineScope
@@ -91,14 +89,17 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
 
         viewBinding.toolBar.menu.findItem(R.id.create_new_folder).setOnMenuItemClickListener {
             launch {
-                val inputResult = this@FolderSelectActivity.supportFragmentManager.showTextInputDialogSuspend(getString(R.string.folder_select_create_new_folder_hint))
+                val inputDialog = TextInputDialog(getString(R.string.folder_select_create_new_folder_hint))
+                val inputResult = this@FolderSelectActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(inputDialog)
                 if (inputResult != null) {
                     val tree = fileTreeUI.currentState().fileTree
                     if (tree.isRootFileTree() || !Settings.isDirWriteable(tree.path)) {
-                        this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                        val d = NoOptionalDialog(
                             title = getString(R.string.folder_select_create_folder_error),
-                            message = getString(R.string.folder_select_error_body, "Can't create new folder.")
+                            message = getString(R.string.folder_select_error_body, "Can't create new folder."),
+                            positiveButtonText = getString(R.string.dialog_positive)
                         )
+                        this@FolderSelectActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                     } else {
                         val createFolderResult = withContext(Dispatchers.IO) {
                             try {
@@ -132,10 +133,12 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
         viewBinding.doneActionBt.clicks(this) {
             val tree = fileTreeUI.currentState().fileTree
             if (tree.isRootFileTree()) {
-                this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                val d = NoOptionalDialog(
                     title = getString(R.string.folder_select_error_title),
-                    message = getString(R.string.folder_select_error_body, "Root folder can't be selected.")
+                    message = getString(R.string.folder_select_error_body, "Root folder can't be selected."),
+                    positiveButtonText = getString(R.string.dialog_positive)
                 )
+                this@FolderSelectActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                 Unit
             } else {
                 if (withContext(Dispatchers.IO) { Settings.isDirWriteable(tree.path) }) {
@@ -144,10 +147,12 @@ class FolderSelectActivity : BaseCoroutineStateActivity<Unit>(
                     this@FolderSelectActivity.setResult(Activity.RESULT_OK, i)
                     finish()
                 } else {
-                    this@FolderSelectActivity.supportFragmentManager.showNoOptionalDialogSuspend(
+                    val d = NoOptionalDialog(
                         title = getString(R.string.folder_select_error_title),
-                        message = getString(R.string.folder_select_error_body, "Can't write in ${tree.path}")
+                        message = getString(R.string.folder_select_error_body, "Can't write in ${tree.path}"),
+                        positiveButtonText = getString(R.string.request_share_positive)
                     )
+                    this@FolderSelectActivity.supportFragmentManager.showSimpleCancelableCoroutineResultDialogSuspend(d)
                     Unit
                 }
             }
