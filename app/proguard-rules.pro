@@ -245,4 +245,10 @@
 -dontwarn sun.security.x509.X509CertImpl
 -dontwarn sun.security.x509.X509CertInfo
 
--keep class androidx.viewpager2.adapter.FragmentStateAdapter {*;}
+# Remove log
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+}

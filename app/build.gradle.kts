@@ -69,6 +69,10 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 dependencies {
@@ -116,6 +120,16 @@ dependencies {
 
     // glide
     implementation(libs.glide)
+
+    // tapm
+    implementation(libs.tapm.core) {
+        exclude(group = "com.squareup.okhttp3")
+    }
+    implementation(libs.tapm.autoinit)
+    debugImplementation(libs.tapm.log)
+
+    // tlog
+    implementation(libs.tlog)
 
     implementation(project(":net"))
 

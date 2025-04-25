@@ -1,16 +1,16 @@
 [versions]
-agp = "8.7.3"
+agp = "8.9.2"
 kotlin = "2.0.21"
 googleKsp = "2.0.21-1.0.26"
-coreKtx = "1.15.0"
+coreKtx = "1.16.0"
 junit = "4.13.2"
 androidJunit = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
 material = "1.12.0"
-activity = "1.10.0"
+activity = "1.10.1"
 annotaion = "1.9.1"
-constraintlayout = "2.2.0"
+constraintlayout = "2.2.1"
 swiperefreshlayout = "1.1.0"
 recyclerview = "1.4.0"
 lifecycle = "2.8.7"
@@ -21,14 +21,16 @@ rxandroid3 = "3.0.2"
 corouines = "1.10.1"
 moshi = "1.15.1"
 netty = "4.1.86.Final"
-okio = "3.9.0"
+okio = "3.9.1"
 rxbinding = "4.0.0"
-camerax = "1.4.1"
+camerax = "1.4.2"
 barcodescan = "17.3.0"
 qrcodegen = "3.0.1"
 threetenabp = "1.4.6"
 glide = "4.16.0"
-tuiutils = "1.1.0"
+tuiutils = "1.1.1"
+tapm = "1.0.1"
+tlog = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -73,6 +75,11 @@ qrcodegen = { group = "com.github.kenglxn.QRGen", name = "android", version.ref 
 threetenabp = { group = "com.jakewharton.threetenabp", name = "threetenabp", version.ref = "threetenabp" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide"}
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
+tapm-core = { group = "io.github.tans5", name= "tapm-core", version.ref = "tapm" }
+tapm-autoinit = { group = "io.github.tans5", name= "tapm-autoinit", version.ref = "tapm" }
+tapm-log = { group = "io.github.tans5", name= "tapm-log", version.ref = "tapm" }
+tapm-breakpad = { group = "io.github.tans5", name= "tapm-breakpad", version.ref = "tapm" }
+tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
