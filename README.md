@@ -9,8 +9,6 @@ Create connections ways:
 - Scan QR Code (LocalNetwork Limit)
 - UDP Broadcast (LocalNetwork Limit)
 
-[![](screenshots/google-play.png)](https://play.google.com/store/apps/details?id=com.tans.tfiletransporter)
-
 Desktop Version:  
 [tFileTransfer Desktop](https://github.com/Tans5/tFileTransfer_desktop)
 

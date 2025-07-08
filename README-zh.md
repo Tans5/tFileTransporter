@@ -11,8 +11,6 @@
 - 扫描二维码建立连接（限制本地局域网，速度取决于局域网网络质量）
 - UDP 广播创建连接 （限制本地局域网，速度取决于局域网网络质量，如果子网太大通过广播建立连接效率较低）
 
-[![](screenshots/google-play.png)](https://play.google.com/store/apps/details?id=com.tans.tfiletransporter)
-
 桌面版(支持 Window，Linux 和 MacOs)：  
 [tFileTransfer Desktop](https://github.com/Tans5/tFileTransfer_desktop)
 
