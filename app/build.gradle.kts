@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     id("com.google.devtools.ksp")
-    id("kotlin-kapt")
 }
 
 android {
@@ -60,14 +59,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
         viewBinding {
             enable = true
         }
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+    kotlin {
+        jvmToolchain(11)
     }
 
     buildFeatures {
@@ -99,7 +99,7 @@ dependencies {
     // lifecycle
     implementation(libs.androidx.lifecycle.rumtime)
     implementation(libs.androidx.lifecycle.viewmodel)
-    kapt(libs.androidx.lifecycle.compiler)
+    ksp(libs.androidx.lifecycle.compiler)
 
     // camerax
     implementation(libs.camerax.core)
