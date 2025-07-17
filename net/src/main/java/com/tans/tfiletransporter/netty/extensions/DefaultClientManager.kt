@@ -20,8 +20,8 @@ class DefaultClientManager(
     val log: ILog
 ) : IClientManager, NettyConnectionObserver {
 
-    private val waitingRspTasks: LinkedBlockingDeque<Task<*, *>> by lazy {
-        LinkedBlockingDeque()
+    private val waitingRspTasks: ConcurrentHashMap<Task<*, *>, Unit> by lazy {
+        ConcurrentHashMap()
     }
 
     private val ioExecutor: Executor by lazy {
@@ -38,13 +38,15 @@ class DefaultClientManager(
 
     override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {}
 
+    // 收到来自 server 的回复消息
     override fun onNewMessage(
         localAddress: InetSocketAddress?,
         remoteAddress: InetSocketAddress?,
         msg: PackageData,
         task: INettyConnectionTask
     ) {
-        for (t in waitingRspTasks) {
+        // 通知正在等待 server 回复消息的 Task
+        for (t in waitingRspTasks.keys()) {
             t.onNewDownloadData(
                 localAddress = localAddress,
                 remoteAddress = remoteAddress,
@@ -53,6 +55,7 @@ class DefaultClientManager(
         }
     }
 
+    // 请求 server
     override fun <Request, Response> request(
         type: Int,
         request: Request,
@@ -62,6 +65,7 @@ class DefaultClientManager(
         retryTimeout: Long,
         callback: IClientManager.RequestCallback<Response>
     ) {
+        // 将请求消息封装到 Task，然后在后台线程执行任务.
         enqueueTask(
             Task(
                 type = type,
@@ -119,7 +123,7 @@ class DefaultClientManager(
     }
 
     private fun <Req, Resp> addWaitingTask(t: Task<Req, Resp>) {
-        waitingRspTasks.add(t)
+        waitingRspTasks[t] = Unit
     }
 
     private fun <Req, Resp> removeWaitingTask(t: Task<Req, Resp>) {
@@ -144,15 +148,19 @@ class DefaultClientManager(
 
         private val timeoutTask: AtomicReference<ScheduledFuture<*>?> = AtomicReference(null)
 
+        // 收到来自 Server 的回复消息
         fun onNewDownloadData(
             localAddress: InetSocketAddress?,
             remoteAddress: InetSocketAddress?,
             downloadData: PackageData
         ) {
-            if (downloadData.messageId == this.messageId) {
+            if (downloadData.messageId == this.messageId) { // 是当前的任务的回复消息
+                // 移除超时信息
                 timeoutTask.get()?.cancel(true)
                 timeoutTask.set(null)
+
                 // log.d(TAG, "Received response: msgId -> ${downloadData.messageId}, type -> $type")
+                // 找到回复的消息的转换器
                 val converter = converterFactory.findBodyConverter(downloadData.type, responseClass)
                 if (converter != null) {
                     val response = converter.convert(
@@ -161,8 +169,10 @@ class DefaultClientManager(
                         downloadData
                     )
                     if (response != null) {
+                        // 将当前任务从正在等待的任务队列中移除
                         removeWaitingTask(this)
                         if (taskIsDone.compareAndSet(false, true)) {
+                            // 回调成功.
                             callback.onSuccess(
                                 type = type,
                                 messageId = messageId,
@@ -184,9 +194,12 @@ class DefaultClientManager(
             }
         }
 
+        // 发送信息到 Server
         override fun run() {
+            // 将当前任务添加到等待回复的队列
             addWaitingTask(this)
             // log.d(TAG, "Sending request: msgId -> $messageId, cmdType -> $type")
+            // 获取 request 的 converter
             val converter = converterFactory.findPackageDataConverter(
                 type = type,
                 dataClass = requestClass
@@ -203,6 +216,7 @@ class DefaultClientManager(
                     dataClass = requestClass
                 )
                 if (pckData != null) {
+                    // 等待 Server 回复超时 Task
                     val timeoutTask = taskScheduleExecutor.schedule(
                         {
                             handleError("Waiting Response timeout: $retryTimeout ms.")
@@ -211,6 +225,8 @@ class DefaultClientManager(
                         TimeUnit.MILLISECONDS
                     )
                     this.timeoutTask.set(timeoutTask)
+
+                    // 发送数据到 Server
                     if (udpTargetAddress != null) {
                         connectionTask.sendData(
                             data = PackageDataWithAddress(
@@ -246,11 +262,14 @@ class DefaultClientManager(
             }
         }
 
+        // 发送失败，处理异常
         private fun handleError(e: String) {
+            // 从等待队列中移除当前任务
             removeWaitingTask(this)
             log.e(TAG, "Send request error: msgId -> $messageId, cmdType -> $type, error -> $e")
-            if (retryTimes > 0) {
-                if (taskIsDone.compareAndSet(false, true)) {
+            if (taskIsDone.compareAndSet(false, true)) {
+                // 判断是否需要重试，如果需要重试，构建一个新的任务继续请求，反之直接回调异常.
+                if (retryTimes > 0) {
                     log.e(TAG, "Retry send request")
                     enqueueTask(
                         Task(
@@ -267,9 +286,7 @@ class DefaultClientManager(
                             udpSenderAddress = udpSenderAddress
                         )
                     )
-                }
-            } else {
-                if (taskIsDone.compareAndSet(false, true)) {
+                } else {
                     callback.onFail(e)
                 }
             }

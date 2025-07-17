@@ -59,6 +59,7 @@ class BroadcastReceiver(
         LinkedBlockingDeque()
     }
 
+    // 链接断开监控
     private val closeObserver: NettyConnectionObserver by lazy {
         object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
@@ -86,6 +87,7 @@ class BroadcastReceiver(
             responseType = BroadcastDataType.BroadcastMsg.type,
             log = log,
             onRequest = { _, rr, r, isNewRequest ->
+                // 扫描到一个 Server
                 if (rr != null && isNewRequest) {
                     dispatchBroadcast(rr, r)
                 }
@@ -111,6 +113,7 @@ class BroadcastReceiver(
         }
         newState(BroadcastReceiverState.Requesting)
         // Receive server broadcast information task.
+        // 扫描广播消息任务
         val receiverTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = broadcastAddress,
@@ -121,6 +124,7 @@ class BroadcastReceiver(
         this.receiverTask.get()?.stopTask()
         this.receiverTask.set(receiverTask)
         // Request server to transfer file task.
+        // 请求 Server 链接任务
         val transferRequestTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = localAddress,
@@ -133,16 +137,19 @@ class BroadcastReceiver(
         val hasInvokeCallback = AtomicBoolean(false)
 
         receiverTask.addObserver(object : NettyConnectionObserver {
+
             override fun onNewMessage(
                 localAddress: InetSocketAddress?,
                 remoteAddress: InetSocketAddress?,
                 msg: PackageData,
                 task: INettyConnectionTask
             ) {}
+
             override fun onNewState(receiverTaskState: NettyTaskState, task: INettyConnectionTask) {
                 if (receiverTaskState is NettyTaskState.Error
                     || receiverTaskState is NettyTaskState.ConnectionClosed
                     || getCurrentState() !is BroadcastReceiverState.Requesting) {
+                    // 扫描广播消息任务启动失败
                     // Receive broadcast task fail.
                     log.e(TAG, "Bind receiver task error: $receiverTaskState, ${getCurrentState()}")
                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -152,6 +159,7 @@ class BroadcastReceiver(
                     receiverTask.removeObserver(this)
                     onNewState(BroadcastReceiverState.NoConnection)
                 } else {
+                    // 扫描广播消息任务启动成功
                     if (receiverTaskState is NettyTaskState.ConnectionActive) {
                         // Receive broadcast task start success.
                         log.d(TAG, "Bind receiver task success")
@@ -173,6 +181,7 @@ class BroadcastReceiver(
                                         || receiverTask.getCurrentState() !is NettyTaskState.ConnectionActive
                                         || getCurrentState() !is BroadcastReceiverState.Requesting) {
                                         // Request server task fail.
+                                        // 请求链接任务启动失败
                                         log.e(TAG, "Bind transfer req task error: $transferTaskState, ${receiverTask.getCurrentState()}, ${getCurrentState()}")
                                         if (hasInvokeCallback.compareAndSet(false, true)) {
                                             simpleCallback.onError(transferTaskState.toString())
@@ -182,6 +191,7 @@ class BroadcastReceiver(
                                         receiverTask.stopTask()
                                         onNewState(BroadcastReceiverState.NoConnection)
                                     } else {
+                                        // 请求链接任务启动成功
                                         if (transferTaskState is NettyTaskState.ConnectionActive) {
                                             // Request server task success.
                                             log.d(TAG, "Bind transfer req task success")
@@ -201,6 +211,7 @@ class BroadcastReceiver(
                         /**
                          * Step2: Start request server task.
                          */
+                        // 启动请求链接任务
                         transferRequestTask.startTask()
                     }
                 }
@@ -210,6 +221,7 @@ class BroadcastReceiver(
         /**
          * Step1: Start receive server broadcast task.
          */
+        // 启动扫描广播消息任务
         receiverTask.startTask()
     }
 

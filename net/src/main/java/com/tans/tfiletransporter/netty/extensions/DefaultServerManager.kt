@@ -29,16 +29,20 @@ class DefaultServerManager(
 
     override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {}
 
+    // 收到 client 发送的请求数据
     override fun onNewMessage(
         localAddress: InetSocketAddress?,
         remoteAddress: InetSocketAddress?,
         msg: PackageData,
         task: INettyConnectionTask
     ) {
+        // 找一个 server 来处理这种类型的数据
         val server = servers.find { it.couldHandle(msg.type) }
         if (server != null) {
+            // 是否已经处理过这个 message
             val isNew = !handledMessageId.containsKey(msg.messageId)
             handledMessageId[msg.messageId] = Unit
+            // 交给 server 处理
             server.dispatchRequest(
                 localAddress = localAddress,
                 remoteAddress = remoteAddress,

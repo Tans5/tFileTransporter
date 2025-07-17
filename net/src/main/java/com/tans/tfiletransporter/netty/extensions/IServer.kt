@@ -27,18 +27,23 @@ interface IServer<Request, Response> {
         connectionTask: INettyConnectionTask,
         isNewRequest: Boolean
     ) {
+        // 找到 request 的 body 转换器
         val converter = converterFactory.findBodyConverter(msg.type, requestClass)
         if (converter != null) {
+            // 转换 request 的数据
             val convertedData = converter.convert(
                 type = msg.type,
                 dataClass = requestClass,
                 packageData = msg
             )
             if (convertedData != null) {
+                // 处理 request 的数据并获取 response
                 val response = onRequest(localAddress, remoteAddress, convertedData, isNewRequest)
                 if (response != null) {
+                    // 找到 response 的 pkt 转换器
                     val responseConverter = converterFactory.findPackageDataConverter(replyType, responseClass)
                     if (responseConverter != null) {
+                        // 转换 response 到 pkt
                         val pckData = responseConverter.convert(
                             type = replyType,
                             messageId = msg.messageId,
@@ -46,6 +51,7 @@ interface IServer<Request, Response> {
                             dataClass = responseClass
                         )
                         if (pckData != null) {
+                            // 发送 response 数据
                             if (connectionTask is NettyUdpConnectionTask) {
                                 if (remoteAddress != null) {
                                     connectionTask.sendData(

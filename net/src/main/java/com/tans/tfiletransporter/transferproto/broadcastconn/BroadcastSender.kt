@@ -58,6 +58,7 @@ class BroadcastSender(
             responseType = BroadcastDataType.TransferFileResp.type,
             log = log,
             onRequest = { _, rr, r, isNewRequest ->
+                // 收到 client 的请求链接的信息
                 if (rr == null || r.version != TransferProtoConstant.VERSION) {
                     null
                 } else {
@@ -82,6 +83,7 @@ class BroadcastSender(
         AtomicReference(null)
     }
 
+    // 监控链接断开
     private val closeObserver: NettyConnectionObserver by lazy {
         object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
@@ -102,6 +104,7 @@ class BroadcastSender(
     /**
      * Broadcast send task.
      */
+    // 发送广播消息任务
     private val senderBroadcastTask: Runnable by lazy {
         Runnable {
             val state = getCurrentState()
@@ -149,6 +152,7 @@ class BroadcastSender(
         newState(BroadcastSenderState.Requesting)
         val hasInvokeCallback = AtomicBoolean(false)
         // Broadcast send task.
+        // 发送 Udp 广播信息的任务
         val senderTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Connect(
                 address = broadcastAddress,
@@ -160,6 +164,7 @@ class BroadcastSender(
         this.broadcastSenderTask.set(senderTask)
 
         // Receive client transfer file request task.
+        // 接受 Client 请求的 Server
         val requestReceiverTask = NettyUdpConnectionTask(
             connectionType = ConnectionType.Bind(
                 address = localAddress,
@@ -182,6 +187,7 @@ class BroadcastSender(
                     || senderState is NettyTaskState.Error
                     || getCurrentState() !is BroadcastSenderState.Requesting
                 ) {
+                    // Udp 广播发送任务启动失败
                     // Broadcast sender task fail.
                     log.e(TAG, "Sender task error: $senderState, ${getCurrentState()}")
                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -191,6 +197,7 @@ class BroadcastSender(
                     senderTask.removeObserver(this)
                     senderTask.stopTask()
                 } else {
+                    // Udp 广播发送任务启动成功
                     // Broadcast sender task success.
                     if (senderState is NettyTaskState.ConnectionActive) {
                         log.d(TAG, "Sender task connect success")
@@ -212,6 +219,7 @@ class BroadcastSender(
                                     || senderTask.getCurrentState() !is NettyTaskState.ConnectionActive
                                     || getCurrentState() !is BroadcastSenderState.Requesting
                                 ) {
+                                    // 接受 Client 请求的任务启动失败
                                     // Receive client request task fail.
                                     log.d(TAG, "Request task bind fail: $receiverState, ${senderTask.getCurrentState()}, ${getCurrentState()}")
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -222,6 +230,7 @@ class BroadcastSender(
                                     requestReceiverTask.stopTask()
                                     senderTask.stopTask()
                                 } else {
+                                    // 接受 Client 请求的任务启动成功
                                     // Receive client request task success.
                                     if (receiverState is NettyTaskState.ConnectionActive) {
                                         log.d(TAG, "Request task bind success")
@@ -229,6 +238,7 @@ class BroadcastSender(
                                             simpleCallback.onSuccess(Unit)
                                         }
                                         // Send one broadcast each second (default)
+                                        // 定时循环发送广播消息
                                         val senderFuture = taskScheduleExecutor.scheduleWithFixedDelay(
                                             senderBroadcastTask,
                                             500,
@@ -240,6 +250,7 @@ class BroadcastSender(
                                             BroadcastSenderState.Active(
                                                 broadcastAddress = broadcastAddress)
                                         )
+                                        // 监控链接断开
                                         senderTask.addObserver(closeObserver)
                                         requestReceiverTask.addObserver(closeObserver)
                                     }
@@ -249,15 +260,18 @@ class BroadcastSender(
                         /**
                          * Step2: Start Receive client transfer file request task.
                          */
+                        // 启动接受 Client 请求链接的任务
                         requestReceiverTask.startTask()
                         senderTask.removeObserver(this)
                     }
                 }
             }
         })
+
         /**
          * Step1: Start broadcast sender task.
          */
+        // 启动 Udp 广播信息任务
         senderTask.startTask()
     }
 
