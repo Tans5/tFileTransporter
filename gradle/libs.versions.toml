@@ -31,6 +31,7 @@ glide = "4.16.0"
 tuiutils = "1.1.1"
 tapm = "1.0.3"
 tlog = "1.0.1"
+tlrucache = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -80,6 +81,7 @@ tapm-autoinit = { group = "io.github.tans5", name= "tapm-autoinit", version.ref 
 tapm-log = { group = "io.github.tans5", name= "tapm-log", version.ref = "tapm" }
 tapm-breakpad = { group = "io.github.tans5", name= "tapm-breakpad", version.ref = "tapm" }
 tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
+tlrucache = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

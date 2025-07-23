@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * FileDownloader could download multiple files one time, single file downloads see [SingleFileDownloader], single file contains multiple fragments,
  * one fragment uses a TCP connection to downloads file's fragment see [SingleFileDownloader.SingleFileFragmentDownloader]
+ * 文件下载端作为 TCP 客户端
  */
 class FileDownloader(
     val downloadDir: File,
@@ -82,10 +83,12 @@ class FileDownloader(
             newState(FileTransferState.Started)
             waitingDownloader.clear()
             // Single file download handle by SingleFileDownloader
+            // 构建文件下载任务
             for (f in files) {
                 waitingDownloader.add(SingleFileDownloader(f))
             }
             // Move first file download task to downloading task.
+            // 触发第一个文件下载任务
             doNextDownloader(null)
         }
     }
@@ -113,6 +116,7 @@ class FileDownloader(
             // Move waiting task to working.
             val targetDownloader = waitingDownloader.pollFirst()
             if (targetDownloader != null) {
+                // 激活文件下载任务
                 targetDownloader.onActive(finishedDownloader)
                 workingDownloader.set(targetDownloader)
                 // Notify observers single file download start.
@@ -216,6 +220,7 @@ class FileDownloader(
             if (!isSingleFileDownloaderCanceled.get() && !isSingleFileFinished.get() && isSingleFileDownloaderExecuted.compareAndSet(false, true)) {
                 try {
                     // Create downloading file.
+                    // 创建下载的文件
                     val downloadingFile = createDownloadingFile()
                     this.downloadingFile.set(downloadingFile)
                     val randomAccessFile = RandomAccessFile(downloadingFile, "rw")
@@ -223,20 +228,24 @@ class FileDownloader(
                     this.randomAccessFile.set(randomAccessFile)
                     randomAccessFile.setLength(file.size)
                     // Compute every fragment size.
+                    // 计算文件片下载的范围
                     val fragmentsRange = createFragmentsRange()
                     log.d(TAG, "Real download fragment size: ${fragmentsRange.size}")
                     launch {
                         // Create SingleFileFragmentDownloaders base on fragments.
+                        // 为每个文件片创建一个下载链接任务
                         for ((start, end) in fragmentsRange) {
                             // Fragment connection retry 3 times.
                             var tryTimes = 3
                             var result: Result<SingleFileFragmentDownloader>
                             do {
+                                // 构建文件片下载任务
                                 val fd = SingleFileFragmentDownloader(
                                     randomAccessFile = randomAccessFile,
                                     start = start,
                                     end = end
                                 )
+                                // 尝试连接到服务器
                                 result = runCatching {
                                     // Start fragment connection, connect to server.
                                     fd.connectToServerSuspend()
@@ -245,13 +254,16 @@ class FileDownloader(
                                 if (result.isSuccess) {
                                     break
                                 }
+                                // 链接失败重试 3 次.
                                 delay(200L)
                             } while (--tryTimes > 0)
                             val fd = result.getOrNull()
                             if (fd != null) {
+                                // 链接成功，添加到任务中
                                 fragmentDownloader.add(fd)
                                 delay(200)
                             } else {
+                                // 链接失败
                                 val msg = "Connect error: ${result.exceptionOrNull()?.message}"
                                 log.e(TAG, msg, result.exceptionOrNull())
                                 errorStateIfActive(msg)
@@ -301,16 +313,20 @@ class FileDownloader(
             // Notify progress to observers.
             dispatchProgressUpdate(hasDownloadedSize, file)
             if (hasDownloadedSize >= file.size) {
+                // 当前文件已经下载完毕
                 // Single file download finished.
                 onFinished()
             }
         }
 
+        // 当前文件已经下载完毕
         private fun onFinished() {
             if (isSingleFileDownloaderExecuted.get() && !isSingleFileDownloaderCanceled.get() && isSingleFileFinished.compareAndSet(false, true)) {
                 try {
+                    // 回收文件资源
                     recycleResource()
                     // Rename downloaded file's name.
+                    // 重命名下载中的文件
                     downloadingFile.get()?.let {
                         it.renameTo(getDownloadedFile(file.name))
                         downloadingFile.set(null)
@@ -319,6 +335,7 @@ class FileDownloader(
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }
+                // 触发下一个文件的下载任务
                 // Start next SingleFileDownloader.
                 doNextDownloader(this)
             }
@@ -478,6 +495,7 @@ class FileDownloader(
                     log = log,
                     onRequest = { _, _, data, isNew ->
                         // File's data coming from FileSender.
+                        // 收到来自服务器发送的数据
                         if (isNew) {
                             if (!isFragmentDownloaderClosed.get() && !isFragmentDownloaderFinished.get()) {
                                 try {
@@ -485,17 +503,20 @@ class FileDownloader(
                                         log.d(TAG, "Frame: $start download started.")
                                     }
                                     // Write data to real download file.
+                                    // 写入到文件
                                     randomAccessFile.writeContent(
                                         fileOffset = downloadedSize.get() + start,
                                         byteArray = data,
                                         contentLen = data.size
                                     )
                                     if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
+                                        // 文件片已经下载完毕
                                         // Fragment download finished.
                                         log.d(TAG, "Frame: $start download finished(${end - start} bytes).")
                                         isFragmentDownloaderFinished.set(true)
                                         val t = task.get()
                                         if (t != null) {
+                                            // 通知服务端，当前文件片已经下载完毕
                                             // Notify server this fragment download finished, connection need close.
                                             t.requestSimplify(
                                                 type = FileTransferDataType.FinishedReq.type,
@@ -524,12 +545,12 @@ class FileDownloader(
                                                 }
                                             )
                                         } else {
-
                                             updateProgress(data.size.toLong())
                                             errorStateIfActive("Task is null")
                                         }
                                     } else {
                                         // Update download progress.
+                                        // 文件片还没有下载完毕
                                         updateProgress(data.size.toLong())
                                     }
                                 } catch (e: Throwable) {
@@ -583,17 +604,22 @@ class FileDownloader(
                         localTask: INettyConnectionTask
                     ) {
                         if (nettyState is NettyTaskState.ConnectionActive) {
+                            // 链接服务器成功
                             // Connection success.
                             simpleCallback.onSuccess(Unit)
                             task.removeObserver(this)
                             task.addObserver(closeObserver)
+                            // 注册错误监听服务
                             task.registerServer(errorReqServer)
+                            // 注册接受文件服务
                             task.registerServer(receiveDataServer)
                             // Send fragment's information to server.
+                            // 发送需要下载的文件信息到服务器
                             sendDownloadRequest(task)
                         }
                         if (nettyState is NettyTaskState.ConnectionClosed
                             || nettyState is NettyTaskState.Error) {
+                            // 链接服务器失败
                             // Connection fail.
                             simpleCallback.onError("Connect error: $nettyState")
                             task.removeObserver(this)
@@ -608,6 +634,7 @@ class FileDownloader(
                     ) {}
 
                 })
+                // 开启链接到服务器的任务
                 task.startTask()
             }
 
@@ -650,6 +677,7 @@ class FileDownloader(
             }
 
             private fun sendDownloadRequest(task: ConnectionServerClientImpl) {
+                // 发送需要下载的文件名，以及文件片的开始位置与结束位置
                 task.requestSimplify(
                     type = FileTransferDataType.DownloadReq.type,
                     request = DownloadReq(

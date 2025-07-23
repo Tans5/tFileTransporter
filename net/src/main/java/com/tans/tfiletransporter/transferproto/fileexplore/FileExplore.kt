@@ -79,6 +79,7 @@ class FileExplore(
     }
     private val heartbeatTaskFuture: AtomicReference<ScheduledFuture<*>?> = AtomicReference(null)
 
+    // 心跳服务，只有服务端注册
     private val heartbeatServer: IServer<Unit, Unit> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.HeartbeatReq.type,
@@ -88,6 +89,7 @@ class FileExplore(
         )
     }
 
+    // 握手服务，只有服务端注册
     private val handshakeServer: IServer<HandshakeReq, HandshakeResp> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.HandshakeReq.type,
@@ -95,6 +97,7 @@ class FileExplore(
             log = log,
             onRequest = { _, _, r, isNew ->
                 // Server receive client handshake.
+                // 客户端请求握手，检查版本
                 if (r.version == TransferProtoConstant.VERSION) {
                     val currentState = getCurrentState()
                     if (isNew && currentState is FileExploreState.Connected) {
@@ -108,6 +111,7 @@ class FileExplore(
         )
     }
 
+    // 请求浏览文件夹服务，服务端/客户端都注册.
     private val scanDirServer: IServer<ScanDirReq, ScanDirResp> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.ScanDirReq.type,
@@ -120,6 +124,7 @@ class FileExplore(
         )
     }
 
+    // 请求发送文件服务，服务端/客户端都注册.
     private val sendFilesServer: IServer<SendFilesReq, SendFilesResp> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.SendFilesReq.type,
@@ -132,6 +137,7 @@ class FileExplore(
         )
     }
 
+    // 请求下载文件服务，服务端/客户端都注册.
     private val downloadFilesServer: IServer<DownloadFilesReq, DownloadFilesResp> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.DownloadFilesReq.type,
@@ -144,6 +150,7 @@ class FileExplore(
         )
     }
 
+    // 消息服务，服务端/客户端都注册.
     private val sendMsgServer: IServer<SendMsgReq, Unit> by lazy {
         simplifyServer(
             requestType = FileExploreDataType.SendMsgReq.type,
@@ -165,6 +172,7 @@ class FileExplore(
 
     /**
      * Server create connection.
+     * 服务端
      */
     fun bind(address: InetAddress, simpleCallback: SimpleCallback<Unit>) {
         if (getCurrentState() !is FileExploreState.NoConnection) {
@@ -184,6 +192,7 @@ class FileExplore(
             idleLimitDuration = heartbeatInterval * 3,
             newClientTaskCallback = { task ->
                 // Client coming, only one client would be accepted.
+                // 客户端请求链接
                 if (hasChildConnection.compareAndSet(false, true)) {
                     /**
                      * Step2: handle client connection.
@@ -201,6 +210,7 @@ class FileExplore(
                                 nettyState is NettyTaskState.ConnectionClosed ||
                                 getCurrentState() !is FileExploreState.Requesting) {
                                 // Client connection fail.
+                                // 客户端链接失败
                                 val errorMsg = "Connect error: $nettyState, ${getCurrentState()}"
                                 log.e(TAG, errorMsg)
                                 if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -212,16 +222,24 @@ class FileExplore(
                                 serverTask.set(null)
                                 newState(FileExploreState.NoConnection)
                             } else {
+                                // 客户端链接成功
                                 // Client connection success.
                                 if (nettyState is NettyTaskState.ConnectionActive) {
                                     newState(FileExploreState.Connected)
                                     log.d(TAG, "Connect success.")
+                                    // 链接断开监听
                                     exploreTask.addObserver(closeObserver)
+                                    // 注册握手服务
                                     exploreTask.registerServer(handshakeServer)
+                                    // 注册心跳服务
                                     exploreTask.registerServer(heartbeatServer)
+                                    // 注册文件夹浏览服务
                                     exploreTask.registerServer(scanDirServer)
+                                    // 注册请求发送文件服务
                                     exploreTask.registerServer(sendFilesServer)
+                                    // 注册请求下载文件服务
                                     exploreTask.registerServer(downloadFilesServer)
+                                    // 注册消息服务
                                     exploreTask.registerServer(sendMsgServer)
                                     exploreTask.removeObserver(this)
                                     if (hasInvokeCallback.compareAndSet(false, true)) {
@@ -250,6 +268,7 @@ class FileExplore(
                 if (nettyState is NettyTaskState.Error ||
                         nettyState is NettyTaskState.ConnectionClosed ||
                         getCurrentState() !is FileExploreState.Requesting) {
+                    // 服务启动失败
                     // Server task connection create fail.
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError("Server bind error: $nettyState")
@@ -258,6 +277,7 @@ class FileExplore(
                     serverTask.stopTask()
                     log.e(TAG, "Bind server error: $nettyState")
                 } else if (nettyState is NettyTaskState.ConnectionActive) {
+                    // 服务启动成功
                     // Server task connection create success.
                     serverTask.addObserver(closeObserver)
                     serverTask.removeObserver(this)
@@ -275,6 +295,7 @@ class FileExplore(
         /**
          * Step1: Start server task.
          */
+        // 启动服务
         serverTask.startTask()
         this.serverTask.get()?.stopTask()
         this.serverTask.set(serverTask)
@@ -282,6 +303,7 @@ class FileExplore(
 
     /**
      * Client create connection.
+     * 客户端
      */
     fun connect(
         serverAddress: InetAddress,
@@ -307,6 +329,7 @@ class FileExplore(
                 if (nettyState is NettyTaskState.Error ||
                         nettyState is NettyTaskState.ConnectionClosed ||
                         getCurrentState() !is FileExploreState.Requesting) {
+                    // 链接服务器失败
                     // Create client connection fail.
                     val errorMsg = "Connect error: $nettyState, ${getCurrentState()}"
                     log.e(TAG, errorMsg)
@@ -319,20 +342,26 @@ class FileExplore(
                 } else {
                     // Create client connection success.
                     if (nettyState is NettyTaskState.ConnectionActive) {
+                        // 链接服务器成功
                         newState(FileExploreState.Connected)
                         log.d(TAG, "Connect success.")
                         exploreTask.addObserver(closeObserver)
                         this@FileExplore.exploreTask.get()?.stopTask()
                         this@FileExplore.exploreTask.set(exploreTask)
+                        // 注册请求浏览文件夹服务
                         exploreTask.registerServer(scanDirServer)
+                        // 注册请求发送文件服务
                         exploreTask.registerServer(sendFilesServer)
+                        // 注册请求下载文件服务
                         exploreTask.registerServer(downloadFilesServer)
+                        // 注册发送消息服务
                         exploreTask.registerServer(sendMsgServer)
                         exploreTask.removeObserver(this)
                         if (hasInvokeCallback.compareAndSet(false, true)) {
                             simpleCallback.onSuccess(Unit)
                         }
                         // Start heartbeat task, send a heartbeat each 8000 milliseconds default.
+                        // 定时发送心跳任务，客户端发送，服务端接收
                         val future = taskScheduleExecutor.scheduleWithFixedDelay(
                             {
                                 sendHeartbeat()
@@ -356,6 +385,7 @@ class FileExplore(
         /**
          * Step1: Start client connection task.
          */
+        // 开启任务，请求链接服务器
         exploreTask.startTask()
     }
 
@@ -372,6 +402,7 @@ class FileExplore(
 
     /**
      * Client request handshake to server.
+     * 客户端向服务端发送，请求握手
      */
     fun requestHandshake(simpleCallback: SimpleCallback<Handshake>) {
         assertState(false, simpleCallback) { task, _ ->
@@ -535,6 +566,7 @@ class FileExplore(
 
     /**
      * Client send heartbeat to server.
+     * 发送客户端发送心跳到服务端
      */
     private fun sendHeartbeat() {
         assertState<Unit>(false, null) { task, _ ->

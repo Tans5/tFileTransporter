@@ -13,7 +13,7 @@ kotlin {
 }
 
 dependencies {
-     api(libs.coroutines.core)
+    api(libs.coroutines.core)
 
     // Moshi
     api(libs.moshi)
@@ -24,4 +24,5 @@ dependencies {
     api(libs.netty)
     api(libs.okio)
     api(libs.androidx.annotaion)
+    api(libs.tlrucache)
 }

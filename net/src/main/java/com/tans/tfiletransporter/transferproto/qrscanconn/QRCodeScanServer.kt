@@ -46,6 +46,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
             log = log,
             // New client request coming.
             onRequest = { _, ra, r, isNew ->
+                // 客户端请求链接
                 if (ra != null && isNew) {
                     val currentState = getCurrentState()
                     if (currentState == QRCodeScanState.Active && r.version == TransferProtoConstant.VERSION) {
@@ -79,12 +80,14 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         }
         newState(QRCodeScanState.Requesting)
         // Wait client request transfer file task.
+        // 等待链接服务任务
         val connectionTask = NettyUdpConnectionTask(
             connectionType = NettyUdpConnectionTask.Companion.ConnectionType.Bind(
                 address = localAddress,
                 port = TransferProtoConstant.QR_CODE_SCAN_SERVER_PORT
             )
         ).withServer<ConnectionServerImpl>(log = log)
+        // 注册等待链接服务
         connectionTask.registerServer(transferFileServer)
         this.connectionTask.get()?.stopTask()
         this.connectionTask.set(connectionTask)
@@ -92,6 +95,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         connectionTask.addObserver(object : NettyConnectionObserver {
             override fun onNewState(nettyState: NettyTaskState, task: INettyConnectionTask) {
                 if (nettyState is NettyTaskState.Error || nettyState is NettyTaskState.ConnectionClosed) {
+                    // 等待链接服务启动失败
                     // Wait client task connection fail.
                     val eMsg = "Connection error: $nettyState"
                     log.e(TAG, eMsg)
@@ -101,6 +105,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
                     closeConnectionIfActive()
                 }
                 if (nettyState is NettyTaskState.ConnectionActive) {
+                    // 等待链接服务启动成功
                     // Wait client task connection success.
                     val currentState = getCurrentState()
                     if (currentState == QRCodeScanState.Requesting) {
@@ -130,6 +135,7 @@ class QRCodeScanServer(private val log: ILog) : SimpleObservable<QRCodeScanServe
         /**
          * Step1: Start wait client request transfer file task.
          */
+        // 启动等待链接服务任务
         connectionTask.startTask()
     }
 

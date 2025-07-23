@@ -41,6 +41,7 @@ class P2pConnection(
         LinkedBlockingDeque()
     }
 
+    // 握手服务
     private val handShakeServer: IServer<P2pHandshakeReq, P2pHandshakeResp> by lazy {
         simplifyServer(
             requestType = P2pDataType.HandshakeReq.type,
@@ -48,6 +49,7 @@ class P2pConnection(
             log = log,
             onRequest = { ld, rd, r, isNewRequest ->
                 // Client request handshake, check handshake information and update state.
+                // 客户端请求握手，检查版本信息
                 if (getCurrentState() is P2pConnectionState.Active
                     && r.version == TransferProtoConstant.VERSION) {
                     if (isNewRequest) {
@@ -81,6 +83,7 @@ class P2pConnection(
             log = log,
             onRequest = { _, _, _, isNewRequest ->
                 // Request transfer file, Server and Client both can request.
+                // 请求传输文件(客户端和服务端都会注册这个服务，发起请求的一方，后续链接中作为客户端)
                 if (isNewRequest) {
                     log.d(TAG, "Receive transfer file request.")
                     dispatchTransferFile(true)
@@ -137,6 +140,9 @@ class P2pConnection(
         o.onNewState(getCurrentState())
     }
 
+    /**
+     * p2p 链接服务端，owner 作为服务端
+     */
     fun bind(address: InetAddress, simpleCallback: SimpleCallback<Unit>) {
         val currentState = getCurrentState()
         if (currentState != P2pConnectionState.NoConnection) {
@@ -149,6 +155,7 @@ class P2pConnection(
         var serverTask: NettyTcpServerConnectionTask? = null
         // TCP connection task， communicat with client.
         var communicationTask: ConnectionServerClientImpl? = null
+        // 服务任务状态回调
         val stateCallback = object : NettyConnectionObserver {
             override fun onNewMessage(
                 localAddress: InetSocketAddress?,
@@ -161,6 +168,7 @@ class P2pConnection(
                     || nettyState is NettyTaskState.ConnectionClosed
                     || getCurrentState() !is P2pConnectionState.Requesting
                 ) {
+                    // 服务启动失败
                     // Create server connection or client connection fail.
                     if (hasInvokeCallback.compareAndSet(false, true)) {
                         simpleCallback.onError(nettyState.toString())
@@ -172,6 +180,7 @@ class P2pConnection(
                     newState(P2pConnectionState.NoConnection)
                 } else {
                     if (task !is NettyTcpServerConnectionTask && nettyState is NettyTaskState.ConnectionActive) {
+                        // 服务启动成功
                         // Client connection create success.
                         task.addObserver(activeCommunicationTaskObserver)
                         activeCommunicationNettyTask.set(communicationTask)
@@ -197,10 +206,12 @@ class P2pConnection(
             }
         }
         val hasClientConnection = AtomicBoolean(false)
+        // Server 任务
         serverTask = NettyTcpServerConnectionTask(
             bindAddress = address,
             bindPort = TransferProtoConstant.P2P_GROUP_OWNER_PORT,
             newClientTaskCallback = { client ->
+                // 客户端请求来了
                 // New client coming.
                 if (hasClientConnection.compareAndSet(false, true)) {
                     /**
@@ -208,8 +219,11 @@ class P2pConnection(
                      */
                     val fixedClientConnection = client.withServer<ConnectionServerImpl>(log = log)
                         .withClient<ConnectionServerClientImpl>(log = log)
+                    // 注册握手服务
                     fixedClientConnection.registerServer(handShakeServer)
+                    // 注册请求链接服务
                     fixedClientConnection.registerServer(transferFileServer)
+                    // 监听链接关闭服务
                     fixedClientConnection.registerServer(closeServer)
                     fixedClientConnection.addObserver(stateCallback)
                     communicationTask = fixedClientConnection
@@ -223,9 +237,13 @@ class P2pConnection(
         /**
          * Step1: Start server task.
          */
+        // 启动 Server 任务
         serverTask.startTask()
     }
 
+    /**
+     * p2p 链接客户端
+     */
     fun connect(serverAddress: InetAddress, simpleCallback: SimpleCallback<Unit>) {
         val currentState = getCurrentState()
         if (currentState != P2pConnectionState.NoConnection) {
@@ -293,9 +311,13 @@ class P2pConnection(
         clientTask.startTask()
     }
 
+    /**
+     * 请求传输文件，服务端和客户端都可以调用该方法
+     */
     fun requestTransferFile(simpleCallback: SimpleCallback<P2pConnectionState.Handshake>) {
         assertConnectionAndState(
             onSuccess = { activeConnection, handshake ->
+                // 发起传输文件请求
                 activeConnection.requestSimplify<Unit, Unit>(
                     type = P2pDataType.TransferFileReq.type,
                     request = Unit,
@@ -308,11 +330,13 @@ class P2pConnection(
                             remoteAddress: InetSocketAddress?,
                             d: Unit
                         ) {
+                            // 请求成功
                             simpleCallback.onSuccess(handshake)
                             dispatchTransferFile(false)
                         }
 
                         override fun onFail(errorMsg: String) {
+                            // 请求失败
                             simpleCallback.onError(errorMsg)
                         }
 
