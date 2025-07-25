@@ -1,7 +1,10 @@
 package com.tans.tfiletransporter.netty.extensions
 
 import com.squareup.moshi.Moshi
+import com.tans.tfiletransporter.netty.ByteArrayPool
+import com.tans.tfiletransporter.netty.NetByteArray
 import com.tans.tfiletransporter.netty.PackageData
+import com.tans.tlrucache.memory.LruByteArrayPool
 
 open class DefaultConverterFactory : IConverterFactory {
 
@@ -38,7 +41,7 @@ open class DefaultConverterFactory : IConverterFactory {
                 return dataClass === PackageData::class.java
             }
 
-            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T? {
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData, byteArrayPool: ByteArrayPool): T? {
                 return packageData as? T
             }
         }
@@ -48,18 +51,21 @@ open class DefaultConverterFactory : IConverterFactory {
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
                 return dataClass === String::class.java
             }
-            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T {
-                return packageData.body.toString(Charsets.UTF_8) as T
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData, byteArrayPool: ByteArrayPool): T {
+                val body = packageData.body
+                val ret = String(body.value.value, 0, body.readSize, Charsets.UTF_8)
+                byteArrayPool.put(body.value)
+                return ret as T
             }
         }
 
         @Suppress("UNCHECKED_CAST")
         private class ByteArrayDataBodyConverter : IBodyConverter {
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
-                return dataClass === ByteArray::class.java
+                return dataClass === NetByteArray::class.java
             }
 
-            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T? {
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData, byteArrayPool: ByteArrayPool): T? {
                 return packageData.body as T
             }
 
@@ -71,7 +77,7 @@ open class DefaultConverterFactory : IConverterFactory {
                 return dataClass === Unit::class.java
             }
 
-            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T {
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData, byteArrayPool: ByteArrayPool): T {
                 return Unit as T
             }
 
@@ -81,9 +87,12 @@ open class DefaultConverterFactory : IConverterFactory {
 
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean = true
 
-            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData): T? {
+            override fun <T> convert(type: Int, dataClass: Class<T>, packageData: PackageData, byteArrayPool: ByteArrayPool): T? {
+                val body = packageData.body
+                val str = String(body.value.value, 0, body.readSize, Charsets.UTF_8)
+                byteArrayPool.put(body.value)
                 return try {
-                    defaultMoshi.adapter(dataClass)?.fromJson(packageData.body.toString(Charsets.UTF_8))
+                    defaultMoshi.adapter(dataClass)?.fromJson(str)
                 } catch (e: Throwable) {
                     e.printStackTrace()
                     null
@@ -100,12 +109,19 @@ open class DefaultConverterFactory : IConverterFactory {
                 type: Int,
                 messageId: Long,
                 data: T,
-                dataClass: Class<T>
+                dataClass: Class<T>,
+                byteArrayPool: ByteArrayPool
             ): PackageData {
+                val toWriteBytes = (data as String).toByteArray(Charsets.UTF_8)
+                val byteArrayValue = byteArrayPool.get(toWriteBytes.size)
+                System.arraycopy(toWriteBytes, 0, byteArrayValue.value, 0, toWriteBytes.size)
                 return PackageData(
                     type = type,
                     messageId = messageId,
-                    body = (data as String).toByteArray(Charsets.UTF_8)
+                    body = NetByteArray(
+                        value = byteArrayValue,
+                        readSize = toWriteBytes.size
+                    )
                 )
             }
         }
@@ -119,31 +135,36 @@ open class DefaultConverterFactory : IConverterFactory {
                 type: Int,
                 messageId: Long,
                 data: T,
-                dataClass: Class<T>
+                dataClass: Class<T>,
+                byteArrayPool: ByteArrayPool
             ): PackageData {
                 return PackageData(
                     type = type,
                     messageId = messageId,
-                    body = byteArrayOf()
+                    body = NetByteArray(
+                        LruByteArrayPool.Companion.ByteArrayValue(ByteArray(0)),
+                        0
+                    )
                 )
             }
         }
 
         private class ByteArrayPackageDataConverter : IPackageDataConverter {
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean {
-                return dataClass === ByteArray::class.java
+                return dataClass === NetByteArray::class.java
             }
 
             override fun <T> convert(
                 type: Int,
                 messageId: Long,
                 data: T,
-                dataClass: Class<T>
+                dataClass: Class<T>,
+                byteArrayPool: ByteArrayPool
             ): PackageData {
                 return PackageData(
                     type = type,
                     messageId = messageId,
-                    body = data as ByteArray
+                    body = data as NetByteArray
                 )
             }
 
@@ -156,7 +177,7 @@ open class DefaultConverterFactory : IConverterFactory {
                 return dataClass === PackageData::class.java
             }
 
-            override fun <T> convert(type: Int, messageId: Long, data: T, dataClass: Class<T>): PackageData? {
+            override fun <T> convert(type: Int, messageId: Long, data: T, dataClass: Class<T>, byteArrayPool: ByteArrayPool): PackageData? {
                 return data as? PackageData?
             }
         }
@@ -165,14 +186,20 @@ open class DefaultConverterFactory : IConverterFactory {
 
             override fun couldHandle(type: Int, dataClass: Class<*>): Boolean = true
 
-            override fun <T> convert(type: Int, messageId: Long, data: T, dataClass: Class<T>): PackageData? {
+            override fun <T> convert(type: Int, messageId: Long, data: T, dataClass: Class<T>, byteArrayPool: ByteArrayPool): PackageData? {
                 return try {
                     val json = defaultMoshi.adapter(dataClass)?.toJson(data)
                     if (json != null) {
+                        val toWriteBytes = json.toByteArray(Charsets.UTF_8)
+                        val byteArrayValue = byteArrayPool.get(toWriteBytes.size)
+                        System.arraycopy(toWriteBytes, 0, byteArrayValue.value, 0, toWriteBytes.size)
                         PackageData(
                             type = type,
                             messageId = messageId,
-                            body = json.toByteArray(Charsets.UTF_8)
+                            body = NetByteArray(
+                                byteArrayValue,
+                                toWriteBytes.size
+                            )
                         )
                     } else {
                         null

@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.transferproto.filetransfer
 
 import com.tans.tfiletransporter.ILog
 import com.tans.tfiletransporter.netty.INettyConnectionTask
+import com.tans.tfiletransporter.netty.NetByteArray
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
@@ -488,7 +489,7 @@ class FileDownloader(
 
             private val downloadedSize = AtomicLong(0)
 
-            private val receiveDataServer: IServer<ByteArray, Unit> by lazy {
+            private val receiveDataServer: IServer<NetByteArray, Unit> by lazy {
                 simplifyServer(
                     requestType = FileTransferDataType.SendReq.type,
                     responseType = FileTransferDataType.SendResp.type,
@@ -506,10 +507,10 @@ class FileDownloader(
                                     // 写入到文件
                                     randomAccessFile.writeContent(
                                         fileOffset = downloadedSize.get() + start,
-                                        byteArray = data,
-                                        contentLen = data.size
+                                        byteArray = data.value.value,
+                                        contentLen = data.readSize
                                     )
-                                    if (downloadedSize.addAndGet(data.size.toLong()) >= size) {
+                                    if (downloadedSize.addAndGet(data.readSize.toLong()) >= size) {
                                         // 文件片已经下载完毕
                                         // Fragment download finished.
                                         log.d(TAG, "Frame: $start download finished(${end - start} bytes).")
@@ -532,12 +533,12 @@ class FileDownloader(
                                                         d: Unit
                                                     ) {
                                                         log.d(TAG, "Send fragment finish success.")
-                                                        updateProgress(data.size.toLong())
+                                                        updateProgress(data.readSize.toLong())
                                                         closeConnectionIfActive()
                                                     }
 
                                                     override fun onFail(errorMsg: String) {
-                                                        updateProgress(data.size.toLong())
+                                                        updateProgress(data.readSize.toLong())
                                                         log.e(TAG, "Send fragment finish fail: $errorMsg")
                                                         // closeConnectionIfActive()
                                                     }
@@ -545,18 +546,20 @@ class FileDownloader(
                                                 }
                                             )
                                         } else {
-                                            updateProgress(data.size.toLong())
+                                            updateProgress(data.readSize.toLong())
                                             errorStateIfActive("Task is null")
                                         }
                                     } else {
                                         // Update download progress.
                                         // 文件片还没有下载完毕
-                                        updateProgress(data.size.toLong())
+                                        updateProgress(data.readSize.toLong())
                                     }
                                 } catch (e: Throwable) {
                                     val msg = "Write data error: ${e.message}"
                                     log.e(TAG, msg)
                                     errorStateIfActive(msg)
+                                } finally {
+                                    this.task.get()?.byteArrayPool?.put(data.value)
                                 }
                             }
                         }

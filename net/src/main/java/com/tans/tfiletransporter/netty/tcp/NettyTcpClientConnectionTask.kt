@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.netty.tcp
 
+import com.tans.tfiletransporter.netty.ByteArrayPool
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
@@ -26,7 +27,8 @@ import java.util.concurrent.atomic.AtomicReference
 class NettyTcpClientConnectionTask(
     private val serverAddress: InetAddress,
     private val serverPort: Int,
-    private val idleLimitDuration: Long = Long.MAX_VALUE
+    private val idleLimitDuration: Long = Long.MAX_VALUE,
+    override val byteArrayPool: ByteArrayPool = ByteArrayPool()
 ) : INettyConnectionTask {
 
     override val isExecuted: AtomicBoolean by lazy {
@@ -58,8 +60,8 @@ class NettyTcpClientConnectionTask(
                             .addLast(IdleStateHandler(idleLimitDuration, 0, 0, TimeUnit.MILLISECONDS))// 超时时间
                             .addLast(LengthFieldBasedFrameDecoder(Int.MAX_VALUE, /** length 长度偏移量 **/0, /** 长度 **/4, 0, 4))
                             .addLast(LengthFieldPrepender(4))
-                            .addLast(BytesToPackageDataDecoder())
-                            .addLast(PackageDataToBytesEncoder())
+                            .addLast(BytesToPackageDataDecoder(byteArrayPool))
+                            .addLast(PackageDataToBytesEncoder(byteArrayPool))
                             .addLast(CheckerHandler(this@NettyTcpClientConnectionTask, ch))
                     }
                 })

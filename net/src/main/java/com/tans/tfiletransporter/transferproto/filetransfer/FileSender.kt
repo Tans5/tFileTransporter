@@ -2,6 +2,7 @@ package com.tans.tfiletransporter.transferproto.filetransfer
 
 import com.tans.tfiletransporter.*
 import com.tans.tfiletransporter.netty.INettyConnectionTask
+import com.tans.tfiletransporter.netty.NetByteArray
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
 import com.tans.tfiletransporter.netty.PackageData
@@ -606,7 +607,7 @@ class FileSender(
                 this@SingleFileFragmentSender.cancel()
             }
 
-            private suspend fun sendDataSuspend(bytes: ByteArray) = suspendCancellableCoroutine { cont ->
+            private suspend fun sendDataSuspend(bytes: NetByteArray) = suspendCancellableCoroutine { cont ->
                 serverClientTask.get()?.requestSimplify(
                     type = FileTransferDataType.SendReq.type,
                     request = bytes,
@@ -639,9 +640,9 @@ class FileSender(
                 launch {
                     val frameSize = downloadReq.end - downloadReq.start
                     var hasRead = 0L
+                    val byteArrayPool = serverClientTask.get()!!.connectionTask.byteArrayPool
                     try {
                         val bufferSize = bufferSize.get().toLong()
-                        val byteArray = ByteArray(MAX_FILE_SEND_BUFFER_SIZE)
                         while (hasRead < frameSize) {
                             // 本次发送文件的 buffer 的大小
                             val thisTimeRead = if ((frameSize - hasRead) < bufferSize) {
@@ -649,17 +650,23 @@ class FileSender(
                             } else {
                                 bufferSize
                             }
+                            val byteArrayValue = byteArrayPool.get(thisTimeRead.toInt())
                             // Read data from file.
                             // 从文件读数据
                             randomAccessFile.readContent(
                                 fileOffset = downloadReq.start + hasRead,
-                                byteArray = byteArray,
+                                byteArray = byteArrayValue.value,
                                 contentLen = thisTimeRead.toInt()
                             )
                             val startTime = System.currentTimeMillis()
                             // Send data to client.
                             // 发送数据到客户端
-                            sendDataSuspend(byteArray.copyOfRange(0, thisTimeRead.toInt()))
+                            sendDataSuspend(
+                                NetByteArray(
+                                    byteArrayValue,
+                                    thisTimeRead.toInt()
+                                )
+                            )
                             val endTime = System.currentTimeMillis()
                             updateBufferSize(endTime - startTime)
                             // Update sending progress.

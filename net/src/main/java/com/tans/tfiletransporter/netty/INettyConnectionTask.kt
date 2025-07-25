@@ -16,6 +16,8 @@ interface INettyConnectionTask : Runnable {
 
     val observers: LinkedBlockingDeque<NettyConnectionObserver>
 
+    val byteArrayPool: ByteArrayPool
+
     fun isExecuted(): Boolean = isExecuted.get()
 
     fun getCurrentState(): NettyTaskState = state.get()
@@ -73,6 +75,7 @@ interface INettyConnectionTask : Runnable {
                 state.channel.close()
             }
             dispatchState(NettyTaskState.ConnectionClosed)
+            byteArrayPool.clearMemory()
         }
     }
 

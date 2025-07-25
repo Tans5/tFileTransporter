@@ -166,7 +166,8 @@ class DefaultClientManager(
                     val response = converter.convert(
                         downloadData.type,
                         responseClass,
-                        downloadData
+                        downloadData,
+                        connectionTask.byteArrayPool
                     )
                     if (response != null) {
                         // 将当前任务从正在等待的任务队列中移除
@@ -213,7 +214,8 @@ class DefaultClientManager(
                     type = type,
                     messageId = messageId,
                     data = request,
-                    dataClass = requestClass
+                    dataClass = requestClass,
+                    byteArrayPool = connectionTask.byteArrayPool
                 )
                 if (pckData != null) {
                     // 等待 Server 回复超时 Task

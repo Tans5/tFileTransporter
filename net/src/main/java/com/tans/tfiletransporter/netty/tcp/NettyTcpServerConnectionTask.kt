@@ -26,6 +26,7 @@ class NettyTcpServerConnectionTask(
     private val bindAddress: InetAddress,
     private val bindPort: Int,
     private val idleLimitDuration: Long = Long.MAX_VALUE,
+    override val byteArrayPool: ByteArrayPool = ByteArrayPool(),
     private val newClientTaskCallback: (clientTask: ChildConnectionTask) -> Unit
 ) : INettyConnectionTask, NettyConnectionObserver {
 
@@ -68,8 +69,8 @@ class NettyTcpServerConnectionTask(
                                     /** 长度 **/ /** 长度 **/4, 0, 4)
                             )
                             .addLast(LengthFieldPrepender(4))
-                            .addLast(BytesToPackageDataDecoder())
-                            .addLast(PackageDataToBytesEncoder())
+                            .addLast(BytesToPackageDataDecoder(byteArrayPool))
+                            .addLast(PackageDataToBytesEncoder(byteArrayPool))
                             .addLast(CheckerHandler(childTask, ch))
                         childTask.startTask()
                         newClientTaskCallback(childTask)
@@ -133,7 +134,10 @@ class NettyTcpServerConnectionTask(
         activeChildrenChannel.clear()
     }
 
-    inner class ChildConnectionTask(private val socketChannel: NioSocketChannel) : INettyConnectionTask {
+    inner class ChildConnectionTask(
+        private val socketChannel: NioSocketChannel,
+        override val byteArrayPool: ByteArrayPool = ByteArrayPool()
+    ) : INettyConnectionTask {
 
         override val isExecuted: AtomicBoolean = AtomicBoolean(false)
         override val state: AtomicReference<NettyTaskState> = AtomicReference(NettyTaskState.NotExecute)

@@ -34,7 +34,8 @@ interface IServer<Request, Response> {
             val convertedData = converter.convert(
                 type = msg.type,
                 dataClass = requestClass,
-                packageData = msg
+                packageData = msg,
+                byteArrayPool = connectionTask.byteArrayPool
             )
             if (convertedData != null) {
                 // 处理 request 的数据并获取 response
@@ -48,7 +49,8 @@ interface IServer<Request, Response> {
                             type = replyType,
                             messageId = msg.messageId,
                             data = response,
-                            dataClass = responseClass
+                            dataClass = responseClass,
+                            byteArrayPool = connectionTask.byteArrayPool
                         )
                         if (pckData != null) {
                             // 发送 response 数据

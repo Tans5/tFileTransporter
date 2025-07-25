@@ -1,5 +1,6 @@
 package com.tans.tfiletransporter.netty.udp
 
+import com.tans.tfiletransporter.netty.ByteArrayPool
 import com.tans.tfiletransporter.netty.INettyConnectionTask
 import com.tans.tfiletransporter.netty.NettyConnectionObserver
 import com.tans.tfiletransporter.netty.NettyTaskState
@@ -21,7 +22,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 class NettyUdpConnectionTask(
     private val connectionType: ConnectionType,
-    private val enableBroadcast: Boolean = false
+    private val enableBroadcast: Boolean = false,
+    override val byteArrayPool: ByteArrayPool = ByteArrayPool()
 ) : INettyConnectionTask {
 
     override val isExecuted: AtomicBoolean = AtomicBoolean(false)
@@ -50,8 +52,8 @@ class NettyUdpConnectionTask(
                 .handler(object : ChannelInitializer<NioDatagramChannel>() {
                     override fun initChannel(ch: NioDatagramChannel) {
                         ch.pipeline()
-                            .addLast(DatagramDataToPckAddrDataDecoder())
-                            .addLast(PckAddrDataToDatagramDataEncoder())
+                            .addLast(DatagramDataToPckAddrDataDecoder(byteArrayPool))
+                            .addLast(PckAddrDataToDatagramDataEncoder(byteArrayPool))
                             .addLast(CheckerHandler(this@NettyUdpConnectionTask, ch, true))
                     }
                 })
