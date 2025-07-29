@@ -20,7 +20,7 @@ class DatagramDataToPckAddrDataDecoder(
                 val messageId = buffer.readLong()
                 val bodySize = buffer.writerIndex() - buffer.readerIndex()
                 val byteArrayValue = byteArrayPool.get(bodySize)
-                buffer.readBytes(byteArrayValue.value)
+                buffer.readBytes(byteArrayValue.value, 0, bodySize)
                 super.channelRead(
                     ctx, PackageDataWithAddress(
                         receiverAddress = msg.sender(),
