@@ -65,7 +65,7 @@ object TcpClientTest {
                 msg: PackageData,
                 task: INettyConnectionTask
             ) {
-                println("Receive message from server: ${msg.body.toString(Charsets.UTF_8)}")
+                println("Receive message from server: ${msg.body.value.value.toString(Charsets.UTF_8)}")
             }
         })
         t.startTask()

@@ -2,6 +2,7 @@ package com.tans.tfiletransporter
 
 import com.tans.tfiletransporter.netty.*
 import com.tans.tfiletransporter.netty.udp.NettyUdpConnectionTask
+import com.tans.tlrucache.memory.LruByteArrayPool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.delay
@@ -33,13 +34,17 @@ object UdpBroadcastClientTest {
                             Thread.sleep(2000)
                             if (task.getCurrentState() !is NettyTaskState.ConnectionActive) return@execute
                             println("Send broadcast.")
+                            val bytes = "This is a broadcast msg.".toByteArray(Charsets.UTF_8)
                             task.sendData(
                                 data = PackageDataWithAddress(
                                     receiverAddress = InetSocketAddress(broadcastAddress, 9997),
                                     data = PackageData(
                                         type = 0,
                                         messageId = System.currentTimeMillis(),
-                                        body = "This is a broadcast msg.".toByteArray(Charsets.UTF_8)
+                                        body = NetByteArray(
+                                            LruByteArrayPool.Companion.ByteArrayValue(value = bytes),
+                                            readSize = bytes.size
+                                        )
                                     )
                                 ),
                                 sendDataCallback = null
